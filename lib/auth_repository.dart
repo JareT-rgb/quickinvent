@@ -36,8 +36,16 @@ class AuthRepository {
     _controller.add(u != null ? User(email: u.email) : null);
   }
 
-  Future<void> signUpWithEmail(String email, String password) async {
-    await _client.auth.signUp(email: email, password: password);
+  Future<void> signUpWithEmail(
+    String email,
+    String password, {
+    String? fullName,
+  }) async {
+    await _client.auth.signUp(
+      email: email,
+      password: password,
+      data: fullName != null ? {'full_name': fullName} : null,
+    );
     // Intentar iniciar sesión automáticamente después del registro.
     // Esto funciona si la "Confirmación de email" está desactivada en Supabase.
     // Si está activada, signInWithPassword lanzará un error que se mostrará en la UI.

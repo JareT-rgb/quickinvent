@@ -14,7 +14,7 @@ class SaleDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final currencyFormat = NumberFormat.currency(locale: 'es_MX', symbol: '\$');
-    final items = sale.items.cast<SaleDetailItem>();
+    final items = sale.items ?? <SaleDetailItem>[];
 
     return Scaffold(
       appBar: AppBar(
@@ -26,7 +26,7 @@ class SaleDetailScreen extends StatelessWidget {
             onPressed: () async {
               try {
                 final pdfBytes = await generateReceiptPdf(
-                  saleId: sale.id,
+                  saleId: int.tryParse(sale.id) ?? 0,
                   saleItems: items,
                   totalAmount: sale.totalAmount,
                   paymentMethod: sale.paymentMethod,
@@ -50,20 +50,43 @@ class SaleDetailScreen extends StatelessWidget {
             constraints: const BoxConstraints(maxWidth: 450),
             child: Card(
               margin: const EdgeInsets.all(24),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
               child: Padding(
                 padding: const EdgeInsets.all(32.0),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.check_circle, color: Colors.green, size: 64),
+                    const Icon(
+                      Icons.check_circle,
+                      color: Colors.green,
+                      size: 64,
+                    ),
                     const SizedBox(height: 16),
-                    const Text('¡Venta completada!', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-                    Text('Ticket: ${sale.id}', style: TextStyle(color: Colors.grey.shade600)),
-                    const SizedBox(height: 16),
-                    const Text('QUICKINVENT ABARROTES', style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.2)),
+                    const Text(
+                      '¡Venta completada!',
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                     Text(
-                      DateFormat('dd/MM/yyyy, hh:mm a').format(sale.createdAt.toLocal()),
+                      'Ticket: ${sale.id}',
+                      style: TextStyle(color: Colors.grey.shade600),
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'QUICKINVENT ABARROTES',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.2,
+                      ),
+                    ),
+                    Text(
+                      DateFormat(
+                        'dd/MM/yyyy, hh:mm a',
+                      ).format(sale.createdAt.toLocal()),
                       style: const TextStyle(fontSize: 12, color: Colors.grey),
                     ),
                     const Divider(height: 40),
@@ -78,10 +101,18 @@ class SaleDetailScreen extends StatelessWidget {
                             child: Row(
                               children: [
                                 Expanded(
-                                  child: Text('${item.productName} x${item.quantity}', style: const TextStyle(fontSize: 14)),
+                                  child: Text(
+                                    '${item.productName} x${item.quantity}',
+                                    style: const TextStyle(fontSize: 14),
+                                  ),
                                 ),
                                 const SizedBox(width: 8),
-                                Text(currencyFormat.format(item.subtotal), style: const TextStyle(fontWeight: FontWeight.bold)),
+                                Text(
+                                  currencyFormat.format(item.subtotal),
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
                               ],
                             ),
                           );
@@ -89,11 +120,28 @@ class SaleDetailScreen extends StatelessWidget {
                       ),
                     ),
                     const Divider(height: 40),
-                    _buildTotalRow('TOTAL', currencyFormat.format(sale.totalAmount), isBold: true),
-                    _buildTotalRow('Pago (${sale.paymentMethod})', currencyFormat.format(sale.receivedAmount)),
-                    _buildTotalRow('Cambio', currencyFormat.format(sale.change), color: Colors.orange.shade800),
+                    _buildTotalRow(
+                      'TOTAL',
+                      currencyFormat.format(sale.totalAmount),
+                      isBold: true,
+                    ),
+                    _buildTotalRow(
+                      'Pago (${sale.paymentMethod})',
+                      currencyFormat.format(sale.receivedAmount),
+                    ),
+                    _buildTotalRow(
+                      'Cambio',
+                      currencyFormat.format(sale.change),
+                      color: Colors.orange.shade800,
+                    ),
                     const SizedBox(height: 40),
-                    const Text('¡Gracias por su compra!', style: TextStyle(fontStyle: FontStyle.italic, color: Colors.grey)),
+                    const Text(
+                      '¡Gracias por su compra!',
+                      style: TextStyle(
+                        fontStyle: FontStyle.italic,
+                        color: Colors.grey,
+                      ),
+                    ),
                     const SizedBox(height: 24),
                     SizedBox(
                       width: double.infinity,
@@ -103,7 +151,9 @@ class SaleDetailScreen extends StatelessWidget {
                           backgroundColor: const Color(0xFF2E7D32),
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
                         child: const Text('Cerrar'),
                       ),
@@ -118,14 +168,32 @@ class SaleDetailScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildTotalRow(String label, String value, {bool isBold = false, Color? color}) {
+  Widget _buildTotalRow(
+    String label,
+    String value, {
+    bool isBold = false,
+    Color? color,
+  }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: TextStyle(fontWeight: isBold ? FontWeight.bold : FontWeight.normal, fontSize: isBold ? 18 : 16)),
-          Text(value, style: TextStyle(fontWeight: isBold ? FontWeight.bold : FontWeight.normal, fontSize: isBold ? 18 : 16, color: color)),
+          Text(
+            label,
+            style: TextStyle(
+              fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+              fontSize: isBold ? 18 : 16,
+            ),
+          ),
+          Text(
+            value,
+            style: TextStyle(
+              fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+              fontSize: isBold ? 18 : 16,
+              color: color,
+            ),
+          ),
         ],
       ),
     );

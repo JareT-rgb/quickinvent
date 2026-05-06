@@ -25,11 +25,14 @@ class SaleCompletionScreen extends StatelessWidget {
   Future<void> _printReceipt(BuildContext context) async {
     try {
       final items = cartItems
-          .map((i) => SaleDetailItem(
-                productName: i.product.name,
-                quantity: i.quantity,
-                priceAtSale: i.product.price,
-              ))
+          .map(
+            (i) => SaleDetailItem(
+              productName: i.product.name,
+              quantity: i.quantity,
+              priceAtSale: i.product.price,
+              subtotal: i.subtotal,
+            ),
+          )
           .toList();
       final pdfBytes = await generateReceiptPdf(
         saleId: saleId ?? DateTime.now().millisecondsSinceEpoch,
@@ -40,9 +43,9 @@ class SaleCompletionScreen extends StatelessWidget {
       await Printing.layoutPdf(onLayout: (format) => pdfBytes);
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al imprimir: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error al imprimir: $e')));
       }
     }
   }
@@ -59,7 +62,9 @@ class SaleCompletionScreen extends StatelessWidget {
           child: Card(
             margin: const EdgeInsets.all(24),
             elevation: 4,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
             child: Padding(
               padding: const EdgeInsets.all(32.0),
               child: Column(
@@ -68,10 +73,17 @@ class SaleCompletionScreen extends StatelessWidget {
                   CircleAvatar(
                     radius: 30,
                     backgroundColor: primaryColor.withValues(alpha: 0.1),
-                    child: Icon(Icons.check_circle, color: primaryColor, size: 40),
+                    child: Icon(
+                      Icons.check_circle,
+                      color: primaryColor,
+                      size: 40,
+                    ),
                   ),
                   const SizedBox(height: 16),
-                  const Text('¡Venta completada!', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+                  const Text(
+                    '¡Venta completada!',
+                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                  ),
                   Text(
                     'Ticket: #${saleId ?? DateTime.now().millisecondsSinceEpoch.toString().substring(5)}',
                     style: TextStyle(color: Colors.grey.shade600),
@@ -79,11 +91,28 @@ class SaleCompletionScreen extends StatelessWidget {
                   const SizedBox(height: 24),
                   const Divider(),
                   const SizedBox(height: 16),
-                  _buildTicketRow('TOTAL', '\$${totalAmount.toStringAsFixed(2)}', isBold: true),
-                  _buildTicketRow('Pago ($paymentMethod)', '\$${receivedAmount.toStringAsFixed(2)}'),
-                  _buildTicketRow('Cambio', '\$${change.toStringAsFixed(2)}', color: Colors.orange.shade800),
+                  _buildTicketRow(
+                    'TOTAL',
+                    '\$${totalAmount.toStringAsFixed(2)}',
+                    isBold: true,
+                  ),
+                  _buildTicketRow(
+                    'Pago ($paymentMethod)',
+                    '\$${receivedAmount.toStringAsFixed(2)}',
+                  ),
+                  _buildTicketRow(
+                    'Cambio',
+                    '\$${change.toStringAsFixed(2)}',
+                    color: Colors.orange.shade800,
+                  ),
                   const SizedBox(height: 24),
-                  const Text('¡Gracias por su compra!', style: TextStyle(fontStyle: FontStyle.italic, color: Colors.grey)),
+                  const Text(
+                    '¡Gracias por su compra!',
+                    style: TextStyle(
+                      fontStyle: FontStyle.italic,
+                      color: Colors.grey,
+                    ),
+                  ),
                   const SizedBox(height: 32),
                   Row(
                     children: [
@@ -94,7 +123,9 @@ class SaleCompletionScreen extends StatelessWidget {
                           label: const Text('Imprimir'),
                           style: OutlinedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                           ),
                         ),
                       ),
@@ -102,13 +133,17 @@ class SaleCompletionScreen extends StatelessWidget {
                       Expanded(
                         child: ElevatedButton(
                           onPressed: () {
-                            Navigator.of(context).popUntil((route) => route.isFirst);
+                            Navigator.of(
+                              context,
+                            ).popUntil((route) => route.isFirst);
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: primaryColor,
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                           ),
                           child: const Text('Nueva venta'),
                         ),
@@ -124,14 +159,32 @@ class SaleCompletionScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildTicketRow(String label, String value, {bool isBold = false, Color? color}) {
+  Widget _buildTicketRow(
+    String label,
+    String value, {
+    bool isBold = false,
+    Color? color,
+  }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: TextStyle(fontWeight: isBold ? FontWeight.bold : FontWeight.normal, fontSize: isBold ? 18 : 16)),
-          Text(value, style: TextStyle(fontWeight: isBold ? FontWeight.bold : FontWeight.normal, fontSize: isBold ? 18 : 16, color: color)),
+          Text(
+            label,
+            style: TextStyle(
+              fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+              fontSize: isBold ? 18 : 16,
+            ),
+          ),
+          Text(
+            value,
+            style: TextStyle(
+              fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+              fontSize: isBold ? 18 : 16,
+              color: color,
+            ),
+          ),
         ],
       ),
     );

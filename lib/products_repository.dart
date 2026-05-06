@@ -26,6 +26,7 @@ class ProductsRepository {
       'name': name,
       'price': price,
       'stock_quantity': stockQuantity,
+      'min_stock': minStock,
       'barcode': barcode,
       'is_active': isActive,
       'category_id': categoryId != null ? int.tryParse(categoryId) : null,
@@ -43,14 +44,18 @@ class ProductsRepository {
     String? barcode,
     String? categoryId,
   }) async {
-    await _client.from('products').update({
-      'name': name,
-      'price': price,
-      'stock_quantity': stockQuantity,
-      'barcode': barcode,
-      'is_active': isActive,
-      'category_id': categoryId != null ? int.tryParse(categoryId) : null,
-    }).eq('id', int.parse(productId));
+    await _client
+        .from('products')
+        .update({
+          'name': name,
+          'price': price,
+          'stock_quantity': stockQuantity,
+          'min_stock': minStock,
+          'barcode': barcode,
+          'is_active': isActive,
+          'category_id': categoryId != null ? int.tryParse(categoryId) : null,
+        })
+        .eq('id', int.parse(productId));
   }
 
   Future<List<ProductReturn>> fetchReturns() async {
@@ -80,9 +85,7 @@ class ProductsRepository {
 
   Future<List<Category>> fetchCategories() async {
     final response = await _client.from('categories').select();
-    return (response as List<dynamic>)
-        .map((e) => Category.fromMap(e))
-        .toList();
+    return (response as List<dynamic>).map((e) => Category.fromMap(e)).toList();
   }
 
   Future<void> addCategory(String name) async {

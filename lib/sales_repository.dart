@@ -15,12 +15,21 @@ class SalesRepository {
   }
 
   Future<List<Sale>> fetchAllSales() async {
-    final response = await _client.from('sales').select('*, sale_details(*)').order('created_at', ascending: false);
-    return (response as List).map((s) => Sale.fromMap(s as Map<String, dynamic>)).toList();
+    final response = await _client
+        .from('sales')
+        .select('*, sale_items(*)')
+        .order('created_at', ascending: false);
+    return (response as List)
+        .map((s) => Sale.fromMap(s as Map<String, dynamic>))
+        .toList();
   }
 
   Future<Sale?> getSaleById(int id) async {
-    final response = await _client.from('sales').select('*, sale_details(*)').eq('id', id).maybeSingle();
+    final response = await _client
+        .from('sales')
+        .select('*, sale_items(*)')
+        .eq('id', id)
+        .maybeSingle();
     if (response == null) return null;
     return Sale.fromMap(response);
   }
@@ -42,24 +51,36 @@ class SalesRepository {
       if (user != null) 'user_id': user.id,
     };
 
-    final saleResponse = await _client.from('sales').insert(saleData).select().single();
+    final saleResponse = await _client
+        .from('sales')
+        .insert(saleData)
+        .select()
+        .single();
     final saleId = saleResponse['id'] as int;
 
-    final details = items.map((i) => {
-      'sale_id': saleId,
-      'product_name': i.productName,
-      'quantity': i.quantity,
-      'price_at_sale': i.priceAtSale,
-    }).toList();
+    final details = items
+        .map(
+          (i) => {
+            'sale_id': saleId,
+            'product_name': i.productName,
+            'quantity': i.quantity,
+            'price_at_sale': i.priceAtSale,
+            'subtotal': i.subtotal,
+          },
+        )
+        .toList();
 
     if (details.isNotEmpty) {
-      await _client.from('sale_details').insert(details);
+      await _client.from('sale_items').insert(details);
     }
 
     return Sale.fromMap(saleResponse);
   }
 
-  Future<List<MapEntry<DateTime, double>>> getDailySalesForMonth(int year, int month) async {
+  Future<List<MapEntry<DateTime, double>>> getDailySalesForMonth(
+    int year,
+    int month,
+  ) async {
     final from = DateTime(year, month, 1).toIso8601String();
     final to = DateTime(year, month + 1, 1).toIso8601String();
     final response = await _client
@@ -69,16 +90,24 @@ class SalesRepository {
         .lt('created_at', to);
 
     final daysInMonth = DateTime(year, month + 1, 0).day;
-    final result = List.generate(daysInMonth, (i) => MapEntry(DateTime(year, month, i + 1), 0.0));
+    final result = List.generate(
+      daysInMonth,
+      (i) => MapEntry(DateTime(year, month, i + 1), 0.0),
+    );
     for (final row in response as List) {
       final date = DateTime.parse(row['created_at'] as String);
       final day = date.day - 1;
-      result[day] = MapEntry(result[day].key, result[day].value + (row['total_amount'] as num).toDouble());
+      result[day] = MapEntry(
+        result[day].key,
+        result[day].value + (row['total_amount'] as num).toDouble(),
+      );
     }
     return result;
   }
 
-  Future<List<MapEntry<DateTime, double>>> getMonthlyRevenueLastNMonths(int n) async {
+  Future<List<MapEntry<DateTime, double>>> getMonthlyRevenueLastNMonths(
+    int n,
+  ) async {
     final now = DateTime.now();
     final result = <MapEntry<DateTime, double>>[];
     for (var i = n - 1; i >= 0; i--) {
@@ -92,37 +121,48 @@ class SalesRepository {
           .select('total_amount')
           .gte('created_at', from)
           .lt('created_at', to);
-      final total = (response as List).fold<double>(0.0, (sum, r) => sum + (r['total_amount'] as num).toDouble());
+      final total = (response as List).fold<double>(
+        0.0,
+        (sum, r) => sum + (r['total_amount'] as num).toDouble(),
+      );
       result.add(MapEntry(DateTime(year, adjustedMonth), total));
     }
     return result;
   }
 
   Future<Map<String, double>> getPaymentMethodDistribution() async {
-    final response = await _client.from('sales').select('payment_method, total_amount');
+    final response = await _client
+        .from('sales')
+        .select('payment_method, total_amount');
     final totals = <String, double>{};
     for (final row in response as List) {
       final method = row['payment_method'] as String;
-      totals[method] = (totals[method] ?? 0.0) + (row['total_amount'] as num).toDouble();
+      totals[method] =
+          (totals[method] ?? 0.0) + (row['total_amount'] as num).toDouble();
     }
     return totals;
   }
 
   Future<List<MapEntry<String, int>>> getTopProducts({int limit = 5}) async {
-    final response = await _client.from('sale_details').select('product_name, quantity');
+    final response = await _client
+        .from('sale_items')
+        .select('product_name, quantity');
     final counts = <String, int>{};
     for (final row in response as List) {
       final name = row['product_name'] as String;
       counts[name] = (counts[name] ?? 0) + (row['quantity'] as int);
     }
-    final sorted = counts.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
+    final sorted = counts.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
     return sorted.take(limit).toList();
   }
 
   Future<Map<String, dynamic>> getStats() async {
     final now = DateTime.now();
 
-    final allSales = await _client.from('sales').select('total_amount, payment_method, created_at');
+    final allSales = await _client
+        .from('sales')
+        .select('total_amount, payment_method, created_at');
     double totalRevenue = 0;
     double todayRevenue = 0;
     int todayCount = 0;
@@ -131,7 +171,9 @@ class SalesRepository {
       final amount = (row['total_amount'] as num).toDouble();
       totalRevenue += amount;
       final created = DateTime.parse(row['created_at'] as String);
-      if (created.year == now.year && created.month == now.month && created.day == now.day) {
+      if (created.year == now.year &&
+          created.month == now.month &&
+          created.day == now.day) {
         todayRevenue += amount;
         todayCount++;
         if (row['payment_method'] == 'Efectivo') todayCash += amount;
@@ -146,16 +188,27 @@ class SalesRepository {
     };
   }
 
-  Future<List<Map<String, dynamic>>> getDeadStock(List<String> allProductNames) async {
-    final thirtyDaysAgo = DateTime.now().subtract(const Duration(days: 30)).toIso8601String();
-    final response = await _client.from('sale_details').select('product_name').gte('created_at', thirtyDaysAgo);
+  Future<List<Map<String, dynamic>>> getDeadStock(
+    List<String> allProductNames,
+  ) async {
+    final thirtyDaysAgo = DateTime.now()
+        .subtract(const Duration(days: 30))
+        .toIso8601String();
+    final response = await _client
+        .from('sale_items')
+        .select('product_name')
+        .gte('created_at', thirtyDaysAgo);
     final soldRecently = <String>{};
     for (final row in response as List) {
       soldRecently.add(row['product_name'] as String);
     }
-    final dead = allProductNames.where((name) => !soldRecently.contains(name)).toList();
+    final dead = allProductNames
+        .where((name) => !soldRecently.contains(name))
+        .toList();
     final rand = Random();
-    return dead.map((name) => {'name': name, 'days': 30 + rand.nextInt(61)}).toList();
+    return dead
+        .map((name) => {'name': name, 'days': 30 + rand.nextInt(61)})
+        .toList();
   }
 }
 
@@ -202,6 +255,10 @@ final reportDataProvider = FutureProvider<ReportData>((ref) async {
   );
 });
 
-final deadStockProvider = FutureProvider.family<List<Map<String, dynamic>>, List<String>>((ref, productNames) async {
-  return ref.read(salesRepositoryProvider).getDeadStock(productNames);
-});
+final deadStockProvider =
+    FutureProvider.family<List<Map<String, dynamic>>, List<String>>((
+      ref,
+      productNames,
+    ) async {
+      return ref.read(salesRepositoryProvider).getDeadStock(productNames);
+    });

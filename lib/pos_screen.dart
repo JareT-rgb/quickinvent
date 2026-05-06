@@ -28,7 +28,8 @@ class _PosScreenState extends ConsumerState<PosScreen> {
       error: (e, s) => Center(child: Text('Error: $e')),
       data: (products) {
         final filteredProducts = products.where((p) {
-          final matchesSearch = p.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+          final matchesSearch =
+              p.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
               (p.barcode?.contains(_searchQuery) ?? false);
           return p.isActive && matchesSearch;
         }).toList();
@@ -51,18 +52,30 @@ class _PosScreenState extends ConsumerState<PosScreen> {
                             onChanged: (v) => setState(() => _searchQuery = v),
                             decoration: InputDecoration(
                               hintText: 'Buscar producto o escanear código...',
-                              prefixIcon: const Icon(Icons.search, color: AppTheme.textSecondary),
-                              suffixIcon: const Icon(Icons.qr_code_scanner, color: AppTheme.textMuted),
+                              prefixIcon: const Icon(
+                                Icons.search,
+                                color: AppTheme.textSecondary,
+                              ),
+                              suffixIcon: const Icon(
+                                Icons.qr_code_scanner,
+                                color: AppTheme.textMuted,
+                              ),
                               filled: true,
                               fillColor: AppTheme.surface,
-                              border: OutlineInputBorder(borderRadius: AppTheme.radiusMedium, borderSide: BorderSide.none),
+                              border: OutlineInputBorder(
+                                borderRadius: AppTheme.radiusMedium,
+                                borderSide: BorderSide.none,
+                              ),
                             ),
                           ),
                         ),
                         const SizedBox(width: 12),
                         ElevatedButton.icon(
                           onPressed: () {
-                            showDialog(context: context, builder: (context) => const HeldCartsDialog());
+                            showDialog(
+                              context: context,
+                              builder: (context) => const HeldCartsDialog(),
+                            );
                           },
                           icon: const Icon(Icons.pause),
                           label: const Text('En espera'),
@@ -72,16 +85,21 @@ class _PosScreenState extends ConsumerState<PosScreen> {
                     const SizedBox(height: 20),
                     Expanded(
                       child: filteredProducts.isEmpty
-                          ? _buildEmptyState('No hay productos disponibles', Icons.search_off)
+                          ? _buildEmptyState(
+                              'No hay productos disponibles',
+                              Icons.search_off,
+                            )
                           : GridView.builder(
-                              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: 4,
-                                childAspectRatio: 0.82,
-                                mainAxisSpacing: 14,
-                                crossAxisSpacing: 14,
-                              ),
+                              gridDelegate:
+                                  const SliverGridDelegateWithFixedCrossAxisCount(
+                                    crossAxisCount: 4,
+                                    childAspectRatio: 0.82,
+                                    mainAxisSpacing: 14,
+                                    crossAxisSpacing: 14,
+                                  ),
                               itemCount: filteredProducts.length,
-                              itemBuilder: (context, index) => _buildProductCard(filteredProducts[index]),
+                              itemBuilder: (context, index) =>
+                                  _buildProductCard(filteredProducts[index]),
                             ),
                     ),
                   ],
@@ -93,28 +111,52 @@ class _PosScreenState extends ConsumerState<PosScreen> {
               decoration: BoxDecoration(
                 color: AppTheme.surface,
                 border: const Border(left: BorderSide(color: AppTheme.divider)),
-                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 12, offset: const Offset(-2, 0))],
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.03),
+                    blurRadius: 12,
+                    offset: const Offset(-2, 0),
+                  ),
+                ],
               ),
               child: Column(
                 children: [
                   Container(
                     padding: const EdgeInsets.all(20),
-                    decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: AppTheme.divider))),
+                    decoration: const BoxDecoration(
+                      border: Border(
+                        bottom: BorderSide(color: AppTheme.divider),
+                      ),
+                    ),
                     child: const Row(
                       children: [
-                        Icon(Icons.shopping_cart_outlined, color: AppTheme.primary),
+                        Icon(
+                          Icons.shopping_cart_outlined,
+                          color: AppTheme.primary,
+                        ),
                         SizedBox(width: 10),
-                        Text('Carrito', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
+                        Text(
+                          'Carrito',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                            color: AppTheme.textPrimary,
+                          ),
+                        ),
                       ],
                     ),
                   ),
                   Expanded(
                     child: cart.isEmpty
-                        ? _buildEmptyState('El carrito está vacío', Icons.shopping_bag_outlined)
+                        ? _buildEmptyState(
+                            'El carrito está vacío',
+                            Icons.shopping_bag_outlined,
+                          )
                         : ListView.separated(
                             padding: const EdgeInsets.all(16),
                             itemCount: cart.length,
-                            separatorBuilder: (_, _) => const Divider(height: 24),
+                            separatorBuilder: (_, _) =>
+                                const Divider(height: 24),
                             itemBuilder: (context, index) {
                               final item = cart[index];
                               return Row(
@@ -123,40 +165,82 @@ class _PosScreenState extends ConsumerState<PosScreen> {
                                     width: 44,
                                     height: 44,
                                     decoration: BoxDecoration(
-                                      color: AppTheme.primary.withValues(alpha: 0.08),
+                                      color: AppTheme.primary.withValues(
+                                        alpha: 0.08,
+                                      ),
                                       borderRadius: AppTheme.radiusSmall,
                                     ),
                                     child: Center(
                                       child: Text(
-                                        item.product.name[0],
-                                        style: const TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold, fontSize: 16),
+                                        item.product.categoryId ??
+                                            'Sin categoría',
+                                        style: TextStyle(
+                                          color: Colors.grey[600],
+                                        ),
                                       ),
                                     ),
                                   ),
                                   const SizedBox(width: 12),
                                   Expanded(
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
-                                        Text(item.product.name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                                        Text(
+                                          item.product.name,
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 14,
+                                          ),
+                                        ),
                                         const SizedBox(height: 2),
-                                        Text('\$${item.product.price.toStringAsFixed(2)} c/u', style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+                                        Text(
+                                          '\$${item.product.price.toStringAsFixed(2)} c/u',
+                                          style: const TextStyle(
+                                            color: AppTheme.textSecondary,
+                                            fontSize: 12,
+                                          ),
+                                        ),
                                       ],
                                     ),
                                   ),
                                   Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      _QtyButton(icon: Icons.remove, onTap: () => ref.read(cartProvider.notifier).decrementQuantity(item.product.id)),
-                                      Padding(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8),
-                                        child: Text('${item.quantity}', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                                      _QtyButton(
+                                        icon: Icons.remove,
+                                        onTap: () => ref
+                                            .read(cartProvider.notifier)
+                                            .decrementQuantity(item.product.id),
                                       ),
-                                      _QtyButton(icon: Icons.add, onTap: () => ref.read(cartProvider.notifier).incrementQuantity(item.product.id)),
+                                      Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                        ),
+                                        child: Text(
+                                          '${item.quantity}',
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: 14,
+                                          ),
+                                        ),
+                                      ),
+                                      _QtyButton(
+                                        icon: Icons.add,
+                                        onTap: () => ref
+                                            .read(cartProvider.notifier)
+                                            .incrementQuantity(item.product.id),
+                                      ),
                                       const SizedBox(width: 8),
                                       GestureDetector(
-                                        onTap: () => ref.read(cartProvider.notifier).removeItem(item.product.id),
-                                        child: const Icon(Icons.delete_outline, size: 18, color: AppTheme.error),
+                                        onTap: () => ref
+                                            .read(cartProvider.notifier)
+                                            .removeItem(item.product.id),
+                                        child: const Icon(
+                                          Icons.delete_outline,
+                                          size: 18,
+                                          color: AppTheme.error,
+                                        ),
                                       ),
                                     ],
                                   ),
@@ -182,7 +266,10 @@ class _PosScreenState extends ConsumerState<PosScreen> {
         children: [
           Icon(icon, size: 48, color: AppTheme.textMuted),
           const SizedBox(height: 12),
-          Text(text, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 15)),
+          Text(
+            text,
+            style: const TextStyle(color: AppTheme.textSecondary, fontSize: 15),
+          ),
         ],
       ),
     );
@@ -191,31 +278,50 @@ class _PosScreenState extends ConsumerState<PosScreen> {
   Widget _buildTotalSection(double total, List<CartItem> cart) {
     return Container(
       padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         color: AppTheme.background,
-        border: const Border(top: BorderSide(color: AppTheme.divider)),
+        border: Border(top: BorderSide(color: AppTheme.divider)),
       ),
       child: Column(
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('${cart.length} artículos', style: const TextStyle(color: AppTheme.textSecondary)),
-              const Text('Total', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+              Text(
+                '${cart.length} artículos',
+                style: const TextStyle(color: AppTheme.textSecondary),
+              ),
+              const Text(
+                'Total',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              ),
             ],
           ),
           const SizedBox(height: 8),
-          Text('\$${total.toStringAsFixed(2)}', style: const TextStyle(fontSize: 30, fontWeight: FontWeight.bold, color: AppTheme.primary)),
+          Text(
+            '\$${total.toStringAsFixed(2)}',
+            style: const TextStyle(
+              fontSize: 30,
+              fontWeight: FontWeight.bold,
+              color: AppTheme.primary,
+            ),
+          ),
           const SizedBox(height: 16),
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: cart.isEmpty ? null : () {
-                showDialog(
-                  context: context,
-                  builder: (context) => CheckoutDialog(cartItems: cart, totalAmount: total),
-                );
-              },
+              onPressed: cart.isEmpty
+                  ? null
+                  : () {
+                      showDialog(
+                        context: context,
+                        builder: (context) => CheckoutDialog(
+                          cartItems: cart,
+                          totalAmount: total,
+                          onComplete: () {},
+                        ),
+                      );
+                    },
               child: const Text('Cobrar venta'),
             ),
           ),
@@ -223,13 +329,17 @@ class _PosScreenState extends ConsumerState<PosScreen> {
           SizedBox(
             width: double.infinity,
             child: OutlinedButton(
-              onPressed: cart.isEmpty ? null : () {
-                ref.read(heldCartsProvider.notifier).holdCart(cart);
-                ref.read(cartProvider.notifier).clearCart();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Venta guardada en espera')),
-                );
-              },
+              onPressed: cart.isEmpty
+                  ? null
+                  : () {
+                      ref.read(heldCartsProvider.notifier).holdCart(cart);
+                      ref.read(cartProvider.notifier).clearCart();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Venta guardada en espera'),
+                        ),
+                      );
+                    },
               child: const Text('Poner en espera'),
             ),
           ),
@@ -246,11 +356,19 @@ class _PosScreenState extends ConsumerState<PosScreen> {
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: AppTheme.radiusMedium,
-        side: BorderSide(color: isOutOfStock ? AppTheme.error.withValues(alpha: 0.3) : (isLowStock ? AppTheme.warning.withValues(alpha: 0.4) : AppTheme.divider)),
+        side: BorderSide(
+          color: isOutOfStock
+              ? AppTheme.error.withValues(alpha: 0.3)
+              : (isLowStock
+                    ? AppTheme.warning.withValues(alpha: 0.4)
+                    : AppTheme.divider),
+        ),
       ),
       child: InkWell(
         borderRadius: AppTheme.radiusMedium,
-        onTap: isOutOfStock ? null : () => ref.read(cartProvider.notifier).addItem(product),
+        onTap: isOutOfStock
+            ? null
+            : () => ref.read(cartProvider.notifier).addItem(product),
         child: Padding(
           padding: const EdgeInsets.all(14),
           child: Column(
@@ -260,7 +378,9 @@ class _PosScreenState extends ConsumerState<PosScreen> {
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: isOutOfStock ? AppTheme.error.withValues(alpha: 0.08) : AppTheme.primary.withValues(alpha: 0.08),
+                  color: isOutOfStock
+                      ? AppTheme.error.withValues(alpha: 0.08)
+                      : AppTheme.primary.withValues(alpha: 0.08),
                   borderRadius: AppTheme.radiusSmall,
                 ),
                 child: Center(
@@ -275,22 +395,49 @@ class _PosScreenState extends ConsumerState<PosScreen> {
                 ),
               ),
               const SizedBox(height: 10),
-              Text(product.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+              Text(
+                product.name,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                ),
+              ),
               const Spacer(),
-              Text('\$${product.price.toStringAsFixed(2)}', style: const TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold, fontSize: 15)),
+              Text(
+                '\$${product.price.toStringAsFixed(2)}',
+                style: const TextStyle(
+                  color: AppTheme.primary,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 15,
+                ),
+              ),
               const SizedBox(height: 4),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: isOutOfStock ? AppTheme.error.withValues(alpha: 0.08) : (isLowStock ? AppTheme.warning.withValues(alpha: 0.08) : AppTheme.primary.withValues(alpha: 0.06)),
+                  color: isOutOfStock
+                      ? AppTheme.error.withValues(alpha: 0.08)
+                      : (isLowStock
+                            ? AppTheme.warning.withValues(alpha: 0.08)
+                            : AppTheme.primary.withValues(alpha: 0.06)),
                   borderRadius: AppTheme.radiusSmall,
                 ),
                 child: Text(
-                  isOutOfStock ? 'Agotado' : (isLowStock ? 'Stock bajo' : 'Stock: ${product.stockQuantity}'),
+                  isOutOfStock
+                      ? 'Agotado'
+                      : (isLowStock
+                            ? 'Stock bajo'
+                            : 'Stock: ${product.stockQuantity}'),
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w600,
-                    color: isOutOfStock ? AppTheme.error : (isLowStock ? AppTheme.warning : AppTheme.textSecondary),
+                    color: isOutOfStock
+                        ? AppTheme.error
+                        : (isLowStock
+                              ? AppTheme.warning
+                              : AppTheme.textSecondary),
                   ),
                 ),
               ),
