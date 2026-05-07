@@ -90,22 +90,29 @@ ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 
 -- Políticas: usuarios autenticados pueden leer/escribir todo
 -- (Ajusta según tus necesidades de seguridad)
-CREATE POLICY IF NOT EXISTS "Allow all to authenticated" ON public.categories
+-- Eliminamos primero si existen para evitar duplicados
+DROP POLICY IF EXISTS "Allow all to authenticated" ON public.categories;
+CREATE POLICY "Allow all to authenticated" ON public.categories
 FOR ALL TO authenticated USING (true) WITH CHECK (true);
 
-CREATE POLICY IF NOT EXISTS "Allow all to authenticated" ON public.products
+DROP POLICY IF EXISTS "Allow all to authenticated" ON public.products;
+CREATE POLICY "Allow all to authenticated" ON public.products
 FOR ALL TO authenticated USING (true) WITH CHECK (true);
 
-CREATE POLICY IF NOT EXISTS "Allow all to authenticated" ON public.sales
+DROP POLICY IF EXISTS "Allow all to authenticated" ON public.sales;
+CREATE POLICY "Allow all to authenticated" ON public.sales
 FOR ALL TO authenticated USING (true) WITH CHECK (true);
 
-CREATE POLICY IF NOT EXISTS "Allow all to authenticated" ON public.sale_items
+DROP POLICY IF EXISTS "Allow all to authenticated" ON public.sale_items;
+CREATE POLICY "Allow all to authenticated" ON public.sale_items
 FOR ALL TO authenticated USING (true) WITH CHECK (true);
 
-CREATE POLICY IF NOT EXISTS "Allow all to authenticated" ON public.returns
+DROP POLICY IF EXISTS "Allow all to authenticated" ON public.returns;
+CREATE POLICY "Allow all to authenticated" ON public.returns
 FOR ALL TO authenticated USING (true) WITH CHECK (true);
 
-CREATE POLICY IF NOT EXISTS "Allow all to authenticated" ON public.profiles
+DROP POLICY IF EXISTS "Allow all to authenticated" ON public.profiles;
+CREATE POLICY "Allow all to authenticated" ON public.profiles
 FOR ALL TO authenticated USING (true) WITH CHECK (true);
 
 -- =====================================================
