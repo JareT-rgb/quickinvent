@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'auth_gate.dart';
-import 'theme_notifier.dart';
-import 'app_theme.dart';
+import 'providers/theme_notifier.dart';
+import 'theme/app_theme.dart';
+import 'widgets/auth_gate.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await initializeDateFormatting('es', null);
 
   await Supabase.initialize(
     url: 'https://rmmuvzvsuwmehfmirerr.supabase.co',

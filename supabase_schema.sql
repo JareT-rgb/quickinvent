@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS public.categories (
 
 -- 2. TABLA: products
 -- (Agregamos min_stock que la app usa para alertas de stock bajo)
+-- (Agregamos image_url para almacenar la URL de la imagen del producto)
 CREATE TABLE IF NOT EXISTS public.products (
   id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
   name text NOT NULL,
@@ -22,6 +23,7 @@ CREATE TABLE IF NOT EXISTS public.products (
   barcode text UNIQUE,
   is_active boolean NOT NULL DEFAULT true,
   category_id bigint,
+  image_url text,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   CONSTRAINT products_pkey PRIMARY KEY (id),
   CONSTRAINT products_category_id_fkey FOREIGN KEY (category_id) REFERENCES public.categories(id)
