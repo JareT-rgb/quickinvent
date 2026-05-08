@@ -162,6 +162,32 @@ class _ScannerScreenState extends State<ScannerScreen> {
           MobileScanner(
             controller: _controller,
             onDetect: _handleBarcode,
+            errorBuilder: (context, error) {
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.videocam_off_outlined, size: 64, color: Colors.white),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Error al iniciar cámara',
+                      style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 40),
+                      child: Text(
+                        error.errorCode == MobileScannerErrorCode.permissionDenied
+                            ? 'Permiso de cámara denegado. Actívalo en la configuración del navegador.'
+                            : 'Error: ${error.errorDetails?.message ?? "Cámara no disponible"}',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(color: Colors.white70),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
           ),
           // Scanner overlay
           Container(

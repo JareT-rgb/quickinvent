@@ -271,15 +271,18 @@ class _ImagePickerWidgetState extends State<ImagePickerWidget> {
                           Icon(
                             hasImage ? Icons.edit : Icons.add_a_photo,
                             color: Colors.white,
-                            size: 16,
+                            size: 14,
                           ),
-                          const SizedBox(width: 6),
-                          Text(
-                            hasImage ? 'Cambiar' : 'Agregar imagen',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
+                          const SizedBox(width: 4),
+                          Flexible(
+                            child: Text(
+                              hasImage ? 'Cambiar' : 'Agregar',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                              ),
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ],

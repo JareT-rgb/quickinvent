@@ -20,26 +20,44 @@ class ProductsRepository {
 
   Future<String?> uploadProductImage(String productName, XFile imageFile) async {
     try {
-      // Crear bucket si no existe
+      // Ensure bucket exists and is public
       try {
-        await _client.storage.createBucket(_bucketName);
-      } catch (e) {
-        // El bucket ya existe, ignorar error
+        await _client.storage.createBucket(_bucketName, const sb.BucketOptions(public: true));
+      } catch (_) {
+        // Silently continue if bucket already exists
       }
 
-      final fileExt = imageFile.name.split('.').last;
-      final fileName =
-          '${DateTime.now().millisecondsSinceEpoch}_$productName.$fileExt';
+      final fileExt = imageFile.name.split('.').last.toLowerCase();
+      final fileName = '${DateTime.now().millisecondsSinceEpoch}_${productName.replaceAll(RegExp(r'[^\w\s]+'), '')}.$fileExt';
       final filePath = fileName.replaceAll(' ', '_');
 
+      // Determine content type based on extension
+      String contentType = 'image/jpeg';
+      if (fileExt == 'png') contentType = 'image/png';
+      if (fileExt == 'gif') contentType = 'image/gif';
+      if (fileExt == 'webp') contentType = 'image/webp';
+
       final bytes = await imageFile.readAsBytes();
-      await _client.storage.from(_bucketName).uploadBinary(filePath, bytes);
+      
+      await _client.storage.from(_bucketName).uploadBinary(
+        filePath, 
+        bytes,
+        fileOptions: sb.FileOptions(
+          contentType: contentType,
+          upsert: true,
+          cacheControl: '3600',
+        ),
+      );
 
       final imageUrl = _client.storage.from(_bucketName).getPublicUrl(filePath);
-      return imageUrl;
+      
+      // Ensure URL is clean (some Supabase versions add query params)
+      final cleanUrl = imageUrl.split('?').first;
+      debugPrint('Image uploaded successfully: $cleanUrl');
+      return cleanUrl;
     } catch (e) {
       debugPrint('Error uploading image: $e');
-      return null;
+      rethrow;
     }
   }
 
@@ -170,6 +188,57 @@ class ProductsRepository {
 
   Future<void> deleteCategory(int id) async {
     await _client.from('categories').delete().eq('id', id);
+  }
+
+  /// Importa una lista de productos comunes, creando las categorías si no existen.
+  Future<void> importCommonProducts(List<Map<String, dynamic>> products) async {
+    // 1. Obtener todas las categorías existentes para no duplicar
+    final categories = await fetchCategories();
+    final categoryMap = {for (var c in categories) c.name.toLowerCase(): c.id};
+
+    for (final item in products) {
+      final categoryName = item['category'] as String;
+      int? categoryId;
+
+      // 2. Resolver o crear categoría
+      if (categoryMap.containsKey(categoryName.toLowerCase())) {
+        categoryId = categoryMap[categoryName.toLowerCase()];
+      } else {
+        // Crear nueva categoría
+        final newCatResponse = await _client.from('categories').insert({
+          'name': categoryName,
+          'created_at': DateTime.now().toIso8601String(),
+        }).select('id').single();
+        
+        categoryId = newCatResponse['id'] as int;
+        categoryMap[categoryName.toLowerCase()] = categoryId;
+      }
+
+      // 3. Verificar si el código de barras ya existe para evitar errores
+      if (item['barcode'] != null) {
+        final existing = await _client
+            .from('products')
+            .select('id')
+            .eq('barcode', item['barcode'])
+            .maybeSingle();
+        
+        if (existing != null) {
+          // Si ya existe, saltamos este producto
+          continue;
+        }
+      }
+
+      // 4. Insertar producto
+      await addProduct(
+        name: item['name'],
+        price: item['price'],
+        stockQuantity: item['stock_quantity'],
+        minStock: item['min_stock'],
+        isActive: true,
+        barcode: item['barcode'],
+        categoryId: categoryId?.toString(),
+      );
+    }
   }
 }
 

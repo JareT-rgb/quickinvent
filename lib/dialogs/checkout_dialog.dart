@@ -59,6 +59,7 @@ class _CheckoutDialogState extends ConsumerState<CheckoutDialog> {
 
     try {
       final items = widget.cartItems.map((item) => SaleDetailItem(
+        productId: item.product.id,
         productName: item.product.name,
         quantity: item.quantity,
         priceAtSale: item.product.price,

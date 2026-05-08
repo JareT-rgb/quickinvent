@@ -218,322 +218,305 @@ class _ReturnsScreenState extends ConsumerState<ReturnsScreen> {
     }
   }
 
+  void _selectSaleResponsive(Sale sale, bool isMobile) {
+    _selectSale(sale);
+    if (isMobile) {
+      _showReturnDetailSheet();
+    }
+  }
+
+  void _showReturnDetailSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.85,
+        minChildSize: 0.5,
+        maxChildSize: 0.95,
+        builder: (ctx, scrollController) {
+          return StatefulBuilder(
+            builder: (ctx, setSheetState) {
+              return Container(
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surface,
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                ),
+                child: _buildReturnDetailContent(isSheet: true, setSheetState: setSheetState),
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
 
-    return Padding(
-      padding: const EdgeInsets.all(24.0),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // ── Left panel: Sales list ───────────────────────────
-          Expanded(
-            flex: 2,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isMobile = constraints.maxWidth < 700;
+        final padding = isMobile ? 12.0 : 24.0;
+
+        if (isMobile) {
+          return Padding(
+            padding: EdgeInsets.all(padding),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Devoluciones',
-                  style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
-                ),
+                Text('Devoluciones', style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
                 const SizedBox(height: 4),
-                Text(
-                  'Selecciona una venta para processar una devolución',
-                  style: theme.textTheme.bodySmall?.copyWith(color: AppTheme.textSecondary),
-                ),
-                const SizedBox(height: 16),
-
-                // Search box
-                TextField(
-                  controller: _searchController,
-                  decoration: InputDecoration(
-                    hintText: 'Buscar por ID, fecha o monto...',
-                    prefixIcon: const Icon(Icons.search),
-                    suffixIcon: _searchController.text.isNotEmpty
-                        ? IconButton(
-                            icon: const Icon(Icons.clear),
-                            onPressed: () {
-                              _searchController.clear();
-                              _filterSales();
-                            },
-                          )
-                        : null,
-                    filled: true,
-                    fillColor: cs.surfaceContainerHighest.withValues(alpha: 0.5),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
-                      borderSide: BorderSide.none,
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(vertical: 12),
-                  ),
-                ),
+                Text('Selecciona una venta para devolver', style: theme.textTheme.bodySmall?.copyWith(color: AppTheme.textSecondary)),
                 const SizedBox(height: 12),
-
-                // Sales list
-                Expanded(
-                  child: _isLoadingSales
-                      ? const Center(child: CircularProgressIndicator())
-                      : _filteredSales.isEmpty
-                          ? Center(
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(Icons.receipt_long_outlined, size: 56, color: cs.onSurfaceVariant.withValues(alpha: 0.4)),
-                                  const SizedBox(height: 12),
-                                  Text('No se encontraron ventas',
-                                    style: TextStyle(color: cs.onSurfaceVariant)),
-                                ],
-                              ),
-                            )
-                          : RefreshIndicator(
-                              onRefresh: _loadSales,
-                              child: ListView.builder(
-                                itemCount: _filteredSales.length,
-                                itemBuilder: (context, index) {
-                                  final sale = _filteredSales[index];
-                                  final isSelected = _selectedSale?.id == sale.id;
-                                  return Card(
-                                    margin: const EdgeInsets.only(bottom: 8),
-                                    elevation: isSelected ? 3 : 0,
-                                    color: isSelected
-                                        ? cs.primaryContainer.withValues(alpha: 0.5)
-                                        : cs.surface,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(14),
-                                      side: BorderSide(
-                                        color: isSelected
-                                            ? cs.primary
-                                            : cs.outlineVariant.withValues(alpha: 0.5),
-                                        width: isSelected ? 2 : 1,
-                                      ),
-                                    ),
-                                    child: ListTile(
-                                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                      leading: CircleAvatar(
-                                        backgroundColor: isSelected
-                                            ? cs.primary
-                                            : cs.surfaceContainerHighest,
-                                        child: Text(
-                                          '#${sale.id}',
-                                          style: TextStyle(
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.bold,
-                                            color: isSelected ? Colors.white : cs.onSurfaceVariant,
-                                          ),
-                                        ),
-                                      ),
-                                      title: Text(
-                                        _currencyFormat.format(sale.totalAmount),
-                                        style: const TextStyle(fontWeight: FontWeight.bold),
-                                      ),
-                                      subtitle: Text(_dateFormat.format(sale.createdAt)),
-                                      trailing: ElevatedButton.icon(
-                                        onPressed: () => _selectSale(sale),
-                                        icon: const Icon(Icons.assignment_return_outlined, size: 16),
-                                        label: const Text('Devolver'),
-                                        style: ElevatedButton.styleFrom(
-                                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                          textStyle: const TextStyle(fontSize: 13),
-                                        ),
-                                      ),
-                                      onTap: () => _selectSale(sale),
-                                    ),
-                                  );
-                                },
-                              ),
-                            ),
-                ),
+                _buildSearchField(cs),
+                const SizedBox(height: 12),
+                Expanded(child: _buildSalesList(cs, isMobile: true)),
               ],
             ),
-          ),
+          );
+        }
 
-          const SizedBox(width: 24),
-
-          // ── Right panel: Return detail ───────────────────────
-          Expanded(
-            flex: 3,
-            child: _selectedSale == null
-                ? Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.touch_app_outlined, size: 72,
-                          color: cs.onSurfaceVariant.withValues(alpha: 0.3)),
-                        const SizedBox(height: 16),
-                        Text('Selecciona una venta de la lista',
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            color: cs.onSurfaceVariant.withValues(alpha: 0.6),
-                          )),
-                      ],
-                    ),
-                  )
-                : Card(
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                      side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.5)),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(20),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Header
-                          Row(
-                            children: [
-                              Icon(Icons.receipt_outlined, color: cs.primary),
-                              const SizedBox(width: 8),
-                              Text(
-                                'Venta #${_selectedSale!.id}',
-                                style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-                              ),
-                              const Spacer(),
-                              Text(
-                                _dateFormat.format(_selectedSale!.createdAt),
-                                style: theme.textTheme.bodySmall?.copyWith(color: AppTheme.textSecondary),
-                              ),
-                              const SizedBox(width: 8),
-                              IconButton(
-                                onPressed: () => setState(() {
-                                  _selectedSale = null;
-                                  _selectedProducts.clear();
-                                }),
-                                icon: const Icon(Icons.close),
-                                style: IconButton.styleFrom(backgroundColor: cs.surfaceContainerHighest),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Total: ${_currencyFormat.format(_selectedSale!.totalAmount)}',
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: cs.primary,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const Divider(height: 24),
-
-                          // Select all
-                          Row(
-                            children: [
-                              Checkbox(
-                                value: _selectedProducts.isNotEmpty &&
-                                    _selectedProducts.values.every((v) => v),
-                                tristate: true,
-                                onChanged: (val) {
-                                  setState(() {
-                                    for (final key in _selectedProducts.keys) {
-                                      _selectedProducts[key] = val ?? false;
-                                    }
-                                  });
-                                },
-                              ),
-                              const Text('Seleccionar todos',
-                                style: TextStyle(fontWeight: FontWeight.w500)),
-                            ],
-                          ),
-                          const SizedBox(height: 4),
-
-                          // Items
-                          Expanded(
-                            child: _selectedSale!.items == null || _selectedSale!.items!.isEmpty
-                                ? Center(
-                                    child: Text('No hay artículos en esta venta',
-                                      style: TextStyle(color: cs.onSurfaceVariant)),
-                                  )
-                                : ListView(
-                                    children: _selectedSale!.items!.map((item) {
-                                      final isChecked = _selectedProducts[item.productName] ?? false;
-                                      return AnimatedContainer(
-                                        duration: const Duration(milliseconds: 200),
-                                        margin: const EdgeInsets.only(bottom: 8),
-                                        decoration: BoxDecoration(
-                                          color: isChecked
-                                              ? cs.primaryContainer.withValues(alpha: 0.3)
-                                              : cs.surfaceContainerHighest.withValues(alpha: 0.3),
-                                          borderRadius: BorderRadius.circular(12),
-                                          border: Border.all(
-                                            color: isChecked ? cs.primary.withValues(alpha: 0.5) : Colors.transparent,
-                                          ),
-                                        ),
-                                        child: CheckboxListTile(
-                                          value: isChecked,
-                                          onChanged: (val) {
-                                            setState(() {
-                                              _selectedProducts[item.productName] = val ?? false;
-                                            });
-                                          },
-                                          title: Text(item.productName,
-                                            style: const TextStyle(fontWeight: FontWeight.w600)),
-                                          subtitle: Text('${item.quantity} unidad(es)'),
-                                          secondary: Text(
-                                            _currencyFormat.format(item.subtotal),
-                                            style: TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              color: cs.primary,
-                                            ),
-                                          ),
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(12),
-                                          ),
-                                        ),
-                                      );
-                                    }).toList(),
-                                  ),
-                          ),
-                          const SizedBox(height: 16),
-
-                          // Reason dropdown
-                          DropdownButtonFormField<String>(
-                            value: _returnReason,
-                            decoration: InputDecoration(
-                              labelText: 'Razón de devolución',
-                              prefixIcon: const Icon(Icons.help_outline),
-                              filled: true,
-                              fillColor: cs.surfaceContainerHighest.withValues(alpha: 0.4),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: BorderSide.none,
-                              ),
-                            ),
-                            items: _reasons
-                                .map((r) => DropdownMenuItem(value: r, child: Text(r)))
-                                .toList(),
-                            onChanged: (v) => setState(() => _returnReason = v ?? _reasons.first),
-                          ),
-                          const SizedBox(height: 16),
-
-                          // Process return button
-                          SizedBox(
-                            width: double.infinity,
-                            height: 50,
-                            child: FilledButton.icon(
-                              onPressed: _isProcessing ? null : _processReturn,
-                              style: FilledButton.styleFrom(
-                                backgroundColor: AppTheme.error,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(14),
-                                ),
-                              ),
-                              icon: _isProcessing
-                                  ? const SizedBox(height: 20, width: 20,
-                                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                                  : const Icon(Icons.assignment_return),
-                              label: Text(
-                                _isProcessing ? 'Procesando...' : 'Procesar Devolución',
-                                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-                              ),
-                            ),
-                          ),
-                        ],
+        return Padding(
+          padding: EdgeInsets.all(padding),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                flex: 2,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Devoluciones', style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 4),
+                    Text('Selecciona una venta para procesar una devolución',
+                      style: theme.textTheme.bodySmall?.copyWith(color: AppTheme.textSecondary)),
+                    const SizedBox(height: 16),
+                    _buildSearchField(cs),
+                    const SizedBox(height: 12),
+                    Expanded(child: _buildSalesList(cs, isMobile: false)),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 24),
+              Expanded(
+                flex: 3,
+                child: _selectedSale == null
+                    ? Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.touch_app_outlined, size: 72,
+                              color: cs.onSurfaceVariant.withValues(alpha: 0.3)),
+                            const SizedBox(height: 16),
+                            Text('Selecciona una venta de la lista',
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                color: cs.onSurfaceVariant.withValues(alpha: 0.6),
+                              )),
+                          ],
+                        ),
+                      )
+                    : Card(
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                          side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.5)),
+                        ),
+                        child: _buildReturnDetailContent(),
                       ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildSearchField(ColorScheme cs) {
+    return TextField(
+      controller: _searchController,
+      decoration: InputDecoration(
+        hintText: 'Buscar por ID, fecha o monto...',
+        prefixIcon: const Icon(Icons.search),
+        suffixIcon: _searchController.text.isNotEmpty
+            ? IconButton(
+                icon: const Icon(Icons.clear),
+                onPressed: () { _searchController.clear(); _filterSales(); },
+              )
+            : null,
+        filled: true,
+        fillColor: cs.surfaceContainerHighest.withValues(alpha: 0.5),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
+        contentPadding: const EdgeInsets.symmetric(vertical: 12),
+      ),
+    );
+  }
+
+  Widget _buildSalesList(ColorScheme cs, {required bool isMobile}) {
+    if (_isLoadingSales) return const Center(child: CircularProgressIndicator());
+    if (_filteredSales.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.receipt_long_outlined, size: 56, color: cs.onSurfaceVariant.withValues(alpha: 0.4)),
+            const SizedBox(height: 12),
+            Text('No se encontraron ventas', style: TextStyle(color: cs.onSurfaceVariant)),
+          ],
+        ),
+      );
+    }
+    return RefreshIndicator(
+      onRefresh: _loadSales,
+      child: ListView.builder(
+        physics: const AlwaysScrollableScrollPhysics(),
+        itemCount: _filteredSales.length,
+        itemBuilder: (context, index) {
+          final sale = _filteredSales[index];
+          final isSelected = _selectedSale?.id == sale.id;
+          return Card(
+            margin: const EdgeInsets.only(bottom: 8),
+            elevation: isSelected ? 3 : 0,
+            color: isSelected ? cs.primaryContainer.withValues(alpha: 0.5) : cs.surface,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+              side: BorderSide(color: isSelected ? cs.primary : cs.outlineVariant.withValues(alpha: 0.5), width: isSelected ? 2 : 1),
+            ),
+            child: ListTile(
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              leading: CircleAvatar(
+                backgroundColor: isSelected ? cs.primary : cs.surfaceContainerHighest,
+                child: Text('#${sale.id}', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: isSelected ? Colors.white : cs.onSurfaceVariant)),
+              ),
+              title: Text(_currencyFormat.format(sale.totalAmount), style: const TextStyle(fontWeight: FontWeight.bold)),
+              subtitle: Text(_dateFormat.format(sale.createdAt)),
+              trailing: isMobile
+                  ? const Icon(Icons.chevron_right)
+                  : ElevatedButton.icon(
+                      onPressed: () => _selectSaleResponsive(sale, isMobile),
+                      icon: const Icon(Icons.assignment_return_outlined, size: 16),
+                      label: const Text('Devolver'),
+                      style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8), textStyle: const TextStyle(fontSize: 13)),
                     ),
+              onTap: () => _selectSaleResponsive(sale, isMobile),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildReturnDetailContent({bool isSheet = false, StateSetter? setSheetState}) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final updateState = setSheetState ?? setState;
+
+    if (_selectedSale == null) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (isSheet) ...[
+            Center(
+              child: Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                width: 40, height: 4,
+                decoration: BoxDecoration(color: cs.onSurfaceVariant.withValues(alpha: 0.3), borderRadius: BorderRadius.circular(2)),
+              ),
+            ),
+          ],
+          Row(
+            children: [
+              Icon(Icons.receipt_outlined, color: cs.primary),
+              const SizedBox(width: 8),
+              Text('Venta #${_selectedSale!.id}', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+              const Spacer(),
+              IconButton(
+                onPressed: () {
+                  if (isSheet) Navigator.pop(context);
+                  setState(() { _selectedSale = null; _selectedProducts.clear(); });
+                },
+                icon: const Icon(Icons.close),
+                style: IconButton.styleFrom(backgroundColor: cs.surfaceContainerHighest),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text('Total: ${_currencyFormat.format(_selectedSale!.totalAmount)}', style: theme.textTheme.bodyMedium?.copyWith(color: cs.primary, fontWeight: FontWeight.w600)),
+          Text(_dateFormat.format(_selectedSale!.createdAt), style: theme.textTheme.bodySmall?.copyWith(color: AppTheme.textSecondary)),
+          const Divider(height: 24),
+          Row(
+            children: [
+              Checkbox(
+                value: _selectedProducts.isNotEmpty && _selectedProducts.values.every((v) => v),
+                tristate: true,
+                onChanged: (val) { updateState(() { for (final key in _selectedProducts.keys) _selectedProducts[key] = val ?? false; }); },
+              ),
+              const Text('Seleccionar todos', style: TextStyle(fontWeight: FontWeight.w500)),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Expanded(
+            child: _selectedSale!.items == null || _selectedSale!.items!.isEmpty
+                ? Center(child: Text('No hay artículos', style: TextStyle(color: cs.onSurfaceVariant)))
+                : ListView(
+                    children: _selectedSale!.items!.map((item) {
+                      final isChecked = _selectedProducts[item.productName] ?? false;
+                      return AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        margin: const EdgeInsets.only(bottom: 8),
+                        decoration: BoxDecoration(
+                          color: isChecked ? cs.primaryContainer.withValues(alpha: 0.3) : cs.surfaceContainerHighest.withValues(alpha: 0.3),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: isChecked ? cs.primary.withValues(alpha: 0.5) : Colors.transparent),
+                        ),
+                        child: CheckboxListTile(
+                          value: isChecked,
+                          onChanged: (val) { updateState(() { _selectedProducts[item.productName] = val ?? false; }); },
+                          title: Text(item.productName, style: const TextStyle(fontWeight: FontWeight.w600)),
+                          subtitle: Text('${item.quantity} unidad(es)'),
+                          secondary: Text(_currencyFormat.format(item.subtotal), style: TextStyle(fontWeight: FontWeight.bold, color: cs.primary)),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                      );
+                    }).toList(),
                   ),
+          ),
+          const SizedBox(height: 16),
+          DropdownButtonFormField<String>(
+            initialValue: _returnReason,
+            decoration: InputDecoration(
+              labelText: 'Razón de devolución',
+              prefixIcon: const Icon(Icons.help_outline),
+              filled: true,
+              fillColor: cs.surfaceContainerHighest.withValues(alpha: 0.4),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+            ),
+            items: _reasons.map((r) => DropdownMenuItem(value: r, child: Text(r))).toList(),
+            onChanged: (v) => updateState(() => _returnReason = v ?? _reasons.first),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            height: 50,
+            child: FilledButton.icon(
+              onPressed: _isProcessing ? null : () async {
+                await _processReturn();
+                if (isSheet && mounted) Navigator.pop(context);
+              },
+              style: FilledButton.styleFrom(backgroundColor: AppTheme.error, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
+              icon: _isProcessing
+                  ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : const Icon(Icons.assignment_return),
+              label: Text(_isProcessing ? 'Procesando...' : 'Procesar Devolución', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+            ),
           ),
         ],
       ),
     );
   }
-}
+}

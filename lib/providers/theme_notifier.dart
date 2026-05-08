@@ -14,8 +14,8 @@ class ThemeNotifier extends Notifier<ThemeMode> {
     // Obtenemos la instancia de SharedPreferences aquí.
     _prefs = ref.watch(sharedPreferencesProvider);
     final themeIndex = _prefs.getInt(_themeKey);
-    // Si no hay un tema guardado, se usa el del sistema por defecto.
-    return ThemeMode.values[themeIndex ?? ThemeMode.system.index];
+    // Si no hay un tema guardado, se usa el modo claro por defecto.
+    return ThemeMode.values[themeIndex ?? ThemeMode.light.index];
   }
 
   /// Actualiza el tema de la aplicación y guarda la preferencia.

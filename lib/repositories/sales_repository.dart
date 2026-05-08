@@ -76,28 +76,42 @@ class SalesRepository {
 
       // Deduct stock for each product sold
       for (final item in items) {
-        // Obtenemos el stock actual primero, o podemos usar rpc si lo tuvieramos,
-        // pero por simplicidad haremos un update restando.
-        // Lo correcto en concurrencia es usar RPC, pero supabase permite actualizar si sabemos el ID.
-        // Dado que SaleDetailItem no tiene product_id (solo product_name y otras cosas?),
-        // Wait, SaleDetailItem actually needs the product_id to deduct stock.
-        // Let me check SaleDetailItem definition. If it doesn't have product_id, I need to fetch it or update by name.
-        // I will update by name for now, but I should really use product_id if available.
-        final productResponse = await _client
-            .from('products')
-            .select('id, stock_quantity')
-            .eq('name', item.productName)
-            .limit(1)
-            .maybeSingle();
-
-        if (productResponse != null) {
-          final currentStock = productResponse['stock_quantity'] as int;
-          final newStock = max(0, currentStock - item.quantity); // Prevent negative stock
-          
-          await _client
+        if (item.productId != null) {
+          // If we have the ID, we can update directly using RPC-like logic or fetch and update
+          // Here we fetch current stock by ID to ensure we have the latest value
+          final productResponse = await _client
               .from('products')
-              .update({'stock_quantity': newStock})
-              .eq('id', productResponse['id']);
+              .select('stock_quantity')
+              .eq('id', item.productId!)
+              .maybeSingle();
+
+          if (productResponse != null) {
+            final currentStock = productResponse['stock_quantity'] as int;
+            final newStock = max(0, currentStock - item.quantity);
+            
+            await _client
+                .from('products')
+                .update({'stock_quantity': newStock})
+                .eq('id', item.productId!);
+          }
+        } else {
+          // Fallback to name if ID is missing (legacy items)
+          final productResponse = await _client
+              .from('products')
+              .select('id, stock_quantity')
+              .eq('name', item.productName)
+              .limit(1)
+              .maybeSingle();
+
+          if (productResponse != null) {
+            final currentStock = productResponse['stock_quantity'] as int;
+            final newStock = max(0, currentStock - item.quantity);
+            
+            await _client
+                .from('products')
+                .update({'stock_quantity': newStock})
+                .eq('id', productResponse['id']);
+          }
         }
       }
     }
@@ -430,6 +444,7 @@ final expensesStreamProvider = StreamProvider<List<Map<String, dynamic>>>((ref) 
 });
 
 final salesProvider = FutureProvider<List<Sale>>((ref) async {
+  ref.watch(salesStreamProvider); // Auto-refresh when sales change in real-time
   return ref.read(salesRepositoryProvider).fetchAllSales();
 });
 

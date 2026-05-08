@@ -96,7 +96,14 @@ class ReportsScreen extends ConsumerWidget {
             data: (report) {
               final currencyFormat = NumberFormat.currency(locale: 'es_MX', symbol: '\$');
               
-              return CustomScrollView(
+              return RefreshIndicator(
+                onRefresh: () async {
+                  ref.invalidate(reportDataProvider);
+                  ref.invalidate(productsProvider);
+                  ref.invalidate(salesStatsProvider);
+                },
+                child: CustomScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
                 slivers: [
                   SliverAppBar.large(
                     title: const Text('Análisis y Reportes', style: TextStyle(fontWeight: FontWeight.bold)),
@@ -145,6 +152,7 @@ class ReportsScreen extends ConsumerWidget {
                     ),
                   ),
                 ],
+                ),
               );
             },
           );

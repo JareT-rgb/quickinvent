@@ -1,0 +1,173 @@
+class CommonAbarrotes {
+  static List<Map<String, dynamic>> get catalog => [
+    // --- BEBIDAS ---
+    {
+      'name': 'Coca Cola 600ml',
+      'price': 18.0,
+      'barcode': '7501055300078',
+      'category': 'Refrescos',
+      'stock_quantity': 24,
+      'min_stock': 6,
+    },
+    {
+      'name': 'Pepsi 600ml',
+      'price': 16.5,
+      'barcode': '7501011102555',
+      'category': 'Refrescos',
+      'stock_quantity': 24,
+      'min_stock': 6,
+    },
+    {
+      'name': 'Jarritos Mandarina 600ml',
+      'price': 14.0,
+      'barcode': '7501035041281',
+      'category': 'Refrescos',
+      'stock_quantity': 12,
+      'min_stock': 3,
+    },
+    {
+      'name': 'Jugo Del Valle Mango 413ml',
+      'price': 16.0,
+      'barcode': '7501055310862',
+      'category': 'Jugos',
+      'stock_quantity': 15,
+      'min_stock': 5,
+    },
+
+    // --- LÁCTEOS ---
+    {
+      'name': 'Leche Lala Entera 1L',
+      'price': 26.5,
+      'barcode': '7501020513076',
+      'category': 'Lácteos',
+      'stock_quantity': 12,
+      'min_stock': 3,
+    },
+    {
+      'name': 'Yoghurt Danone Fresa 220g',
+      'price': 12.5,
+      'barcode': '7501032331248',
+      'category': 'Lácteos',
+      'stock_quantity': 20,
+      'min_stock': 5,
+    },
+    {
+      'name': 'Queso Panela La Villita 400g',
+      'price': 68.0,
+      'barcode': '7501020556219',
+      'category': 'Lácteos',
+      'stock_quantity': 8,
+      'min_stock': 2,
+    },
+
+    // --- BOTANAS Y GALLETAS ---
+    {
+      'name': 'Sabritas Sal 42g',
+      'price': 17.0,
+      'barcode': '7501011131050',
+      'category': 'Botanas',
+      'stock_quantity': 30,
+      'min_stock': 10,
+    },
+    {
+      'name': 'Takis Fuego 65g',
+      'price': 18.5,
+      'barcode': '7501000153308',
+      'category': 'Botanas',
+      'stock_quantity': 30,
+      'min_stock': 10,
+    },
+    {
+      'name': 'Galletas Marias Gamesa 170g',
+      'price': 19.0,
+      'barcode': '7501000631240',
+      'category': 'Galletas',
+      'stock_quantity': 25,
+      'min_stock': 5,
+    },
+    {
+      'name': 'Emperador Chocolate 101g',
+      'price': 17.5,
+      'barcode': '7501000623252',
+      'category': 'Galletas',
+      'stock_quantity': 20,
+      'min_stock': 5,
+    },
+
+    // --- DESPENSA ---
+    {
+      'name': 'Pan Blanco Bimbo Grande',
+      'price': 45.0,
+      'barcode': '7501000111209',
+      'category': 'Panadería',
+      'stock_quantity': 10,
+      'min_stock': 2,
+    },
+    {
+      'name': 'Mayonesa McCormick 390g',
+      'price': 58.0,
+      'barcode': '7501003300068',
+      'category': 'Despensa',
+      'stock_quantity': 12,
+      'min_stock': 3,
+    },
+    {
+      'name': 'Atún Herdez Agua 130g',
+      'price': 21.5,
+      'barcode': '7501001111208',
+      'category': 'Despensa',
+      'stock_quantity': 24,
+      'min_stock': 6,
+    },
+    {
+      'name': 'Aceite Nutrioli 946ml',
+      'price': 42.0,
+      'barcode': '7501017004127',
+      'category': 'Despensa',
+      'stock_quantity': 20,
+      'min_stock': 5,
+    },
+    {
+      'name': 'Knorr Suiza Pollo 8 cubos',
+      'price': 14.5,
+      'barcode': '7501005111204',
+      'category': 'Despensa',
+      'stock_quantity': 40,
+      'min_stock': 10,
+    },
+
+    // --- HIGIENE Y LIMPIEZA ---
+    {
+      'name': 'Jabón Zote Blanco 400g',
+      'price': 22.0,
+      'barcode': '7501026001010',
+      'category': 'Limpieza',
+      'stock_quantity': 30,
+      'min_stock': 5,
+    },
+    {
+      'name': 'Pasta Colgate Triple Acción 75ml',
+      'price': 19.5,
+      'barcode': '7501035911478',
+      'category': 'Higiene',
+      'stock_quantity': 15,
+      'min_stock': 4,
+    },
+    {
+      'name': 'Shampoo Caprice Especial 750ml',
+      'price': 48.0,
+      'barcode': '7501035911201',
+      'category': 'Higiene',
+      'stock_quantity': 10,
+      'min_stock': 3,
+    },
+    {
+      'name': 'Papel Higiénico Regio 4 rollos',
+      'price': 28.0,
+      'barcode': '7501019011202',
+      'category': 'Higiene',
+      'stock_quantity': 12,
+      'min_stock': 3,
+    },
+  ];
+}

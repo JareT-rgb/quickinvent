@@ -2,43 +2,74 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/product.dart';
 import '../models/cart_item.dart';
 
-
-/// Gestiona el estado del carrito de compras actual.
+/// Gestiona el estado del carrito de compras actual con validación de stock.
 class CartNotifier extends Notifier<List<CartItem>> {
   @override
   List<CartItem> build() {
-    // This is the initial state of the cart.
     return [];
   }
 
-  /// Añade un producto al carrito. Si ya existe, incrementa su cantidad.
-  void addItem(Product product) {
-    // Busca el índice del producto en el carrito.
+  /// Añade un producto al carrito. Si ya existe, intenta incrementar su cantidad.
+  /// Retorna un mensaje de error si no hay stock suficiente, de lo contrario null.
+  String? addItem(Product product) {
+    // Si el producto no tiene stock inicial
+    if (product.stockQuantity <= 0) {
+      return 'Este producto está agotado';
+    }
+
     final itemIndex = state.indexWhere((item) => item.product.id == product.id);
 
     if (itemIndex != -1) {
-      // Si el producto ya existe, incrementa su cantidad.
-      incrementQuantity(product.id);
+      // Si ya existe en el carrito, delegamos al incremento
+      return incrementQuantity(product.id);
     } else {
-      // Si no está, lo añade a la lista.
+      // Si es nuevo en el carrito, lo añadimos (ya validamos que hay al menos 1 arriba)
       state = [...state, CartItem(product: product)];
+      return null;
     }
   }
 
-  /// Elimina un producto del carrito, sin importar su cantidad.
+  /// Elimina un producto del carrito.
   void removeItem(String productId) {
     state = state.where((item) => item.product.id != productId).toList();
   }
 
-  /// Incrementa en uno la cantidad de un producto en el carrito.
-  void incrementQuantity(String productId) {
+  /// Incrementa en uno la cantidad de un producto validando el stock disponible.
+  /// Retorna un mensaje de error si se excede el stock, de lo contrario null.
+  String? incrementQuantity(String productId) {
+    final item = state.firstWhere((item) => item.product.id == productId);
+    
+    // Validamos si hay stock suficiente para una unidad más
+    if (item.quantity + 1 > item.product.stockQuantity) {
+      return 'Stock máximo alcanzado (${item.product.stockQuantity} unidades)';
+    }
+
     state = [
-      for (final item in state)
-        if (item.product.id == productId) item.copyWith(quantity: item.quantity + 1) else item,
+      for (final i in state)
+        if (i.product.id == productId) i.copyWith(quantity: i.quantity + 1) else i,
     ];
+    return null;
   }
 
-  /// Decrementa en uno la cantidad de un producto. Si la cantidad llega a cero, lo elimina.
+  /// Establece una cantidad específica para un producto validando el stock.
+  /// Retorna un mensaje de error si se excede el stock, de lo contrario null.
+  String? updateQuantity(String productId, int newQuantity) {
+    if (newQuantity < 1) return 'La cantidad mínima es 1';
+    
+    final item = state.firstWhere((item) => item.product.id == productId);
+    
+    if (newQuantity > item.product.stockQuantity) {
+      return 'Stock insuficiente (${item.product.stockQuantity} disponibles)';
+    }
+
+    state = [
+      for (final i in state)
+        if (i.product.id == productId) i.copyWith(quantity: newQuantity) else i,
+    ];
+    return null;
+  }
+
+  /// Decrementa en uno la cantidad de un producto.
   void decrementQuantity(String productId) {
     final item = state.firstWhere((item) => item.product.id == productId);
     if (item.quantity > 1) {
@@ -53,8 +84,7 @@ class CartNotifier extends Notifier<List<CartItem>> {
     state = [];
   }
 
-  /// Reemplaza el carrito actual con una nueva lista de items.
-  /// Usado para reanudar una venta en espera.
+  /// Reemplaza el carrito actual.
   void setCart(List<CartItem> newCart) {
     state = newCart;
   }

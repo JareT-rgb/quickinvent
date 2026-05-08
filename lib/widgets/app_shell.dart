@@ -9,9 +9,7 @@ import '../screens/scanner_screen.dart';
 import '../screens/cash_register_screen.dart';
 import '../screens/settings_screen.dart';
 import '../screens/profile_screen.dart';
-import '../screens/add_product_screen.dart';
 import '../widgets/app_sidebar.dart';
-import '../theme/app_theme.dart';
 import '../repositories/auth_repository.dart';
 
 class AppShell extends ConsumerStatefulWidget {
@@ -36,13 +34,21 @@ class _AppShellState extends ConsumerState<AppShell> {
     'profile': const ProfileScreen(),
   };
 
-  final List<_BottomNavItem> _bottomNavItems = [
+  // Primary items shown in the bottom nav bar (max 5 for mobile)
+  final List<_BottomNavItem> _primaryNavItems = [
     _BottomNavItem(route: 'pos', icon: Icons.point_of_sale_outlined, activeIcon: Icons.point_of_sale, label: 'POS'),
-    _BottomNavItem(route: 'inventory', icon: Icons.inventory_2_outlined, activeIcon: Icons.inventory_2, label: 'Inv'),
-    _BottomNavItem(route: 'history', icon: Icons.history_outlined, activeIcon: Icons.history, label: 'Hist'),
-    _BottomNavItem(route: 'reports', icon: Icons.analytics_outlined, activeIcon: Icons.analytics, label: 'Rep'),
-    _BottomNavItem(route: 'cash_cut', icon: Icons.account_balance_wallet_outlined, activeIcon: Icons.account_balance_wallet, label: 'Caja'),
-    _BottomNavItem(route: 'settings', icon: Icons.settings_outlined, activeIcon: Icons.settings, label: 'Conf'),
+    _BottomNavItem(route: 'inventory', icon: Icons.inventory_2_outlined, activeIcon: Icons.inventory_2, label: 'Inventario'),
+    _BottomNavItem(route: 'history', icon: Icons.history_outlined, activeIcon: Icons.history, label: 'Historial'),
+    _BottomNavItem(route: 'reports', icon: Icons.analytics_outlined, activeIcon: Icons.analytics, label: 'Reportes'),
+  ];
+
+  // Secondary items shown in the "More" menu
+  final List<_BottomNavItem> _secondaryNavItems = [
+    _BottomNavItem(route: 'scanner', icon: Icons.qr_code_scanner_outlined, activeIcon: Icons.qr_code_scanner, label: 'Escáner Móvil'),
+    _BottomNavItem(route: 'returns', icon: Icons.assignment_return_outlined, activeIcon: Icons.assignment_return, label: 'Devoluciones'),
+    _BottomNavItem(route: 'cash_cut', icon: Icons.account_balance_wallet_outlined, activeIcon: Icons.account_balance_wallet, label: 'Corte de Caja'),
+    _BottomNavItem(route: 'settings', icon: Icons.settings_outlined, activeIcon: Icons.settings, label: 'Configuración'),
+    _BottomNavItem(route: 'profile', icon: Icons.person_outlined, activeIcon: Icons.person, label: 'Mi Perfil'),
   ];
 
   void _onNavigate(String route) {
@@ -69,6 +75,129 @@ class _AppShellState extends ConsumerState<AppShell> {
             child: const Text('Cerrar sesión', style: TextStyle(color: Colors.red)),
           ),
         ],
+      ),
+    );
+  }
+
+  void _showMoreMenu() {
+    final cs = Theme.of(context).colorScheme;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: BoxDecoration(
+          color: cs.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: SafeArea(
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Handle bar
+                Container(
+                  margin: const EdgeInsets.only(top: 12, bottom: 8),
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: cs.onSurfaceVariant.withValues(alpha: 0.3),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                  child: Row(
+                    children: [
+                      Icon(Icons.apps, color: cs.primary, size: 22),
+                      const SizedBox(width: 10),
+                      Text(
+                        'Más opciones',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
+                          color: cs.onSurface,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(height: 1),
+                ...(_secondaryNavItems.map((item) {
+                  final isSelected = _currentRoute == item.route;
+                  return ListTile(
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
+                    leading: Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? cs.primaryContainer
+                            : cs.surfaceContainerHighest.withValues(alpha: 0.5),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        isSelected ? item.activeIcon : item.icon,
+                        color: isSelected ? cs.primary : cs.onSurfaceVariant,
+                        size: 22,
+                      ),
+                    ),
+                    title: Text(
+                      item.label,
+                      style: TextStyle(
+                        fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                        color: isSelected ? cs.primary : cs.onSurface,
+                      ),
+                    ),
+                    trailing: isSelected
+                        ? Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: cs.primaryContainer,
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              'Activo',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: cs.primary,
+                              ),
+                            ),
+                          )
+                        : Icon(Icons.chevron_right, color: cs.onSurfaceVariant.withValues(alpha: 0.5)),
+                    onTap: () {
+                      Navigator.pop(context);
+                      _onNavigate(item.route);
+                    },
+                  );
+                })),
+                const Divider(height: 1),
+                ListTile(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
+                  leading: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.logout, color: Colors.redAccent, size: 22),
+                  ),
+                  title: const Text(
+                    'Cerrar Sesión',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w500,
+                      color: Colors.redAccent,
+                    ),
+                  ),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _showLogoutDialog();
+                  },
+                ),
+                const SizedBox(height: 16),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -109,14 +238,17 @@ class _AppShellState extends ConsumerState<AppShell> {
 
   Widget _buildBottomNav(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    // Check if current route is one of the secondary items (for the "More" button highlight)
+    final isSecondaryActive = _secondaryNavItems.any((item) => item.route == _currentRoute);
+
     return Container(
       decoration: BoxDecoration(
         color: cs.surface,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, -2),
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 12,
+            offset: const Offset(0, -3),
           ),
         ],
       ),
@@ -125,41 +257,67 @@ class _AppShellState extends ConsumerState<AppShell> {
           padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: _bottomNavItems.map((item) {
-              final isSelected = _currentRoute == item.route;
-              return InkWell(
-                onTap: () => _onNavigate(item.route),
-                borderRadius: BorderRadius.circular(12),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: isSelected ? cs.primaryContainer : Colors.transparent,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        isSelected ? item.activeIcon : item.icon,
-                        color: isSelected ? cs.onPrimaryContainer : cs.onSurfaceVariant,
-                        size: 24,
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        item.label,
-                        style: TextStyle(
-                          color: isSelected ? cs.onPrimaryContainer : cs.onSurfaceVariant,
-                          fontSize: 10,
-                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            }).toList(),
+            children: [
+              ..._primaryNavItems.map((item) {
+                final isSelected = _currentRoute == item.route;
+                return _buildNavItem(
+                  cs: cs,
+                  icon: isSelected ? item.activeIcon : item.icon,
+                  label: item.label,
+                  isSelected: isSelected,
+                  onTap: () => _onNavigate(item.route),
+                );
+              }),
+              // "More" button
+              _buildNavItem(
+                cs: cs,
+                icon: isSecondaryActive ? Icons.menu_open : Icons.more_horiz,
+                label: 'Más',
+                isSelected: isSecondaryActive,
+                onTap: _showMoreMenu,
+              ),
+            ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNavItem({
+    required ColorScheme cs,
+    required IconData icon,
+    required String label,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? cs.primaryContainer : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              color: isSelected ? cs.onPrimaryContainer : cs.onSurfaceVariant,
+              size: 24,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                color: isSelected ? cs.onPrimaryContainer : cs.onSurfaceVariant,
+                fontSize: 10,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              ),
+            ),
+          ],
         ),
       ),
     );

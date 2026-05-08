@@ -210,56 +210,60 @@ class _CashRegisterScreenState extends ConsumerState<CashRegisterScreen> {
 
     return Scaffold(
       backgroundColor: cs.surface,
-      body: CustomScrollView(
-        slivers: [
-          SliverAppBar.large(
-            title: const Text('Arqueo de Caja', style: TextStyle(fontWeight: FontWeight.bold)),
-            backgroundColor: cs.surface,
-            surfaceTintColor: Colors.transparent,
-            automaticallyImplyLeading: false,
-            actions: [
-              TextButton.icon(
-                onPressed: _showAddExpenseDialog,
-                icon: const Icon(Icons.remove_circle_outline, color: AppTheme.error),
-                label: const Text('Gasto', style: TextStyle(color: AppTheme.error, fontWeight: FontWeight.bold)),
-              ),
-              IconButton(
-                icon: const Icon(Icons.refresh),
-                onPressed: _loadTodayCashSales,
-              ),
-              const SizedBox(width: 8),
-            ],
-          ),
-          SliverPadding(
-            padding: const EdgeInsets.all(24),
-            sliver: SliverList(
-              delegate: SliverChildListDelegate([
-                _buildAccountingHeader(format, totalExpected, realCash, diff),
-                const SizedBox(height: 32),
-                
-                _buildSectionTitle('Configuración Inicial'),
-                const SizedBox(height: 12),
-                _buildStartingCashField(cs),
-                const SizedBox(height: 32),
-
-                _buildModeSelector(cs),
-                const SizedBox(height: 24),
-                
-                if (_useManualInput)
-                  _buildManualInputSection(cs)
-                else ...[
-                  _buildDenominationGrid('Billetes', _counts.keys.where((v) => v >= 20).toList()),
-                  const SizedBox(height: 32),
-                  _buildDenominationGrid('Monedas', _counts.keys.where((v) => v < 20).toList()),
-                ],
-                
-                const SizedBox(height: 48),
-                _buildFooterButton(),
-                const SizedBox(height: 60),
-              ]),
+      body: RefreshIndicator(
+        onRefresh: _loadTodayCashSales,
+        child: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          slivers: [
+            SliverAppBar.large(
+              title: const Text('Arqueo de Caja', style: TextStyle(fontWeight: FontWeight.bold)),
+              backgroundColor: cs.surface,
+              surfaceTintColor: Colors.transparent,
+              automaticallyImplyLeading: false,
+              actions: [
+                TextButton.icon(
+                  onPressed: _showAddExpenseDialog,
+                  icon: const Icon(Icons.remove_circle_outline, color: AppTheme.error),
+                  label: const Text('Gasto', style: TextStyle(color: AppTheme.error, fontWeight: FontWeight.bold)),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.refresh),
+                  onPressed: _loadTodayCashSales,
+                ),
+                const SizedBox(width: 8),
+              ],
             ),
-          ),
-        ],
+            SliverPadding(
+              padding: const EdgeInsets.all(24),
+              sliver: SliverList(
+                delegate: SliverChildListDelegate([
+                  _buildAccountingHeader(format, totalExpected, realCash, diff),
+                  const SizedBox(height: 32),
+                  
+                  _buildSectionTitle('Configuración Inicial'),
+                  const SizedBox(height: 12),
+                  _buildStartingCashField(cs),
+                  const SizedBox(height: 32),
+
+                  _buildModeSelector(cs),
+                  const SizedBox(height: 24),
+                  
+                  if (_useManualInput)
+                    _buildManualInputSection(cs)
+                  else ...[
+                    _buildDenominationGrid('Billetes', _counts.keys.where((v) => v >= 20).toList()),
+                    const SizedBox(height: 32),
+                    _buildDenominationGrid('Monedas', _counts.keys.where((v) => v < 20).toList()),
+                  ],
+                  
+                  const SizedBox(height: 48),
+                  _buildFooterButton(),
+                  const SizedBox(height: 60),
+                ]),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

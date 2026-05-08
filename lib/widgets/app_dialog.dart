@@ -244,6 +244,7 @@ InputDecoration appInputDecoration(
   required IconData icon,
   String? hint,
   String? prefixText,
+  Widget? suffix,
 }) {
   final cs = Theme.of(context).colorScheme;
   return InputDecoration(
@@ -251,6 +252,7 @@ InputDecoration appInputDecoration(
     hintText: hint,
     prefixText: prefixText,
     prefixIcon: Icon(icon, size: 20),
+    suffixIcon: suffix,
     filled: true,
     fillColor: cs.surfaceContainerHighest.withValues(alpha: 0.35),
     border: OutlineInputBorder(

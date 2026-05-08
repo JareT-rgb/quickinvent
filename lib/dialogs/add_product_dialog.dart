@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import '../widgets/image_picker_widget.dart';
+import '../widgets/app_dialog.dart';
 import '../repositories/products_repository.dart';
 import '../providers/products_provider.dart';
 import '../theme/app_theme.dart';
@@ -41,15 +42,15 @@ class _AddProductDialogState extends ConsumerState<AddProductDialog>
 
   Future<void> _loadCategories() async {
     try {
-      final categories =
-          await ref.read(productsRepositoryProvider).fetchCategories();
-      setState(() {
-        _categories =
-            categories.map((c) => {'id': c.id.toString(), 'name': c.name}).toList();
-        if (_selectedCategoryId == null && _categories.isNotEmpty) {
-          _selectedCategoryId = _categories.first['id'] as String?;
-        }
-      });
+      final categories = await ref.read(productsRepositoryProvider).fetchCategories();
+      if (mounted) {
+        setState(() {
+          _categories = categories.map((c) => {'id': c.id.toString(), 'name': c.name}).toList();
+          if (_selectedCategoryId == null && _categories.isNotEmpty) {
+            _selectedCategoryId = _categories.first['id'] as String?;
+          }
+        });
+      }
     } catch (e) {
       debugPrint('Error loading categories: $e');
     }
@@ -67,11 +68,8 @@ class _AddProductDialogState extends ConsumerState<AddProductDialog>
   }
 
   Future<void> _saveProduct() async {
-    if (!_formKey.currentState!.validate()) {
-      // Jump to first tab if validation fails
-      _tabController.animateTo(0);
-      return;
-    }
+    if (!_formKey.currentState!.validate()) return;
+    
     setState(() => _isLoading = true);
     try {
       String? imageUrl;
@@ -87,9 +85,7 @@ class _AddProductDialogState extends ConsumerState<AddProductDialog>
             stockQuantity: int.tryParse(_stockController.text) ?? 0,
             minStock: int.tryParse(_minStockController.text) ?? 0,
             isActive: true,
-            barcode: _barcodeController.text.trim().isEmpty
-                ? null
-                : _barcodeController.text.trim(),
+            barcode: _barcodeController.text.trim().isEmpty ? null : _barcodeController.text.trim(),
             categoryId: _selectedCategoryId,
             imageUrl: imageUrl,
           );
@@ -100,28 +96,16 @@ class _AddProductDialogState extends ConsumerState<AddProductDialog>
         Navigator.pop(context, true);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Row(
-              children: [
-                Icon(Icons.check_circle, color: Colors.white),
-                SizedBox(width: 10),
-                Text('Producto agregado exitosamente'),
-              ],
-            ),
+            content: const Row(children: [Icon(Icons.check_circle, color: Colors.white), SizedBox(width: 10), Text('Producto creado con éxito')]),
             backgroundColor: AppTheme.success,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error al guardar: $e'),
-            backgroundColor: AppTheme.error,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          ),
+          SnackBar(content: Text('Error: $e'), backgroundColor: AppTheme.error, behavior: SnackBarBehavior.floating),
         );
       }
     } finally {
@@ -129,468 +113,215 @@ class _AddProductDialogState extends ConsumerState<AddProductDialog>
     }
   }
 
-  InputDecoration _input(String label, IconData icon, {String? hint}) {
-    final cs = Theme.of(context).colorScheme;
-    return InputDecoration(
-      labelText: label,
-      hintText: hint,
-      prefixIcon: Icon(icon, size: 20),
-      filled: true,
-      fillColor: cs.surfaceContainerHighest.withValues(alpha: 0.35),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: BorderSide.none,
+  @override
+  Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+    final isDesktop = size.width > 900;
+
+    return AppDialog(
+      headerIcon: Icons.add_box_outlined,
+      title: 'Agregar al Inventario',
+      subtitle: 'Registra un nuevo producto de forma detallada',
+      maxWidth: isDesktop ? 850 : 500,
+      footer: AppDialogFooterButtons(
+        actionLabel: 'Crear Producto',
+        actionIcon: Icons.add_circle_outline,
+        isLoading: _isLoading,
+        onAction: _saveProduct,
       ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.4)),
+      body: Form(
+        key: _formKey,
+        child: isDesktop ? _buildDesktopLayout() : _buildMobileLayout(),
       ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: BorderSide(color: cs.primary, width: 2),
-      ),
-      errorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: BorderSide(color: cs.error),
-      ),
-      focusedErrorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: BorderSide(color: cs.error, width: 2),
-      ),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final cs = theme.colorScheme;
-
-    return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-      elevation: 24,
-      clipBehavior: Clip.antiAlias,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 600, maxHeight: 750),
-        child: Column(
-          children: [
-            // ── Premium Header ──────────────────────────────────
-            Container(
-              width: double.infinity,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    AppTheme.primary,
-                    AppTheme.primary.withValues(alpha: 0.8),
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
+  Widget _buildDesktopLayout() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            flex: 2,
+            child: Column(
+              children: [
+                _buildSectionTitle('Identificación del Producto', Icons.badge_outlined),
+                const SizedBox(height: 16),
+                ImagePickerWidget(
+                  onImageChanged: (file, url) => setState(() => _selectedImageFile = file),
+                  height: 160,
+                  width: 160,
+                  shape: BoxShape.rectangle,
                 ),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppTheme.primary.withValues(alpha: 0.3),
-                    blurRadius: 15,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              padding: const EdgeInsets.fromLTRB(28, 24, 20, 12),
-              child: Column(
-                children: [
-                  Row(
-                    children: [
-                      Hero(
-                        tag: 'add_product_icon',
-                        child: Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.25),
-                            borderRadius: BorderRadius.circular(16),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.1),
-                                blurRadius: 8,
-                              )
-                            ],
-                          ),
-                          child: const Icon(Icons.add_shopping_cart_rounded,
-                              color: Colors.white, size: 28),
-                        ),
+                const SizedBox(height: 24),
+                TextFormField(
+                  controller: _nameController,
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  decoration: appInputDecoration(context, label: 'Nombre del Producto', icon: Icons.shopping_bag_outlined, hint: 'Ej: Coca Cola 2L'),
+                  validator: (v) => v!.isEmpty ? 'El nombre es requerido' : null,
+                ),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<String>(
+                  value: _selectedCategoryId,
+                  decoration: appInputDecoration(context, label: 'Categoría', icon: Icons.category_outlined),
+                  items: _categories.map((c) => DropdownMenuItem(value: c['id'] as String, child: Text(c['name'] as String))).toList(),
+                  onChanged: (v) => setState(() => _selectedCategoryId = v),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        controller: _barcodeController,
+                        decoration: appInputDecoration(context, label: 'Código de Barras (Opcional)', icon: Icons.qr_code_scanner, hint: 'Escanear o escribir código'),
                       ),
-                      const SizedBox(width: 18),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Nuevo Producto',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 22,
-                                fontWeight: FontWeight.w900,
-                                letterSpacing: -0.5,
-                              ),
-                            ),
-                            Text(
-                              'Ingresa los detalles para tu inventario',
-                              style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.85),
-                                fontSize: 13,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.close_rounded, color: Colors.white),
-                        onPressed:
-                            _isLoading ? null : () => Navigator.pop(context),
-                        style: IconButton.styleFrom(
-                          backgroundColor: Colors.white.withValues(alpha: 0.15),
-                          hoverColor: Colors.white.withValues(alpha: 0.25),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                  // Premium Tab Bar
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(14),
                     ),
-                    padding: const EdgeInsets.all(4),
-                    child: TabBar(
-                      controller: _tabController,
-                      indicator: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(10),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      icon: const Icon(Icons.auto_fix_high, color: AppTheme.primary),
+                      tooltip: 'Generar código automáticamente',
+                      onPressed: () {
+                        setState(() {
+                          _barcodeController.text = DateTime.now().millisecondsSinceEpoch.toString();
+                        });
+                      },
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 32),
+          Container(width: 1, height: 400, color: AppTheme.divider.withValues(alpha: 0.5)),
+          const SizedBox(width: 32),
+          Expanded(
+            flex: 2,
+            child: Column(
+              children: [
+                _buildSectionTitle('Finanzas e Inventario', Icons.analytics_outlined),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _priceController,
+                  keyboardType: TextInputType.number,
+                  style: const TextStyle(fontSize: 20, color: AppTheme.primary, fontWeight: FontWeight.w900),
+                  decoration: appInputDecoration(context, label: 'Precio de Venta', icon: Icons.attach_money, hint: '0.00'),
+                  validator: (v) => v!.isEmpty ? 'Requerido' : null,
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        controller: _stockController,
+                        keyboardType: TextInputType.number,
+                        decoration: appInputDecoration(context, label: 'Stock Inicial', icon: Icons.inventory_2_outlined),
                       ),
-                      indicatorSize: TabBarIndicatorSize.tab,
-                      labelColor: Colors.white,
-                      unselectedLabelColor: Colors.white.withValues(alpha: 0.6),
-                      labelStyle: const TextStyle(
-                          fontWeight: FontWeight.bold, fontSize: 13),
-                      dividerColor: Colors.transparent,
-                      tabs: const [
-                        Tab(
-                          height: 36,
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.description_outlined, size: 16),
-                              SizedBox(width: 8),
-                              Text('Información'),
-                            ],
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: TextFormField(
+                        controller: _minStockController,
+                        keyboardType: TextInputType.number,
+                        decoration: appInputDecoration(context, label: 'Stock Mínimo', icon: Icons.warning_amber_outlined),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                _buildTipCard('Consejo: El stock mínimo te ayudará a saber cuándo reponer el producto antes de que se agote.'),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMobileLayout() {
+    return Column(
+      children: [
+        TabBar(
+          controller: _tabController,
+          labelColor: AppTheme.primary,
+          indicatorColor: AppTheme.primary,
+          tabs: const [Tab(text: 'Básico'), Tab(text: 'Stock')],
+        ),
+        Expanded(
+          child: TabBarView(
+            controller: _tabController,
+            children: [
+              SingleChildScrollView(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  children: [
+                    ImagePickerWidget(onImageChanged: (file, url) => setState(() => _selectedImageFile = file), height: 120, width: 120),
+                    const SizedBox(height: 20),
+                    TextFormField(controller: _nameController, decoration: appInputDecoration(context, label: 'Nombre', icon: Icons.shopping_bag_outlined)),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<String>(value: _selectedCategoryId, items: _categories.map((c) => DropdownMenuItem(value: c['id'] as String, child: Text(c['name'] as String))).toList(), onChanged: (v) => setState(() => _selectedCategoryId = v), decoration: appInputDecoration(context, label: 'Categoría', icon: Icons.category_outlined)),
+                  ],
+                ),
+              ),
+              SingleChildScrollView(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  children: [
+                    TextFormField(controller: _priceController, keyboardType: TextInputType.number, decoration: appInputDecoration(context, label: 'Precio', icon: Icons.attach_money)),
+                    const SizedBox(height: 12),
+                    TextFormField(controller: _stockController, keyboardType: TextInputType.number, decoration: appInputDecoration(context, label: 'Stock', icon: Icons.inventory_2_outlined)),
+                    const SizedBox(height: 12),
+                    TextFormField(controller: _minStockController, keyboardType: TextInputType.number, decoration: appInputDecoration(context, label: 'Mínimo', icon: Icons.warning_amber_outlined)),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextFormField(
+                            controller: _barcodeController,
+                            decoration: appInputDecoration(context, label: 'Código', icon: Icons.qr_code_scanner),
                           ),
                         ),
-                        Tab(
-                          height: 36,
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.inventory_2_outlined, size: 16),
-                              SizedBox(width: 8),
-                              Text('Inventario'),
-                            ],
-                          ),
+                        const SizedBox(width: 8),
+                        IconButton(
+                          icon: const Icon(Icons.auto_fix_high, color: AppTheme.primary),
+                          onPressed: () {
+                            setState(() {
+                              _barcodeController.text = DateTime.now().millisecondsSinceEpoch.toString();
+                            });
+                          },
                         ),
                       ],
                     ),
-                  ),
-                ],
-              ),
-            ),
-
-            // ── Modern Body ─────────────────────────────────────
-            Expanded(
-              child: Form(
-                key: _formKey,
-                child: TabBarView(
-                  controller: _tabController,
-                  children: [
-                    // Tab 1: Info
-                    _buildScrollableTab([
-                      // Image picker with premium border
-                      Center(
-                        child: Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            gradient: LinearGradient(
-                              colors: [AppTheme.primary, AppTheme.info],
-                            ),
-                          ),
-                          child: Stack(
-                            alignment: Alignment.bottomRight,
-                            children: [
-                              ImagePickerWidget(
-                                initialImageUrl: null,
-                                onImageChanged: (file, url) {
-                                  setState(() => _selectedImageFile = file);
-                                },
-                                height: 130,
-                                width: 130,
-                                shape: BoxShape.circle,
-                              ),
-                              Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: AppTheme.primary,
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                      color: Colors.white, width: 3),
-                                  boxShadow: [
-                                    BoxShadow(
-                                        color: Colors.black.withValues(alpha: 0.2),
-                                        blurRadius: 4)
-                                  ],
-                                ),
-                                child: const Icon(Icons.camera_alt_rounded,
-                                    color: Colors.white, size: 16),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 32),
-                      _buildFieldTitle('DETALLES BÁSICOS'),
-                      TextFormField(
-                        controller: _nameController,
-                        style: const TextStyle(fontWeight: FontWeight.w600),
-                        decoration: _input('Nombre del producto',
-                            Icons.shopping_bag_outlined,
-                            hint: 'Ej: Coca Cola 600ml'),
-                        validator: (v) => (v == null || v.isEmpty)
-                            ? 'Campo requerido'
-                            : null,
-                      ),
-                      const SizedBox(height: 18),
-                      Row(
-                        children: [
-                          Expanded(
-                            flex: 2,
-                            child: TextFormField(
-                              controller: _priceController,
-                              keyboardType: TextInputType.number,
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.w900,
-                                  color: AppTheme.primary),
-                              decoration: _input(
-                                  'Precio Venta', Icons.monetization_on_outlined,
-                                  hint: '0.00'),
-                              validator: (v) {
-                                if (v == null || v.isEmpty)
-                                  return 'Requerido';
-                                if (double.tryParse(v) == null)
-                                  return 'Inválido';
-                                return null;
-                              },
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            flex: 3,
-                            child: DropdownButtonFormField<String>(
-                              value: _selectedCategoryId,
-                              isExpanded: true,
-                              style: const TextStyle(
-                                  fontSize: 14, color: AppTheme.textPrimary),
-                              decoration: _input(
-                                  'Categoría', Icons.grid_view_rounded),
-                              items: _categories.map((c) {
-                                return DropdownMenuItem(
-                                  value: c['id'] as String,
-                                  child: Text(c['name'] as String),
-                                );
-                              }).toList(),
-                              onChanged: (v) =>
-                                  setState(() => _selectedCategoryId = v),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ]),
-
-                    // Tab 2: Inventory
-                    _buildScrollableTab([
-                      _buildFieldTitle('CONTROL DE STOCK'),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: TextFormField(
-                              controller: _stockController,
-                              keyboardType: TextInputType.number,
-                              decoration: _input(
-                                  'Stock Actual',
-                                  Icons.inventory_rounded,
-                                  hint: '0'),
-                              validator: (v) => (v == null || v.isEmpty) ? 'Error' : null,
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: TextFormField(
-                              controller: _minStockController,
-                              keyboardType: TextInputType.number,
-                              decoration: _input(
-                                  'Mínimo Alerta',
-                                  Icons.notification_important_outlined,
-                                  hint: '5'),
-                              validator: (v) => (v == null || v.isEmpty) ? 'Error' : null,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 24),
-                      _buildFieldTitle('IDENTIFICACIÓN'),
-                      TextFormField(
-                        controller: _barcodeController,
-                        decoration: _input(
-                          'Código de Barras',
-                          Icons.qr_code_scanner_rounded,
-                          hint: 'Escanea o escribe el código',
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: AppTheme.info.withValues(alpha: 0.05),
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                              color: AppTheme.info.withValues(alpha: 0.1)),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.tips_and_updates_rounded,
-                                color: AppTheme.info),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                'El código de barras permite búsquedas instantáneas en el POS.',
-                                style: TextStyle(
-                                    fontSize: 12,
-                                    color: AppTheme.info.withValues(alpha: 0.8),
-                                    fontStyle: FontStyle.italic),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ]),
                   ],
                 ),
               ),
-            ),
-
-            // ── Premium Footer ──────────────────────────────────
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: cs.surface,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.05),
-                    blurRadius: 10,
-                    offset: const Offset(0, -4),
-                  )
-                ],
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TextButton(
-                      onPressed:
-                          _isLoading ? null : () => Navigator.pop(context),
-                      style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16)),
-                      ),
-                      child: const Text('Descartar',
-                          style: TextStyle(
-                              color: AppTheme.textMuted,
-                              fontWeight: FontWeight.bold)),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    flex: 2,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(16),
-                        gradient: LinearGradient(
-                          colors: [AppTheme.primary, AppTheme.primaryLight],
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppTheme.primary.withValues(alpha: 0.3),
-                            blurRadius: 12,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: FilledButton(
-                        onPressed: _isLoading ? null : _saveProduct,
-                        style: FilledButton.styleFrom(
-                          backgroundColor: Colors.transparent,
-                          shadowColor: Colors.transparent,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16)),
-                        ),
-                        child: _isLoading
-                            ? const SizedBox(
-                                height: 20,
-                                width: 20,
-                                child: CircularProgressIndicator(
-                                    strokeWidth: 2.5, color: Colors.white))
-                            : const Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(Icons.check_circle_rounded, size: 20),
-                                  SizedBox(width: 8),
-                                  Text('GUARDAR PRODUCTO',
-                                      style: TextStyle(
-                                          fontWeight: FontWeight.w900,
-                                          fontSize: 14,
-                                          letterSpacing: 1)),
-                                ],
-                              ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
-      ),
+      ],
     );
   }
 
-  Widget _buildScrollableTab(List<Widget> children) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 32),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: children,
-      ),
+  Widget _buildSectionTitle(String title, IconData icon) {
+    return Row(
+      children: [
+        Icon(icon, size: 18, color: AppTheme.textSecondary),
+        const SizedBox(width: 8),
+        Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppTheme.textSecondary, letterSpacing: 0.5)),
+      ],
     );
   }
 
-  Widget _buildFieldTitle(String title) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12, left: 4),
-      child: Text(
-        title,
-        style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w900,
-          color: AppTheme.primary.withValues(alpha: 0.7),
-          letterSpacing: 1.2,
-        ),
+  Widget _buildTipCard(String tip) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(color: AppTheme.primary.withValues(alpha: 0.05), borderRadius: AppTheme.radiusSmall, border: Border.all(color: AppTheme.primary.withValues(alpha: 0.1))),
+      child: Row(
+        children: [
+          const Icon(Icons.lightbulb_outline, size: 20, color: AppTheme.primary),
+          const SizedBox(width: 12),
+          Expanded(child: Text(tip, style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary, height: 1.4))),
+        ],
       ),
     );
   }
