@@ -3,7 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:printing/printing.dart';
 import '../models/sale.dart';
 import '../models/sale_detail_item.dart';
-import '../widgets/receipt_generator.dart';
+import '../utils/receipt_generator.dart';
 
 class SaleDetailScreen extends StatelessWidget {
   const SaleDetailScreen({required this.sale, super.key});

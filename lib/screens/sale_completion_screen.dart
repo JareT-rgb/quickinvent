@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:printing/printing.dart';
 import '../models/sale_detail_item.dart';
 import '../models/cart_item.dart';
-import '../widgets/receipt_generator.dart';
+import '../utils/receipt_generator.dart';
 
 class SaleCompletionScreen extends StatelessWidget {
   final double totalAmount;
