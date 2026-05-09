@@ -1,19 +1,13 @@
-import 'dart:math';
-
-import 'package:flutter/foundation.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/sale.dart';
 import '../models/sale_detail_item.dart';
-import '../database/local_db.dart';
-import 'package:drift/drift.dart' as drift;
 
 
 class SalesRepository {
   final SupabaseClient _client;
-  final AppDatabase? _db;
 
-  SalesRepository(this._client, [this._db]);
+  SalesRepository(this._client);
 
   List<Sale> getAllSales() {
     // placeholder para providers síncronos; idealmente se usaría un FutureProvider
@@ -25,7 +19,6 @@ class SalesRepository {
         .from('sales')
         .select('*, sale_items(*)')
         .order('created_at', ascending: false);
-    if (response == null) return [];
     return (response as List)
         .map((s) => Sale.fromMap(s as Map<String, dynamic>))
         .toList();
@@ -211,7 +204,6 @@ class SalesRepository {
           .from('cash_cuts')
           .select('*')
           .order('created_at', ascending: false);
-      if (response == null) return [];
       return List<Map<String, dynamic>>.from(response as List);
     } catch (e) {
       print('Error fetching cash cuts: $e');
@@ -238,7 +230,7 @@ class SalesRepository {
         .from('expenses')
         .select('*')
         .order('created_at', ascending: false);
-    return response == null ? [] : List<Map<String, dynamic>>.from(response as List);
+    return List<Map<String, dynamic>>.from(response as List);
   }
 
   Stream<List<Map<String, dynamic>>> getExpensesStream() {
@@ -265,7 +257,6 @@ class SalesRepository {
       daysInMonth,
       (i) => MapEntry(DateTime(year, month, i + 1), 0.0),
     );
-    if (response == null) return result;
     for (final row in response as List) {
       final date = DateTime.parse(row['created_at'] as String);
       final day = date.day - 1;
@@ -293,10 +284,6 @@ class SalesRepository {
           .select('total_amount')
           .gte('created_at', from)
           .lt('created_at', to);
-      if (response == null) {
-        result.add(MapEntry(DateTime(year, adjustedMonth), 0.0));
-        continue;
-      }
       final total = (response as List).fold<double>(
         0.0,
         (sum, r) => sum + (r['total_amount'] as num).toDouble(),
@@ -311,7 +298,6 @@ class SalesRepository {
         .from('sales')
         .select('payment_method, total_amount');
     final totals = <String, double>{};
-    if (response == null) return totals;
     for (final row in response as List) {
       final method = row['payment_method'] as String;
       totals[method] =
@@ -325,7 +311,6 @@ class SalesRepository {
         .from('sale_items')
         .select('product_name, quantity');
     final counts = <String, int>{};
-    if (response == null) return [];
     for (final row in response as List) {
       final name = row['product_name'] as String;
       counts[name] = (counts[name] ?? 0) + (row['quantity'] as int);
@@ -346,16 +331,6 @@ class SalesRepository {
     double todayRevenue = 0;
     int todayCount = 0;
     double todayCash = 0;
-
-    if (allSales == null) {
-      return {
-        'totalRevenue': 0.0,
-        'todayRevenue': 0.0,
-        'todayCount': 0,
-        'todayCash': 0.0,
-        'totalCount': 0,
-      };
-    }
 
     for (final row in allSales as List) {
       final amount = (row['total_amount'] as num).toDouble();
@@ -400,12 +375,9 @@ class SalesRepository {
     final startOfDay = DateTime(now.year, now.month, now.day).toIso8601String();
     
     final response = await _client
-        .from('sales')
-        .select('created_at, total_amount')
         .gte('created_at', startOfDay);
 
     final result = List.generate(24, (i) => MapEntry(i, 0.0));
-    if (response == null) return result;
 
     for (final row in response as List) {
       final date = DateTime.parse(row['created_at'] as String).toLocal();
@@ -421,7 +393,6 @@ class SalesRepository {
         .select('product_id, quantity, price_at_sale');
     
     final categoryTotals = <String, double>{};
-    if (response == null) return categoryTotals;
 
     // We need to map product_id to category name. 
     // For efficiency in this demo, we'll fetch products and their categories.
@@ -454,8 +425,6 @@ class SalesRepository {
     double totalRevenue = 0;
     double totalCost = 0;
     
-    if (response == null) return {'revenue': 0, 'cost': 0, 'profit': 0};
-    
     for (final row in response as List) {
       final qty = row['quantity'] as int;
       final price = (row['price_at_sale'] as num).toDouble();
@@ -485,10 +454,8 @@ class SalesRepository {
         .gte('sales.created_at', thirtyDaysAgo);
 
     final soldRecently = <String>{};
-    if (response != null) {
-      for (final row in response as List) {
-        soldRecently.add(row['product_name'] as String);
-      }
+    for (final row in response as List) {
+      soldRecently.add(row['product_name'] as String);
     }
 
     final dead = allProductNames
@@ -503,11 +470,7 @@ class SalesRepository {
 }
 
 final salesRepositoryProvider = Provider((ref) {
-  if (kIsWeb) {
-    return SalesRepository(Supabase.instance.client);
-  }
-  final db = ref.watch(localDbProvider);
-  return SalesRepository(Supabase.instance.client, db);
+  return SalesRepository(Supabase.instance.client);
 });
 
 final salesStreamProvider = StreamProvider<List<Map<String, dynamic>>>((ref) {

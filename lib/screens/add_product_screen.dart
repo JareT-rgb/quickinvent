@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../repositories/products_repository.dart';
 import '../models/category.dart';
 import '../providers/products_provider.dart';
+import '../providers/categories_provider.dart';
 import '../theme/app_theme.dart';
 
 class AddProductScreen extends ConsumerStatefulWidget {
@@ -235,7 +236,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                           Switch(
                             value: _isActive,
                             onChanged: (v) => setState(() => _isActive = v),
-                            activeColor: AppTheme.success,
+                            activeThumbColor: AppTheme.success,
                           ),
                           const Text('Producto activo (visible en el POS)', style: TextStyle(fontSize: 13)),
                         ],
