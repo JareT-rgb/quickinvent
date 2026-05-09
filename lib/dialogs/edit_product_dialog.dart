@@ -5,7 +5,6 @@ import '../widgets/image_picker_widget.dart';
 import '../widgets/app_dialog.dart';
 import '../models/product.dart';
 import '../repositories/products_repository.dart';
-import '../providers/products_provider.dart';
 import '../theme/app_theme.dart';
 
 class EditProductDialog extends ConsumerStatefulWidget {
@@ -97,8 +96,8 @@ class _EditProductDialogState extends ConsumerState<EditProductDialog>
       if (mounted) {
         Navigator.pop(context, true);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Row(children: [Icon(Icons.check_circle, color: Colors.white), SizedBox(width: 10), Text('Cambios guardados con éxito')]),
+          const SnackBar(
+            content: Row(children: [Icon(Icons.check_circle, color: Colors.white), SizedBox(width: 10), Text('Cambios guardados con éxito')]),
             backgroundColor: AppTheme.success,
             behavior: SnackBarBehavior.floating,
           ),
@@ -171,7 +170,7 @@ class _EditProductDialogState extends ConsumerState<EditProductDialog>
                 ),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
-                  value: _selectedCategoryId,
+                  initialValue: _selectedCategoryId,
                   decoration: appInputDecoration(context, label: 'Categoría', icon: Icons.category_outlined),
                   items: _categories.map((c) => DropdownMenuItem(value: c['id'] as String, child: Text(c['name'] as String))).toList(),
                   onChanged: (v) => setState(() => _selectedCategoryId = v),
@@ -244,7 +243,7 @@ class _EditProductDialogState extends ConsumerState<EditProductDialog>
                   subtitle: const Text('Si se desactiva, no aparecerá en el POS', style: TextStyle(fontSize: 12)),
                   value: widget.product.isActive,
                   onChanged: null,
-                  activeColor: AppTheme.primary,
+                  activeThumbColor: AppTheme.primary,
                 ),
               ],
             ),
@@ -275,7 +274,7 @@ class _EditProductDialogState extends ConsumerState<EditProductDialog>
                     const SizedBox(height: 20),
                     TextFormField(controller: _nameController, decoration: appInputDecoration(context, label: 'Nombre', icon: Icons.shopping_bag_outlined)),
                     const SizedBox(height: 12),
-                    DropdownButtonFormField<String>(value: _selectedCategoryId, items: _categories.map((c) => DropdownMenuItem(value: c['id'] as String, child: Text(c['name'] as String))).toList(), onChanged: (v) => setState(() => _selectedCategoryId = v), decoration: appInputDecoration(context, label: 'Categoría', icon: Icons.category_outlined)),
+                    DropdownButtonFormField<String>(initialValue: _selectedCategoryId, items: _categories.map((c) => DropdownMenuItem(value: c['id'] as String, child: Text(c['name'] as String))).toList(), onChanged: (v) => setState(() => _selectedCategoryId = v), decoration: appInputDecoration(context, label: 'Categoría', icon: Icons.category_outlined)),
                   ],
                 ),
               ),
