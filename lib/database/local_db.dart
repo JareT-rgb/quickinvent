@@ -2,8 +2,6 @@ import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:drift/web.dart';
-
 part 'local_db.g.dart';
 
 class LocalProducts extends Table {
@@ -42,11 +40,7 @@ class LocalSaleItems extends Table {
 
 @DriftDatabase(tables: [LocalProducts, LocalSales, LocalSaleItems])
 class AppDatabase extends _$AppDatabase {
-  AppDatabase() : super(
-    kIsWeb 
-      ? WebDatabase.withStorage(DriftWebStorage.indexedDb('quickinvent_db'))
-      : driftDatabase(name: 'quickinvent_db')
-  );
+  AppDatabase() : super(driftDatabase(name: 'quickinvent_db'));
 
   @override
   int get schemaVersion => 2;
