@@ -429,6 +429,20 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
     });
   }
 
+  Widget _buildScannerOverlay() {
+    return Container(
+      decoration: ShapeDecoration(
+        shape: QrScannerOverlayShape(
+          borderColor: AppTheme.primary,
+          borderRadius: 20,
+          borderLength: 40,
+          borderWidth: 8,
+          cutOutSize: MediaQuery.of(context).size.width * 0.75,
+        ),
+      ),
+    );
+  }
+
   Widget _buildQuantitySelector() {
     return Container(
       decoration: BoxDecoration(
