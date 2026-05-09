@@ -101,6 +101,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
               'barcode': code,
               'user_id': userId,
               'processed': false,
+              'status': _auditMode ? 'audit_view' : 'pending',
             });
           }
         } catch (e) {

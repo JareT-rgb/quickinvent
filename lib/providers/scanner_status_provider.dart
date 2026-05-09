@@ -72,8 +72,8 @@ class ScannerStatusNotifier extends Notifier<ScannerStatus> {
             state = ScannerStatus(
               isActive: true,
               lastBarcode: barcode,
-              lastProductName: productName,
-              lastScanMode: 'pos', // Forzamos POS por ahora
+              lastProductName: payload.newRecord['status'] == 'audit_view' ? 'AUDIT_MODE' : productName,
+              lastScanMode: payload.newRecord['status'] == 'audit_view' ? 'audit' : 'pos',
               lastScanTime: DateTime.now(),
             );
 
