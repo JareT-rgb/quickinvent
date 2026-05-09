@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -86,7 +87,9 @@ class ScannerStatusNotifier extends Notifier<ScannerStatus> {
 
     _channel?.subscribe((status, [error]) {
       if (status == RealtimeSubscribeStatus.subscribed) {
-        state = state.copyWith(isActive: true);
+        // We don't set isActive to true here because 'subscribed' only means 
+        // the PC is listening, not that a phone is actively scanning.
+        debugPrint('Scanner bridge: Subscribed and listening...');
       } else if (status == RealtimeSubscribeStatus.closed || status == RealtimeSubscribeStatus.channelError) {
         state = state.copyWith(isActive: false);
       }

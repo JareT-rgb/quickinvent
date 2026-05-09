@@ -243,14 +243,6 @@ class _PosScreenState extends ConsumerState<PosScreen> {
       ),
     );
 
-    if (isActive && isOnline) {
-      return Pulse(
-        infinite: true,
-        duration: const Duration(seconds: 2),
-        child: indicator,
-      );
-    }
-
     return indicator;
   }
 
