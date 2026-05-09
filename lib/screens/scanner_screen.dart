@@ -111,9 +111,8 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
     });
 
     try {
-      // Play beep sound
-      await _audioPlayer.play(UrlSource('https://www.soundjay.com/buttons/button-09a.mp3')).catchError((e) {
-        // Fallback to a system click if URL fails
+      // Play beep sound (don't await so it doesn't block processing)
+      _audioPlayer.play(UrlSource('https://www.soundjay.com/buttons/button-09a.mp3')).catchError((e) {
         HapticFeedback.lightImpact();
         return null;
       });
