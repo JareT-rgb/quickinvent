@@ -187,7 +187,7 @@ class _CheckoutDialogState extends ConsumerState<CheckoutDialog> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         DropdownButtonFormField<String>(
-          value: _paymentMethod,
+          initialValue: _paymentMethod,
           decoration: appInputDecoration(context, label: 'Seleccionar Método', icon: Icons.payments_rounded),
           items: ['Efectivo', 'Tarjeta', 'Transferencia', 'Crédito']
               .map((m) => DropdownMenuItem(value: m, child: Text(m, style: const TextStyle(fontWeight: FontWeight.bold))))
@@ -295,13 +295,13 @@ class _CheckoutDialogState extends ConsumerState<CheckoutDialog> {
       final customersAsync = ref.watch(customersProvider);
       return customersAsync.when(
         data: (customers) => DropdownButtonFormField<Customer>(
-          value: _selectedCustomer,
+          initialValue: _selectedCustomer,
           decoration: appInputDecoration(context, label: 'Cliente de Crédito', icon: Icons.person_search),
           items: customers.map((c) => DropdownMenuItem(value: c, child: Text(c.name))).toList(),
           onChanged: (val) => setState(() => _selectedCustomer = val),
         ),
         loading: () => const LinearProgressIndicator(),
-        error: (_, __) => const Text('Error al cargar clientes'),
+        error: (error, stackTrace) => const Text('Error al cargar clientes'),
       );
     });
   }
@@ -361,7 +361,7 @@ class _CheckoutDialogState extends ConsumerState<CheckoutDialog> {
       spacing: 8, runSpacing: 8,
       children: [
         _buildCashButton('Exacto', widget.totalAmount, isExact: true),
-        ...denominations.map((d) => _buildCashButton('\$${d}', d.toDouble())),
+        ...denominations.map((d) => _buildCashButton('\$$d', d.toDouble())),
       ],
     );
   }

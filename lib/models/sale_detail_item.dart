@@ -53,7 +53,7 @@ class SaleDetailItem {
       productName: productName ?? this.productName,
       quantity: quantity ?? this.quantity,
       priceAtSale: priceAtSale ?? this.priceAtSale,
-      costPriceAtSale: costPriceAtSale ?? this.costPriceAtSale,
+      costPriceAtSale: this.costPriceAtSale,
       subtotal: subtotal ?? this.subtotal,
     );
   }

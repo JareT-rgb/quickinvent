@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../theme/app_theme.dart';
 import '../models/sale.dart';
-import '../models/sale_detail_item.dart';
 import '../repositories/sales_repository.dart';
 import '../providers/app_settings_provider.dart';
 import 'package:pdf/pdf.dart';
@@ -108,9 +106,9 @@ class _TicketDialogState extends ConsumerState<TicketDialog> {
               ),
             ),
             if (_sale!.paymentMethod == 'Crédito')
-              Text(
+              const Text(
                 'TIPO: CRÉDITO (FIADO)',
-                style: const TextStyle(
+                style: TextStyle(
                     fontFamily: 'Courier',
                     fontWeight: FontWeight.bold,
                     color: Colors.red),
@@ -147,7 +145,7 @@ class _TicketDialogState extends ConsumerState<TicketDialog> {
                                     fontWeight: FontWeight.bold)),
                             const SizedBox(width: 8),
                             Expanded(
-                              child: Text(item.productName ?? 'Producto',
+                              child: Text(item.productName,
                                   style: const TextStyle(fontFamily: 'Courier')),
                             ),
                             Text('\$${item.subtotal.toStringAsFixed(2)}',

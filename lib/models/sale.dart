@@ -85,6 +85,7 @@ class Sale {
     double? change,
     DateTime? createdAt,
     int? itemCount,
+    String? customerId,
   }) {
     return Sale(
       id: id ?? this.id,

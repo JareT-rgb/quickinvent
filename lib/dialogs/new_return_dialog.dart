@@ -122,7 +122,7 @@ class _NewReturnDialogState extends ConsumerState<NewReturnDialog> {
                 ),
                 const SizedBox(height: 10),
                 DropdownButtonFormField<Product>(
-                  value: _selectedProduct,
+                  initialValue: _selectedProduct,
                   isExpanded: true,
                   decoration: appInputDecoration(context,
                       label: 'Seleccionar producto',
@@ -185,7 +185,7 @@ class _NewReturnDialogState extends ConsumerState<NewReturnDialog> {
                 ),
                 const SizedBox(height: 10),
                 DropdownButtonFormField<String>(
-                  value: _selectedReason,
+                  initialValue: _selectedReason,
                   isExpanded: true,
                   decoration: appInputDecoration(context,
                       label: 'Motivo', icon: Icons.article_outlined),

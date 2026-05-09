@@ -41,7 +41,7 @@ class HeldCartsDialog extends ConsumerWidget {
                 shrinkWrap: true,
                 padding: const EdgeInsets.all(20),
                 itemCount: heldCarts.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 12),
+                separatorBuilder: (context, index) => const SizedBox(height: 12),
                 itemBuilder: (context, index) {
                   final cart = heldCarts[index];
                   return FadeInRight(
