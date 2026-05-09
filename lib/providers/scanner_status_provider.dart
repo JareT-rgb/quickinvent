@@ -36,8 +36,6 @@ class ScannerStatus {
 }
 
 /// Provider that tracks whether a mobile scanner is actively being used.
-/// It listens for inserts on the `barcode_scans` table via Supabase Realtime.
-/// After 30 seconds of inactivity, the status is set to inactive.
 class ScannerStatusNotifier extends Notifier<ScannerStatus> {
   RealtimeChannel? _channel;
   Timer? _inactivityTimer;
@@ -57,17 +55,16 @@ class ScannerStatusNotifier extends Notifier<ScannerStatus> {
     if (userId == null) return;
 
     _channel = Supabase.instance.client
-        .channel('scanner_status_$userId')
+        .channel('scanner_status_global')
         .onPostgresChanges(
           event: PostgresChangeEvent.insert,
           schema: 'public',
           table: 'barcode_scans',
-          filter: PostgresChangeFilter(
-            type: PostgresChangeFilterType.eq,
-            column: 'user_id',
-            value: userId,
-          ),
           callback: (payload) {
+            final recordUserId = payload.newRecord['user_id'] as String?;
+            
+            if (recordUserId != userId) return;
+
             final barcode = payload.newRecord['barcode'] as String?;
             final productName = payload.newRecord['product_name'] as String?;
             final mode = payload.newRecord['mode'] as String? ?? 'pos';
@@ -80,14 +77,20 @@ class ScannerStatusNotifier extends Notifier<ScannerStatus> {
               lastScanTime: DateTime.now(),
             );
 
-            // Reset after 30 seconds of inactivity
             _inactivityTimer?.cancel();
             _inactivityTimer = Timer(const Duration(seconds: 30), () {
               state = state.copyWith(isActive: false);
             });
           },
-        )
-        .subscribe();
+        );
+
+    _channel?.subscribe((status, [error]) {
+      if (status == RealtimeSubscribeStatus.subscribed) {
+        state = state.copyWith(isActive: true);
+      } else if (status == RealtimeSubscribeStatus.closed || status == RealtimeSubscribeStatus.channelError) {
+        state = state.copyWith(isActive: false);
+      }
+    });
   }
 }
 

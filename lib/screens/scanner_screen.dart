@@ -105,6 +105,14 @@ class _ScannerScreenState extends State<ScannerScreen> {
             });
           }
         } catch (e) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Error al enviar escaneo: $e'),
+                backgroundColor: AppTheme.error,
+              ),
+            );
+          }
           debugPrint('Error: $e');
         } finally {
           Future.delayed(const Duration(milliseconds: 500), () {
