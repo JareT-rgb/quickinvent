@@ -4,14 +4,17 @@ import 'package:printing/printing.dart';
 import '../models/sale.dart';
 import '../models/sale_detail_item.dart';
 import '../utils/receipt_generator.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers/app_settings_provider.dart';
 
-class SaleDetailScreen extends StatelessWidget {
+class SaleDetailScreen extends ConsumerWidget {
   const SaleDetailScreen({required this.sale, super.key});
 
   final Sale sale;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final settings = ref.watch(appSettingsProvider);
     final currencyFormat = NumberFormat.currency(locale: 'es_MX', symbol: '\$');
     final items = sale.items ?? <SaleDetailItem>[];
 
@@ -29,6 +32,7 @@ class SaleDetailScreen extends StatelessWidget {
                   saleItems: items,
                   totalAmount: sale.totalAmount,
                   paymentMethod: sale.paymentMethod,
+                  settings: settings,
                 );
                 await Printing.layoutPdf(onLayout: (format) => pdfBytes);
               } catch (e) {

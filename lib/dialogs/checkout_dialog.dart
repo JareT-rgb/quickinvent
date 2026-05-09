@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import '../providers/cart_notifier.dart';
 import '../providers/products_provider.dart';
 import '../repositories/sales_repository.dart';
@@ -9,6 +10,9 @@ import '../widgets/numeric_keypad.dart';
 import '../widgets/app_dialog.dart';
 import '../theme/app_theme.dart';
 import 'ticket_dialog.dart';
+import '../providers/customers_provider.dart';
+import '../models/customer.dart';
+import '../providers/app_settings_provider.dart';
 
 class CheckoutDialog extends ConsumerStatefulWidget {
   final List<CartItem> cartItems;
@@ -28,31 +32,33 @@ class CheckoutDialog extends ConsumerStatefulWidget {
 
 class _CheckoutDialogState extends ConsumerState<CheckoutDialog> {
   final _amountController = TextEditingController();
+  final _referenceController = TextEditingController();
   bool _isProcessing = false;
   String _paymentMethod = 'Efectivo';
+  Customer? _selectedCustomer;
+  
+  // Terminal connection state
+  bool _terminalSuccess = false;
 
   @override
   void dispose() {
     _amountController.dispose();
+    _referenceController.dispose();
     super.dispose();
   }
 
   double get _received => double.tryParse(_amountController.text) ?? 0.0;
   double get _change => _received - widget.totalAmount;
   bool get _hasEnough => _amountController.text.isNotEmpty && _received >= widget.totalAmount;
+  bool get _isElectronic => _paymentMethod == 'Tarjeta' || _paymentMethod == 'Transferencia';
 
   Future<void> _processPayment() async {
-    if (_amountController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Ingrese el monto recibido'), behavior: SnackBarBehavior.floating),
-      );
-      return;
+    if (!_isElectronic && _paymentMethod != 'Crédito') {
+      if (_amountController.text.isEmpty) { _showError('Ingrese el monto recibido'); return; }
+      if (!_hasEnough) { _showError('Monto insuficiente'); return; }
     }
-    if (!_hasEnough) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Monto insuficiente'), backgroundColor: Colors.orange, behavior: SnackBarBehavior.floating),
-      );
-      return;
+    if (_paymentMethod == 'Crédito' && _selectedCustomer == null) {
+      _showError('Seleccione un cliente para crédito'); return;
     }
 
     setState(() => _isProcessing = true);
@@ -63,39 +69,37 @@ class _CheckoutDialogState extends ConsumerState<CheckoutDialog> {
         productName: item.product.name,
         quantity: item.quantity,
         priceAtSale: item.product.price,
+        costPriceAtSale: item.product.costPrice,
         subtotal: item.subtotal,
       )).toList();
 
       final sale = await ref.read(salesRepositoryProvider).createSale(
         totalAmount: widget.totalAmount,
         paymentMethod: _paymentMethod,
-        receivedAmount: _received,
-        change: _change,
+        receivedAmount: (_paymentMethod == 'Crédito' || _isElectronic) ? widget.totalAmount : _received,
+        change: (_paymentMethod == 'Crédito' || _isElectronic) ? 0.0 : _change,
         items: items,
+        customerId: _selectedCustomer?.id,
       );
 
-      // Clear cart and refresh products/stock
       ref.read(cartProvider.notifier).clearCart();
       ref.invalidate(productsProvider);
+      ref.invalidate(customersProvider);
 
       if (mounted) {
         Navigator.pop(context);
         widget.onComplete();
-        showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (context) => TicketDialog(sale: sale),
-        );
+        showDialog(context: context, barrierDismissible: false, builder: (context) => TicketDialog(sale: sale));
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error en el pago: $e'), backgroundColor: Theme.of(context).colorScheme.error, behavior: SnackBarBehavior.floating),
-        );
-      }
+      if (mounted) _showError('Error en el pago: $e');
     } finally {
       if (mounted) setState(() => _isProcessing = false);
     }
+  }
+
+  void _showError(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), backgroundColor: Colors.orange, behavior: SnackBarBehavior.floating));
   }
 
   @override
@@ -106,193 +110,297 @@ class _CheckoutDialogState extends ConsumerState<CheckoutDialog> {
     return AppDialog(
       headerIcon: Icons.point_of_sale_rounded,
       headerColor: AppTheme.primary,
-      title: 'Procesar Pago',
-      subtitle: 'Total: \$${widget.totalAmount.toStringAsFixed(2)}',
+      title: 'Centro de Pagos',
+      subtitle: 'Gestiona el cobro y la conexión con terminal',
       canClose: !_isProcessing,
-      maxWidth: 480,
-      footer: SizedBox(
-        width: double.infinity,
-        height: 52,
-        child: FilledButton.icon(
-          onPressed: (_isProcessing || !_hasEnough) ? null : _processPayment,
-          icon: _isProcessing
-              ? const SizedBox(
-                  height: 20,
-                  width: 20,
-                  child: CircularProgressIndicator(
-                      strokeWidth: 2, color: Colors.white))
-              : const Icon(Icons.check_circle_outline),
-          label: Text(
-            _isProcessing ? 'Procesando...' : 'Procesar Pago',
-            style: const TextStyle(
-                fontSize: 16, fontWeight: FontWeight.bold)),
-          style: FilledButton.styleFrom(
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14)),
-          ),
-        ),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Order summary
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: cs.surfaceContainerHighest.withValues(alpha: 0.5),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Resumen del pedido',
-                      style: theme.textTheme.labelLarge
-                          ?.copyWith(color: cs.onSurfaceVariant)),
-                  const SizedBox(height: 10),
-                  ...widget.cartItems.map((item) => Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 3),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Expanded(
-                                child: Text(
-                                    '${item.quantity}x ${item.product.name}',
-                                    overflow: TextOverflow.ellipsis)),
-                            Text('\$${item.subtotal.toStringAsFixed(2)}',
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.w500)),
-                          ],
-                        ),
-                      )),
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 8),
-                    child: Divider(height: 1),
-                  ),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text('Total',
-                          style: theme.textTheme.titleSmall
-                              ?.copyWith(fontWeight: FontWeight.bold)),
-                      Text(
-                          '\$${widget.totalAmount.toStringAsFixed(2)}',
-                          style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: cs.primary)),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Payment method
-            DropdownButtonFormField<String>(
-              value: _paymentMethod,
-              decoration: appInputDecoration(context,
-                  label: 'Método de pago',
-                  icon: Icons.payment_rounded),
-              items: ['Efectivo', 'Tarjeta', 'Transferencia']
-                  .map((m) => DropdownMenuItem(value: m, child: Text(m)))
-                  .toList(),
-              onChanged: (val) =>
-                  setState(() => _paymentMethod = val ?? 'Efectivo'),
-            ),
-            const SizedBox(height: 16),
-
-            // Amount received
-            TextFormField(
-              controller: _amountController,
-              keyboardType: TextInputType.none,
-              showCursor: true,
-              readOnly: true,
-              style: theme.textTheme.headlineSmall
-                  ?.copyWith(fontWeight: FontWeight.bold),
-              textAlign: TextAlign.center,
-              decoration: appInputDecoration(context,
-                      label: 'Monto recibido',
-                      icon: Icons.monetization_on_outlined,
-                      hint: '0.00')
-                  .copyWith(
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: BorderSide(color: cs.primary, width: 2),
-                ),
-              ),
-              onChanged: (_) => setState(() {}),
-            ),
-            const SizedBox(height: 14),
-
-            // Numeric keypad
-            SizedBox(
-              height: 220,
-              child: NumericKeypad(
-                controller: _amountController,
-                onChange: () => setState(() {}),
-              ),
-            ),
-            const SizedBox(height: 14),
-
-            // Change display
-            AnimatedSwitcher(
-              duration: const Duration(milliseconds: 250),
-              child: _amountController.text.isNotEmpty
-                  ? Container(
-                      key: const ValueKey('change'),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 12),
-                      decoration: BoxDecoration(
-                        color: _hasEnough
-                            ? Colors.green.withValues(alpha: 0.1)
-                            : cs.errorContainer.withValues(alpha: 0.4),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: _hasEnough ? Colors.green : cs.error,
-                          width: 1.5,
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Row(
-                            children: [
-                              Icon(
-                                _hasEnough
-                                    ? Icons.check_circle_outline
-                                    : Icons.warning_amber_rounded,
-                                color: _hasEnough
-                                    ? Colors.green[700]
-                                    : cs.error,
-                                size: 20,
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                _hasEnough ? 'Cambio:' : 'Falta:',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  color: _hasEnough
-                                      ? Colors.green[700]
-                                      : cs.error,
-                                ),
-                              ),
-                            ],
-                          ),
-                          Text(
-                            '\$${_change.abs().toStringAsFixed(2)}',
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: _hasEnough
-                                  ? Colors.green[700]
-                                  : cs.error,
-                            ),
-                          ),
-                        ],
-                      ),
+      maxWidth: 850,
+      footer: _buildFooter(),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final isWide = constraints.maxWidth > 650;
+          return Column(
+            children: [
+              _buildHeaderTotals(theme, cs),
+              Expanded(
+                child: isWide 
+                  ? Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(flex: 5, child: SingleChildScrollView(padding: const EdgeInsets.all(24), child: _buildPaymentForm())),
+                        VerticalDivider(width: 1, color: theme.dividerColor.withValues(alpha: 0.1)),
+                        Expanded(flex: 3, child: SingleChildScrollView(padding: const EdgeInsets.all(24), child: _buildSummarySection())),
+                      ],
                     )
-                  : const SizedBox.shrink(key: ValueKey('empty')),
+                  : SingleChildScrollView(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(children: [_buildPaymentForm(), const SizedBox(height: 24), _buildSummarySection()]),
+                    ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildHeaderTotals(ThemeData theme, ColorScheme cs) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(color: theme.cardColor, border: Border(bottom: BorderSide(color: theme.dividerColor.withValues(alpha: 0.05)))),
+      child: Row(
+        children: [
+          Expanded(child: _buildTotalCard('TOTAL A COBRAR', widget.totalAmount, AppTheme.primary, AppTheme.primary.withValues(alpha: 0.05))),
+          const SizedBox(width: 16),
+          Expanded(
+            child: _paymentMethod == 'Efectivo' 
+              ? _buildTotalCard(_amountController.text.isEmpty ? 'CAMBIO' : (_hasEnough ? 'CAMBIO' : 'FALTA'), _change.abs(), 
+                  _amountController.text.isEmpty ? theme.hintColor : (_hasEnough ? Colors.green : cs.error), 
+                  _amountController.text.isEmpty ? theme.dividerColor.withValues(alpha: 0.05) : (_hasEnough ? Colors.green.withValues(alpha: 0.05) : cs.errorContainer.withValues(alpha: 0.1)))
+              : _buildTotalCard('MÉTODO ACTIVO', 0, Colors.blue, Colors.blue.withValues(alpha: 0.05), isElectronic: true),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTotalCard(String label, double value, Color color, Color bgColor, {bool isElectronic = false}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+      decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(16), border: Border.all(color: color.withValues(alpha: 0.2), width: 1.5)),
+      child: Column(
+        children: [
+          Text(label, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: color, letterSpacing: 1.2)),
+          const SizedBox(height: 4),
+          FittedBox(
+            child: Text(
+              isElectronic ? _paymentMethod.toUpperCase() : '\$${value.toStringAsFixed(2)}',
+              style: TextStyle(fontSize: 32, fontWeight: FontWeight.w900, color: color, letterSpacing: -1),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPaymentForm() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        DropdownButtonFormField<String>(
+          value: _paymentMethod,
+          decoration: appInputDecoration(context, label: 'Seleccionar Método', icon: Icons.payments_rounded),
+          items: ['Efectivo', 'Tarjeta', 'Transferencia', 'Crédito']
+              .map((m) => DropdownMenuItem(value: m, child: Text(m, style: const TextStyle(fontWeight: FontWeight.bold))))
+              .toList(),
+          onChanged: (val) {
+            setState(() {
+              _paymentMethod = val ?? 'Efectivo';
+              if (_isElectronic) {
+                _amountController.text = widget.totalAmount.toStringAsFixed(2);
+              } else {
+                _amountController.text = '';
+              }
+            });
+          },
+        ),
+        const SizedBox(height: 24),
+        AnimatedSwitcher(
+          duration: const Duration(milliseconds: 300),
+          child: _buildDynamicPaymentWidget(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDynamicPaymentWidget() {
+    if (_paymentMethod == 'Tarjeta') return _buildTerminalBridge();
+    if (_paymentMethod == 'Transferencia') return _buildQRGenerator();
+    if (_paymentMethod == 'Crédito') return _buildCustomerSelector();
+    return _buildCashFlow();
+  }
+
+  Widget _buildTerminalBridge() {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(color: Colors.blue.withValues(alpha: 0.05), borderRadius: BorderRadius.circular(20), border: Border.all(color: Colors.blue.withValues(alpha: 0.1))),
+      child: Column(
+        children: [
+          const Icon(Icons.contactless_rounded, size: 48, color: Colors.blue),
+          const SizedBox(height: 16),
+          const Text('ESPERANDO TERMINAL', style: TextStyle(fontWeight: FontWeight.w900, color: Colors.blue)),
+          const SizedBox(height: 8),
+          const Text('Procesa el cobro en tu terminal física.', style: TextStyle(fontSize: 12, color: Colors.blue)),
+          const SizedBox(height: 24),
+          if (!_terminalSuccess) ...[
+            const LinearProgressIndicator(backgroundColor: Colors.transparent),
+            const SizedBox(height: 16),
+            TextButton.icon(
+              onPressed: () => setState(() => _terminalSuccess = true),
+              icon: const Icon(Icons.check),
+              label: const Text('Confirmar pago en terminal'),
+            ),
+          ] else
+            const Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [Icon(Icons.check_circle, color: Colors.green), SizedBox(width: 8), Text('PAGO CONFIRMADO', style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold))],
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQRGenerator() {
+    final settings = ref.watch(appSettingsProvider);
+    
+    // Create a real payment URI if settings are available, otherwise generic
+    String qrData;
+    if (settings.transferAccount.isNotEmpty) {
+      // Format: Transferencia [Banco] - [CLABE] - [Nombre]
+      qrData = 'transfer:${settings.transferAccount}?bank=${settings.transferBank}&name=${settings.transferName}&amount=${widget.totalAmount}&ref=QuickInvent';
+    } else {
+      qrData = 'https://quickinvent.app/setup-payment'; // Fallback
+    }
+    
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(color: AppTheme.primary.withValues(alpha: 0.05), borderRadius: BorderRadius.circular(20), border: Border.all(color: AppTheme.primary.withValues(alpha: 0.1))),
+      child: Column(
+        children: [
+          if (settings.transferAccount.isEmpty)
+            const Padding(
+              padding: EdgeInsets.only(bottom: 16),
+              child: Text('⚠️ Configura tus datos en Ajustes', style: TextStyle(color: Colors.orange, fontSize: 12, fontWeight: FontWeight.bold)),
+            ),
+          QrImageView(
+            data: qrData,
+            version: QrVersions.auto,
+            size: 180.0,
+            eyeStyle: const QrEyeStyle(eyeShape: QrEyeShape.square, color: AppTheme.primary),
+            dataModuleStyle: const QrDataModuleStyle(dataModuleShape: QrDataModuleShape.square, color: AppTheme.primary),
+          ),
+          const SizedBox(height: 16),
+          if (settings.transferAccount.isNotEmpty) ...[
+            Text(settings.transferBank, style: const TextStyle(fontWeight: FontWeight.w900, color: AppTheme.primary)),
+            Text(settings.transferAccount, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+            Text(settings.transferName, style: const TextStyle(fontSize: 12, color: AppTheme.textMuted)),
+          ] else
+            const Text('PAGO POR TRANSFERENCIA', style: TextStyle(fontWeight: FontWeight.w900, color: AppTheme.primary)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCustomerSelector() {
+    return Consumer(builder: (context, ref, child) {
+      final customersAsync = ref.watch(customersProvider);
+      return customersAsync.when(
+        data: (customers) => DropdownButtonFormField<Customer>(
+          value: _selectedCustomer,
+          decoration: appInputDecoration(context, label: 'Cliente de Crédito', icon: Icons.person_search),
+          items: customers.map((c) => DropdownMenuItem(value: c, child: Text(c.name))).toList(),
+          onChanged: (val) => setState(() => _selectedCustomer = val),
+        ),
+        loading: () => const LinearProgressIndicator(),
+        error: (_, __) => const Text('Error al cargar clientes'),
+      );
+    });
+  }
+
+  Widget _buildCashFlow() {
+    final theme = Theme.of(context);
+    final platform = theme.platform;
+    final isPC = platform == TargetPlatform.windows || platform == TargetPlatform.linux || platform == TargetPlatform.macOS;
+    final isMobile = platform == TargetPlatform.android || platform == TargetPlatform.iOS;
+    
+    return Column(
+      children: [
+        _buildQuickCashButtons(),
+        const SizedBox(height: 24),
+        TextFormField(
+          controller: _amountController,
+          keyboardType: isPC ? const TextInputType.numberWithOptions(decimal: true) : TextInputType.none,
+          showCursor: true,
+          readOnly: !isPC,
+          autofocus: isPC,
+          style: const TextStyle(fontSize: 42, fontWeight: FontWeight.w900, letterSpacing: -1),
+          textAlign: TextAlign.center,
+          decoration: appInputDecoration(context, label: 'Efectivo Recibido', icon: Icons.monetization_on_rounded, hint: '0.00'),
+          onChanged: (_) => setState(() {}),
+        ),
+        if (isMobile) ...[
+          const SizedBox(height: 16),
+          SizedBox(height: 260, child: NumericKeypad(controller: _amountController, onChange: () => setState(() {}))),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildSummarySection() {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(children: [Icon(Icons.receipt_rounded, size: 18, color: theme.hintColor), const SizedBox(width: 8), Text('DETALLE', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: theme.hintColor))]),
+        const SizedBox(height: 16),
+        ...widget.cartItems.map((item) => Padding(
+          padding: const EdgeInsets.symmetric(vertical: 6),
+          child: Row(children: [
+            Text('${item.quantity}x', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: AppTheme.primary)),
+            const SizedBox(width: 12),
+            Expanded(child: Text(item.product.name, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600), maxLines: 1, overflow: TextOverflow.ellipsis)),
+            Text('\$${item.subtotal.toStringAsFixed(2)}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800)),
+          ]),
+        )),
+      ],
+    );
+  }
+
+  Widget _buildQuickCashButtons() {
+    final denominations = [20, 50, 100, 200, 500, 1000];
+    return Wrap(
+      spacing: 8, runSpacing: 8,
+      children: [
+        _buildCashButton('Exacto', widget.totalAmount, isExact: true),
+        ...denominations.map((d) => _buildCashButton('\$${d}', d.toDouble())),
+      ],
+    );
+  }
+
+  Widget _buildCashButton(String label, double value, {bool isExact = false}) {
+    final theme = Theme.of(context);
+    final isSelected = _received == value;
+    return InkWell(
+      onTap: () => setState(() => _amountController.text = value.toStringAsFixed(0)),
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: isSelected ? AppTheme.primary : (isExact ? AppTheme.primary.withValues(alpha: 0.1) : theme.cardColor),
+          borderRadius: BorderRadius.circular(12), border: Border.all(color: isSelected || isExact ? AppTheme.primary : theme.dividerColor.withValues(alpha: 0.1)),
+        ),
+        child: Text(label, style: TextStyle(color: isSelected ? Colors.white : (isExact ? AppTheme.primary : theme.textTheme.bodyLarge?.color), fontWeight: FontWeight.w900, fontSize: 13)),
+      ),
+    );
+  }
+
+  Widget _buildFooter() {
+    final isReady = _isElectronic || _paymentMethod == 'Crédito' || _hasEnough;
+    return Container(
+      width: double.infinity, height: 64,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        gradient: LinearGradient(colors: (_isProcessing || !isReady) ? [Colors.grey.shade400, Colors.grey.shade500] : AppTheme.primaryGradient.colors),
+      ),
+      child: FilledButton(
+        onPressed: (_isProcessing || !isReady) ? null : _processPayment,
+        style: FilledButton.styleFrom(backgroundColor: Colors.transparent, shadowColor: Colors.transparent, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            if (_isProcessing) const SizedBox(height: 22, width: 22, child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white))
+            else Icon(_paymentMethod == 'Tarjeta' ? Icons.terminal_rounded : (_paymentMethod == 'Transferencia' ? Icons.qr_code_2_rounded : Icons.check_circle_rounded), size: 24),
+            const SizedBox(width: 14),
+            Text(_isProcessing ? 'PROCESANDO...' : 'FINALIZAR VENTA', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, letterSpacing: 1)),
           ],
         ),
       ),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:animate_do/animate_do.dart';
 import '../theme/app_theme.dart';
 
 class ScannerScreen extends StatefulWidget {
@@ -18,7 +19,8 @@ class _ScannerScreenState extends State<ScannerScreen> {
   );
 
   bool _isProcessing = false;
-  String _lastScanned = '';
+  bool _auditMode = false; // Toggle between POS and Audit
+  Map<String, dynamic>? _lastProduct;
   RealtimeChannel? _feedbackSubscription;
 
   @override
@@ -45,51 +47,39 @@ class _ScannerScreenState extends State<ScannerScreen> {
           callback: (payload) {
             final status = payload.newRecord['status'] as String?;
             final productName = payload.newRecord['product_name'] as String?;
+            final stock = payload.newRecord['stock_quantity'] as num?;
+            final price = payload.newRecord['price'] as num?;
             
             if (status != null && status != 'pending') {
-              _provideFeedback(status, productName);
+              setState(() {
+                _lastProduct = {
+                  'name': productName,
+                  'stock': stock,
+                  'price': price,
+                  'barcode': payload.newRecord['barcode'],
+                  'status': status,
+                };
+              });
+              _provideFeedback(status);
             }
           },
         )
         .subscribe();
   }
 
-  void _provideFeedback(String status, String? productName) {
+  void _provideFeedback(String status) {
     if (!mounted) return;
-
     switch (status) {
       case 'success':
-        HapticFeedback.mediumImpact();
-        _showFeedbackBar('Agregado: ${productName ?? "Producto"}', AppTheme.success);
+        HapticFeedback.lightImpact();
         break;
       case 'not_found':
         HapticFeedback.vibrate();
-        _showFeedbackBar('Código no encontrado', AppTheme.warning);
         break;
       case 'out_of_stock':
         HapticFeedback.heavyImpact();
-        _showFeedbackBar('Sin stock: $productName', AppTheme.error);
         break;
     }
-  }
-
-  void _showFeedbackBar(String message, Color color) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message, style: const TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: color,
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 2),
-        margin: const EdgeInsets.fromLTRB(20, 0, 20, 100),
-      ),
-    );
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    _feedbackSubscription?.unsubscribe();
-    super.dispose();
   }
 
   Future<void> _handleBarcode(BarcodeCapture capture) async {
@@ -101,7 +91,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
       if (code != null && code.isNotEmpty) {
         setState(() {
           _isProcessing = true;
-          _lastScanned = code;
+          _lastProduct = null;
         });
 
         try {
@@ -111,27 +101,13 @@ class _ScannerScreenState extends State<ScannerScreen> {
               'barcode': code,
               'user_id': userId,
               'processed': false,
+              'mode': _auditMode ? 'audit' : 'pos',
             });
-            
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Código escaneado: $code'),
-                  backgroundColor: AppTheme.success,
-                  duration: const Duration(seconds: 1),
-                ),
-              );
-            }
           }
         } catch (e) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Error al sincronizar: $e'), backgroundColor: AppTheme.error),
-            );
-          }
+          debugPrint('Error: $e');
         } finally {
-          // Allow scanning another code after 1.5 seconds
-          Future.delayed(const Duration(milliseconds: 1500), () {
+          Future.delayed(const Duration(milliseconds: 1000), () {
             if (mounted) setState(() => _isProcessing = false);
           });
         }
@@ -140,94 +116,194 @@ class _ScannerScreenState extends State<ScannerScreen> {
   }
 
   @override
+  void dispose() {
+    _controller.dispose();
+    _feedbackSubscription?.unsubscribe();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Escáner Móvil'),
-        backgroundColor: AppTheme.primary,
-        foregroundColor: Colors.white,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.flip_camera_ios),
-            onPressed: () => _controller.switchCamera(),
-          ),
-          IconButton(
-            icon: const Icon(Icons.flash_on),
-            onPressed: () => _controller.toggleTorch(),
-          ),
-        ],
-      ),
+      backgroundColor: Colors.black,
       body: Stack(
         children: [
           MobileScanner(
             controller: _controller,
             onDetect: _handleBarcode,
-            errorBuilder: (context, error) {
-              return Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.videocam_off_outlined, size: 64, color: Colors.white),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Error al iniciar cámara',
-                      style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 8),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 40),
-                      child: Text(
-                        error.errorCode == MobileScannerErrorCode.permissionDenied
-                            ? 'Permiso de cámara denegado. Actívalo en la configuración del navegador.'
-                            : 'Error: ${error.errorDetails?.message ?? "Cámara no disponible"}',
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(color: Colors.white70),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            },
           ),
-          // Scanner overlay
-          Container(
-            decoration: ShapeDecoration(
-              shape: QrScannerOverlayShape(
-                borderColor: AppTheme.primary,
-                borderRadius: 10,
-                borderLength: 30,
-                borderWidth: 10,
-                cutOutSize: MediaQuery.of(context).size.width * 0.7,
+          
+          // Custom Overlay
+          _buildScannerOverlay(),
+
+          // Top Toolbar
+          _buildTopToolbar(),
+
+          // Product Info Card (Bottom)
+          if (_lastProduct != null)
+            Positioned(
+              bottom: 40, left: 20, right: 20,
+              child: FadeInUp(
+                duration: const Duration(milliseconds: 400),
+                child: _buildProductCard(),
               ),
             ),
-          ),
-          if (_isProcessing)
-            Container(
-              color: Colors.black45,
-              child: const Center(
-                child: CircularProgressIndicator(color: AppTheme.primary),
-              ),
-            ),
-          Positioned(
-            bottom: 40,
-            left: 0,
-            right: 0,
-            child: Center(
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                decoration: BoxDecoration(
-                  color: Colors.black87,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  _lastScanned.isEmpty ? 'Apunta a un código de barras' : 'Último escaneo: $_lastScanned',
-                  style: const TextStyle(color: Colors.white, fontSize: 16),
-                ),
-              ),
-            ),
-          ),
+          
+          if (_isProcessing && _lastProduct == null)
+            const Center(child: CircularProgressIndicator(color: AppTheme.primary)),
         ],
       ),
+    );
+  }
+
+  Widget _buildTopToolbar() {
+    return Positioned(
+      top: 50, left: 20, right: 20,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          _CircleButton(icon: Icons.flash_on, onTap: () => _controller.toggleTorch()),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(20), border: Border.all(color: Colors.white24)),
+            child: Row(
+              children: [
+                Icon(_auditMode ? Icons.inventory_2 : Icons.shopping_cart, size: 16, color: AppTheme.primary),
+                const SizedBox(width: 8),
+                Text(_auditMode ? 'MODO AUDITORÍA' : 'MODO POS', style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w900)),
+                const SizedBox(width: 8),
+                Switch.adaptive(
+                  value: _auditMode,
+                  activeColor: AppTheme.primary,
+                  onChanged: (v) => setState(() => _auditMode = v),
+                ),
+              ],
+            ),
+          ),
+          _CircleButton(icon: Icons.flip_camera_ios, onTap: () => _controller.switchCamera()),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProductCard() {
+    final status = _lastProduct!['status'];
+    final isError = status == 'not_found' || status == 'out_of_stock';
+    
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 20, offset: const Offset(0, 10))],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: (isError ? AppTheme.error : AppTheme.primary).withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                child: Icon(isError ? Icons.warning_rounded : Icons.check_circle_rounded, color: isError ? AppTheme.error : AppTheme.primary),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(_lastProduct!['name'] ?? 'Código: ${_lastProduct!['barcode']}', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: AppTheme.textPrimary)),
+                    if (!isError)
+                      Text('Stock: ${_lastProduct!['stock']} unidades • \$${_lastProduct!['price']}', style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13, fontWeight: FontWeight.w600)),
+                    if (isError)
+                      Text(status == 'not_found' ? 'Producto no registrado' : 'Sin existencias disponibles', style: const TextStyle(color: AppTheme.error, fontSize: 12, fontWeight: FontWeight.w700)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          if (!isError && !_auditMode) ...[
+            const SizedBox(height: 20),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _QuickQtyButton(label: '+1', onTap: () => _updateRemoteQty(1)),
+                _QuickQtyButton(label: '+5', onTap: () => _updateRemoteQty(5)),
+                _QuickQtyButton(label: 'Eliminar', color: AppTheme.error, onTap: () => _updateRemoteQty(-1)),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Future<void> _updateRemoteQty(int delta) async {
+    final userId = Supabase.instance.client.auth.currentUser?.id;
+    if (userId == null || _lastProduct == null) return;
+    
+    HapticFeedback.selectionClick();
+    await Supabase.instance.client.from('barcode_scans').insert({
+      'barcode': _lastProduct!['barcode'],
+      'user_id': userId,
+      'quantity_delta': delta,
+      'processed': false,
+    });
+  }
+
+  Widget _buildScannerOverlay() {
+    return Container(
+      decoration: ShapeDecoration(
+        shape: QrScannerOverlayShape(
+          borderColor: AppTheme.primary,
+          borderRadius: 20,
+          borderLength: 40,
+          borderWidth: 8,
+          cutOutSize: MediaQuery.of(context).size.width * 0.75,
+        ),
+      ),
+    );
+  }
+}
+
+class _CircleButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+  const _CircleButton({required this.icon, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: const BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
+        child: Icon(icon, color: Colors.white, size: 22),
+      ),
+    );
+  }
+}
+
+class _QuickQtyButton extends StatelessWidget {
+  final String label;
+  final VoidCallback onTap;
+  final Color color;
+  const _QuickQtyButton({required this.label, required this.onTap, this.color = AppTheme.primary});
+
+  @override
+  Widget build(BuildContext context) {
+    return OutlinedButton(
+      onPressed: onTap,
+      style: OutlinedButton.styleFrom(
+        foregroundColor: color,
+        side: BorderSide(color: color.withValues(alpha: 0.5)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      ),
+      child: Text(label, style: const TextStyle(fontWeight: FontWeight.w900)),
     );
   }
 }
@@ -267,46 +343,20 @@ class QrScannerOverlayShape extends ShapeBorder {
         ..lineTo(rect.left, rect.top)
         ..lineTo(rect.right, rect.top);
     }
-
-    return _getLeftTopPath(rect)
-      ..lineTo(
-        rect.right,
-        rect.bottom,
-      )
-      ..lineTo(
-        rect.left,
-        rect.bottom,
-      )
-      ..lineTo(
-        rect.left,
-        rect.top,
-      );
+    return _getLeftTopPath(rect)..lineTo(rect.right, rect.bottom)..lineTo(rect.left, rect.bottom)..lineTo(rect.left, rect.top);
   }
 
   @override
   void paint(Canvas canvas, Rect rect, {TextDirection? textDirection}) {
     final width = rect.width;
-    final borderWidthSize = width / 2;
     final height = rect.height;
     final borderOffset = borderWidth / 2;
-    final _borderLength = borderLength > cutOutSize / 2 + borderOffset
-        ? cutOutSize / 2 + borderOffset
-        : borderLength;
+    final _borderLength = borderLength > cutOutSize / 2 + borderOffset ? cutOutSize / 2 + borderOffset : borderLength;
     final _cutOutSize = cutOutSize < width ? cutOutSize : width;
 
-    final backgroundPaint = Paint()
-      ..color = overlayColor
-      ..style = PaintingStyle.fill;
-
-    final borderPaint = Paint()
-      ..color = borderColor
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = borderWidth;
-
-    final boxPaint = Paint()
-      ..color = borderColor
-      ..style = PaintingStyle.fill
-      ..blendMode = BlendMode.dstOut;
+    final backgroundPaint = Paint()..color = overlayColor..style = PaintingStyle.fill;
+    final borderPaint = Paint()..color = borderColor..style = PaintingStyle.stroke..strokeWidth = borderWidth;
+    final boxPaint = Paint()..color = borderColor..style = PaintingStyle.fill..blendMode = BlendMode.dstOut;
 
     final cutOutRect = Rect.fromLTWH(
       rect.left + width / 2 - _cutOutSize / 2 + borderOffset,
@@ -315,75 +365,16 @@ class QrScannerOverlayShape extends ShapeBorder {
       _cutOutSize - borderOffset * 2,
     );
 
-    canvas
-      ..saveLayer(
-        rect,
-        backgroundPaint,
-      )
-      ..drawRect(
-        rect,
-        backgroundPaint,
-      )
-      // Draw top right corner
-      ..drawRRect(
-        RRect.fromLTRBAndCorners(
-          cutOutRect.right - _borderLength,
-          cutOutRect.top,
-          cutOutRect.right,
-          cutOutRect.top + _borderLength,
-          topRight: Radius.circular(borderRadius),
-        ),
-        borderPaint,
-      )
-      // Draw top left corner
-      ..drawRRect(
-        RRect.fromLTRBAndCorners(
-          cutOutRect.left,
-          cutOutRect.top,
-          cutOutRect.left + _borderLength,
-          cutOutRect.top + _borderLength,
-          topLeft: Radius.circular(borderRadius),
-        ),
-        borderPaint,
-      )
-      // Draw bottom right corner
-      ..drawRRect(
-        RRect.fromLTRBAndCorners(
-          cutOutRect.right - _borderLength,
-          cutOutRect.bottom - _borderLength,
-          cutOutRect.right,
-          cutOutRect.bottom,
-          bottomRight: Radius.circular(borderRadius),
-        ),
-        borderPaint,
-      )
-      // Draw bottom left corner
-      ..drawRRect(
-        RRect.fromLTRBAndCorners(
-          cutOutRect.left,
-          cutOutRect.bottom - _borderLength,
-          cutOutRect.left + _borderLength,
-          cutOutRect.bottom,
-          bottomLeft: Radius.circular(borderRadius),
-        ),
-        borderPaint,
-      )
-      ..drawRRect(
-        RRect.fromRectAndRadius(
-          cutOutRect,
-          Radius.circular(borderRadius),
-        ),
-        boxPaint,
-      )
-      ..restore();
+    canvas..saveLayer(rect, backgroundPaint)..drawRect(rect, backgroundPaint)
+      ..drawRRect(RRect.fromLTRBAndCorners(cutOutRect.right - _borderLength, cutOutRect.top, cutOutRect.right, cutOutRect.top + _borderLength, topRight: Radius.circular(borderRadius)), borderPaint)
+      ..drawRRect(RRect.fromLTRBAndCorners(cutOutRect.left, cutOutRect.top, cutOutRect.left + _borderLength, cutOutRect.top + _borderLength, topLeft: Radius.circular(borderRadius)), borderPaint)
+      ..drawRRect(RRect.fromLTRBAndCorners(cutOutRect.right - _borderLength, cutOutRect.bottom - _borderLength, cutOutRect.right, cutOutRect.bottom, bottomRight: Radius.circular(borderRadius)), borderPaint)
+      ..drawRRect(RRect.fromLTRBAndCorners(cutOutRect.left, cutOutRect.bottom - _borderLength, cutOutRect.left + _borderLength, cutOutRect.bottom, bottomLeft: Radius.circular(borderRadius)), borderPaint)
+      ..drawRRect(RRect.fromRectAndRadius(cutOutRect, Radius.circular(borderRadius)), boxPaint)..restore();
   }
 
   @override
   ShapeBorder scale(double t) {
-    return QrScannerOverlayShape(
-      borderColor: borderColor,
-      borderWidth: borderWidth,
-      overlayColor: overlayColor,
-    );
+    return QrScannerOverlayShape(borderColor: borderColor, borderWidth: borderWidth, overlayColor: overlayColor);
   }
 }

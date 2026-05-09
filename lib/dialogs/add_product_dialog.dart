@@ -90,8 +90,7 @@ class _AddProductDialogState extends ConsumerState<AddProductDialog>
             imageUrl: imageUrl,
           );
 
-      ref.invalidate(productsProvider);
-
+      // Real-time streams handle the update automatically
       if (mounted) {
         Navigator.pop(context, true);
         ScaffoldMessenger.of(context).showSnackBar(

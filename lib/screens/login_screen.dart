@@ -31,42 +31,26 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   String _getFriendlyErrorMessage(Object error) {
     final errStr = error.toString().toLowerCase();
-    
     if (error is AuthException) {
-      if (errStr.contains('invalid login credentials')) {
-        return 'El correo o la contraseña no son correctos.';
-      }
-      if (errStr.contains('email not confirmed')) {
-        return 'Por favor, confirma tu correo electrónico antes de entrar.';
-      }
-      if (errStr.contains('too many requests')) {
-        return 'Demasiados intentos. Por favor, espera un momento.';
-      }
+      if (errStr.contains('invalid login credentials')) return 'El correo o la contraseña no son correctos.';
+      if (errStr.contains('email not confirmed')) return 'Por favor, confirma tu correo electrónico.';
       return error.message;
     }
-    return 'Ocurrió un error inesperado. Inténtalo de nuevo.';
+    return 'Ocurrió un error inesperado.';
   }
 
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isLoading = true);
-
     try {
-      await ref.read(authRepositoryProvider).signInWithEmail(
-            _emailController.text.trim(),
-            _passwordController.text,
-          );
+      await ref.read(authRepositoryProvider).signInWithEmail(_emailController.text.trim(), _passwordController.text);
     } catch (e) {
       if (mounted) {
-        final message = _getFriendlyErrorMessage(e);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(children: [const Icon(Icons.error_outline, color: Colors.white), const SizedBox(width: 12), Expanded(child: Text(message))]),
-            backgroundColor: AppTheme.error,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          ),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(_getFriendlyErrorMessage(e)),
+          backgroundColor: AppTheme.error,
+          behavior: SnackBarBehavior.floating,
+        ));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -76,52 +60,23 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
-    final isDesktop = size.width >= 850;
+    final isDesktop = size.width >= 900;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: isDark ? AppTheme.backgroundDark : AppTheme.backgroundLight,
       body: Row(
         children: [
-          if (isDesktop) _buildDesktopBranding(size),
+          if (isDesktop) _buildPremiumBranding(size),
           Expanded(
             child: Center(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.all(24),
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 400),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      // Logo Animado
-                      FadeInDown(
-                        duration: const Duration(milliseconds: 1000),
-                        child: Container(
-                          width: 150,
-                          height: 150,
-                          margin: const EdgeInsets.only(bottom: 24),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(20),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.05),
-                                blurRadius: 20,
-                                offset: const Offset(0, 10),
-                              ),
-                            ],
-                          ),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(20),
-                            child: Image.asset('assets/logo.png', fit: BoxFit.cover, errorBuilder: (_,__,___) => const Icon(Icons.inventory_2_rounded, size: 80, color: AppTheme.primary)),
-                          ),
-                        ),
-                      ),
-                      
-                      // Formulario Animado
-                      FadeInUp(
-                        duration: const Duration(milliseconds: 800),
-                        child: _buildForm(),
-                      ),
-                    ],
+                padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 24),
+                child: FadeIn(
+                  duration: const Duration(milliseconds: 600),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 440),
+                    child: _buildLoginForm(isDark),
                   ),
                 ),
               ),
@@ -132,52 +87,58 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     );
   }
 
-  Widget _buildDesktopBranding(Size size) {
+  Widget _buildPremiumBranding(Size size) {
     return Container(
-      width: size.width * 0.45,
+      width: size.width * 0.42,
       height: size.height,
-      decoration: const BoxDecoration(
-        color: AppTheme.primary,
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [AppTheme.primary, Color(0xFF6BBA7D)],
-        ),
-      ),
+      decoration: BoxDecoration(gradient: AppTheme.primaryGradient),
       child: Stack(
         children: [
           Positioned(
-            bottom: -50,
-            left: -50,
-            child: Icon(Icons.shopping_cart_outlined, size: 300, color: Colors.white.withValues(alpha: 0.1)),
+            top: -100,
+            right: -100,
+            child: CircleAvatar(radius: 200, backgroundColor: Colors.white.withValues(alpha: 0.05)),
+          ),
+          Positioned(
+            bottom: -150,
+            left: -150,
+            child: CircleAvatar(radius: 300, backgroundColor: Colors.white.withValues(alpha: 0.03)),
           ),
           Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                FadeInLeft(
-                  child: Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.15), shape: BoxShape.circle),
-                    child: const Icon(Icons.inventory_2_rounded, size: 80, color: Colors.white),
+            child: Padding(
+              padding: const EdgeInsets.all(60.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  FadeInDown(
+                    child: Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(30),
+                        border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+                      ),
+                      child: const Icon(Icons.inventory_2_rounded, size: 60, color: Colors.white),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 24),
-                FadeInLeft(
-                  delay: const Duration(milliseconds: 200),
-                  child: const Text(
-                    'QuickInvent',
-                    style: TextStyle(fontSize: 48, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: -1),
+                  const SizedBox(height: 40),
+                  FadeInLeft(
+                    delay: const Duration(milliseconds: 200),
+                    child: const Text('Gestiona tu\nnegocio como\nun profesional.', 
+                      style: TextStyle(fontSize: 52, fontWeight: FontWeight.w900, color: Colors.white, height: 1.1, letterSpacing: -2)),
                   ),
-                ),
-                FadeInLeft(
-                  delay: const Duration(milliseconds: 400),
-                  child: const Text(
-                    'ABARROTES',
-                    style: TextStyle(fontSize: 18, color: Colors.white70, letterSpacing: 4),
+                  const SizedBox(height: 24),
+                  FadeInLeft(
+                    delay: const Duration(milliseconds: 400),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(10)),
+                      child: const Text('QUICKINVENT V2.0', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 12, letterSpacing: 3)),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ],
@@ -185,68 +146,83 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     );
   }
 
-  Widget _buildForm() {
-    return Card(
-      elevation: 0,
-      color: Colors.white,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(24),
-        side: BorderSide(color: AppTheme.divider.withValues(alpha: 0.5)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(32.0),
-        child: Form(
+  Widget _buildLoginForm(bool isDark) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Center(
+          child: Container(
+            width: 120,
+            height: 120,
+            margin: const EdgeInsets.only(bottom: 32),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: AppTheme.softShadow,
+            ),
+            padding: const EdgeInsets.all(20),
+            child: Image.asset('assets/logo.png', fit: BoxFit.contain, errorBuilder: (_,__,___) => const Icon(Icons.shopping_cart_rounded, size: 60, color: AppTheme.primary)),
+          ),
+        ),
+        const Text('Bienvenido de nuevo', style: TextStyle(fontSize: 32, fontWeight: FontWeight.w900, letterSpacing: -1.5)),
+        const SizedBox(height: 12),
+        const Text('Ingresa tus datos para continuar operando.', style: TextStyle(color: AppTheme.textSecondary, fontSize: 15, fontWeight: FontWeight.w500)),
+        const SizedBox(height: 40),
+        Form(
           key: _formKey,
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text('Bienvenido', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: AppTheme.textPrimary)),
-              const SizedBox(height: 8),
-              const Text('Ingresa tus credenciales para acceder al sistema', style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
-              const SizedBox(height: 32),
               TextFormField(
                 controller: _emailController,
-                decoration: appInputDecoration(context, label: 'Correo', icon: Icons.email_outlined),
+                style: const TextStyle(fontWeight: FontWeight.w600),
+                decoration: appInputDecoration(context, label: 'Correo electrónico', icon: Icons.alternate_email_rounded),
                 validator: (v) => (v == null || !v.contains('@')) ? 'Email inválido' : null,
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 20),
               TextFormField(
                 controller: _passwordController,
                 obscureText: _obscurePassword,
-                decoration: appInputDecoration(context, label: 'Contraseña', icon: Icons.lock_outline).copyWith(
+                style: const TextStyle(fontWeight: FontWeight.w600),
+                decoration: appInputDecoration(context, label: 'Contraseña', icon: Icons.lock_rounded).copyWith(
                   suffixIcon: IconButton(
-                    icon: Icon(_obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined, size: 18),
+                    icon: Icon(_obscurePassword ? Icons.visibility_off_rounded : Icons.visibility_rounded, size: 20),
                     onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                   ),
                 ),
                 validator: (v) => (v == null || v.isEmpty) ? 'Ingresa tu contraseña' : null,
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 32),
               SizedBox(
-                height: 52,
+                width: double.infinity,
+                height: 64,
                 child: FilledButton(
                   onPressed: _isLoading ? null : _login,
-                  style: FilledButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
-                  child: _isLoading
-                      ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                      : const Text('INGRESAR', style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.2)),
-                ),
-              ),
-              const SizedBox(height: 24),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Text('¿No tienes cuenta?', style: TextStyle(fontSize: 13)),
-                  TextButton(
-                    onPressed: () => Navigator.push(context, RouteTransitions.slideTransition(const RegisterScreen())),
-                    child: const Text('Regístrate', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppTheme.primary,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                    elevation: 8,
+                    shadowColor: AppTheme.primary.withValues(alpha: 0.4),
                   ),
-                ],
+                  child: _isLoading
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : const Text('INICIAR SESIÓN', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16, letterSpacing: 1)),
+                ),
               ),
             ],
           ),
         ),
-      ),
+        const SizedBox(height: 40),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Text('¿No tienes cuenta?', style: TextStyle(color: AppTheme.textSecondary, fontWeight: FontWeight.w600)),
+            TextButton(
+              onPressed: () => Navigator.push(context, RouteTransitions.slideTransition(const RegisterScreen())),
+              child: const Text('Regístrate aquí', style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.w900)),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }

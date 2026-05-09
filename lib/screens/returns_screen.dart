@@ -58,11 +58,13 @@ class _ReturnsScreenState extends ConsumerState<ReturnsScreen> {
         _filteredSales = sales;
       });
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al cargar ventas: $e')),
-        );
-      }
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error al cargar ventas: $e')),
+          );
+        }
+      });
     } finally {
       if (mounted) setState(() => _isLoadingSales = false);
     }

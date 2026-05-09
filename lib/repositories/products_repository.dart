@@ -85,6 +85,7 @@ class ProductsRepository {
     String? barcode,
     String? categoryId,
     String? imageUrl,
+    double costPrice = 0.0,
   }) async {
     await _client.from('products').insert({
       'name': name,
@@ -95,6 +96,7 @@ class ProductsRepository {
       'is_active': isActive,
       'category_id': categoryId != null ? int.tryParse(categoryId) : null,
       'image_url': imageUrl,
+      'cost_price': costPrice,
     });
   }
 
@@ -108,6 +110,7 @@ class ProductsRepository {
     String? barcode,
     String? categoryId,
     String? imageUrl,
+    double costPrice = 0.0,
   }) async {
     await _client
         .from('products')
@@ -120,12 +123,17 @@ class ProductsRepository {
           'is_active': isActive,
           'category_id': categoryId != null ? int.tryParse(categoryId) : null,
           'image_url': imageUrl,
+          'cost_price': costPrice,
         })
         .eq('id', int.parse(productId));
   }
 
   Future<void> deleteProduct(String id) async {
-    await _client.from('products').delete().eq('id', int.parse(id));
+    // Instead of a hard delete, we perform a "soft delete" by deactivating it.
+    // This prevents errors if the product is already linked to sales.
+    await _client.from('products').update({
+      'is_active': false,
+    }).eq('id', int.parse(id));
   }
 
   Future<void> updateProductStock(int productId, int quantityChange) async {
@@ -238,6 +246,47 @@ class ProductsRepository {
         barcode: item['barcode'],
         categoryId: categoryId?.toString(),
       );
+    }
+  }
+
+  /// Bulk inserts products from a list of maps.
+  /// Bulk inserts products from a list of maps.
+  Future<void> bulkInsertProducts(List<Map<String, dynamic>> items) async {
+    final Map<String, Map<String, dynamic>> toUpsertMap = {};
+    final List<Map<String, dynamic>> toInsertList = [];
+
+    for (var item in items) {
+      final barcode = item['barcode']?.toString().trim();
+      final Map<String, dynamic> data = {
+        'name': item['name'],
+        'price': item['price'],
+        'stock_quantity': item['stock_quantity'],
+        'min_stock': item['min_stock'],
+        'barcode': (barcode != null && barcode.isNotEmpty) ? barcode : null,
+        'is_active': item['is_active'] ?? true,
+        'category_id': item['category_id'] != null ? int.tryParse(item['category_id'].toString()) : null,
+        'image_url': item['image_url'],
+        'cost_price': item['cost_price'] ?? 0.0,
+      };
+
+      if (barcode != null && barcode.isNotEmpty) {
+        toUpsertMap[barcode] = data;
+      } else {
+        toInsertList.add(data);
+      }
+    }
+
+    // 1. Upsert items with barcodes (updates if exists, creates if not)
+    if (toUpsertMap.isNotEmpty) {
+      await _client.from('products').upsert(
+        toUpsertMap.values.toList(),
+        onConflict: 'barcode',
+      );
+    }
+
+    // 2. Insert items without barcodes (always creates new)
+    if (toInsertList.isNotEmpty) {
+      await _client.from('products').insert(toInsertList);
     }
   }
 }

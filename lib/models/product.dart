@@ -8,6 +8,7 @@ class Product {
   final String? barcode;
   final String? categoryId;
   final String? imageUrl;
+  final double costPrice;
 
   Product({
     required this.id,
@@ -19,6 +20,7 @@ class Product {
     this.barcode,
     this.categoryId,
     this.imageUrl,
+    this.costPrice = 0.0,
   });
 
   factory Product.fromMap(Map<String, dynamic> data) {
@@ -32,6 +34,7 @@ class Product {
       barcode: data['barcode'] as String?,
       categoryId: data['category_id']?.toString(),
       imageUrl: data['image_url'] as String?,
+      costPrice: (data['cost_price'] as num?)?.toDouble() ?? 0.0,
     );
   }
 
@@ -45,6 +48,7 @@ class Product {
       'barcode': barcode,
       'category_id': categoryId != null ? int.tryParse(categoryId!) : null,
       'image_url': imageUrl,
+      'cost_price': costPrice,
     };
   }
 
@@ -58,6 +62,7 @@ class Product {
     String? barcode,
     String? categoryId,
     String? imageUrl,
+    double? costPrice,
   }) {
     return Product(
       id: id ?? this.id,
@@ -69,6 +74,7 @@ class Product {
       barcode: barcode ?? this.barcode,
       categoryId: categoryId ?? this.categoryId,
       imageUrl: imageUrl ?? this.imageUrl,
+      costPrice: costPrice ?? this.costPrice,
     );
   }
 }

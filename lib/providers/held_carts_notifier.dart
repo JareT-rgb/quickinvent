@@ -1,37 +1,44 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/cart_item.dart';
 
-class HeldCartsNotifier extends Notifier<List<List<CartItem>>> {
+class HeldCart {
+  final String id;
+  final List<CartItem> items;
+  final double totalAmount;
+  final DateTime createdAt;
+
+  HeldCart({
+    required this.id,
+    required this.items,
+    required this.totalAmount,
+    required this.createdAt,
+  });
+}
+
+class HeldCartsNotifier extends Notifier<List<HeldCart>> {
   @override
-  List<List<CartItem>> build() {
-    // The initial state is an empty list of carts.
+  List<HeldCart> build() {
     return [];
   }
 
-  // Guarda un carrito en la lista de ventas en espera
-  void holdCart(List<CartItem> cart) {
-    if (cart.isNotEmpty) {
-      state = [...state, cart];
-    }
+  void holdCart(List<CartItem> items, double total) {
+    if (items.isEmpty) return;
+    
+    final newHeldCart = HeldCart(
+      id: DateTime.now().millisecondsSinceEpoch.toString().substring(7),
+      items: List.from(items),
+      totalAmount: total,
+      createdAt: DateTime.now(),
+    );
+    
+    state = [...state, newHeldCart];
   }
 
-  // Elimina un carrito de la lista de espera y lo devuelve para ser reanudado
-  List<CartItem> resumeCart(int index) {
-    // Guardamos una referencia al carrito que vamos a devolver
-    final cartToResume = state[index];
-    // Creamos una nueva lista sin el carrito que estamos reanudando
-    state = state.where((cart) => cart != cartToResume).toList();
-    return cartToResume;
-  }
-
-  void deleteCart(int index) {
-    // Ensure the index is valid before attempting to remove.
-    if (index >= 0 && index < state.length) {
-      final updatedCarts = List<List<CartItem>>.from(state);
-      updatedCarts.removeAt(index);
-      state = updatedCarts;
-    }
+  void removeHeldCart(String id) {
+    state = state.where((cart) => cart.id != id).toList();
   }
 }
 
-final heldCartsProvider = NotifierProvider<HeldCartsNotifier, List<List<CartItem>>>(() => HeldCartsNotifier());
+final heldCartsProvider = NotifierProvider<HeldCartsNotifier, List<HeldCart>>(() {
+  return HeldCartsNotifier();
+});

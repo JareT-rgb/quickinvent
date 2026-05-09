@@ -37,12 +37,13 @@ class NumericKeypad extends StatelessWidget {
     }
   }
 
-  Widget _buildKey(String text, {Color? color, IconData? icon}) {
+  Widget _buildKey(BuildContext context, String text, {Color? color, IconData? icon}) {
+    final cs = Theme.of(context).colorScheme;
     return Expanded(
       child: Padding(
         padding: const EdgeInsets.all(4.0),
         child: Material(
-          color: color ?? AppTheme.surface,
+          color: color ?? cs.surface,
           borderRadius: AppTheme.radiusSmall,
           elevation: 1,
           child: InkWell(
@@ -74,36 +75,36 @@ class NumericKeypad extends StatelessWidget {
         Expanded(
           child: Row(
             children: [
-              _buildKey('7'),
-              _buildKey('8'),
-              _buildKey('9'),
+              _buildKey(context, '7'),
+              _buildKey(context, '8'),
+              _buildKey(context, '9'),
             ],
           ),
         ),
         Expanded(
           child: Row(
             children: [
-              _buildKey('4'),
-              _buildKey('5'),
-              _buildKey('6'),
+              _buildKey(context, '4'),
+              _buildKey(context, '5'),
+              _buildKey(context, '6'),
             ],
           ),
         ),
         Expanded(
           child: Row(
             children: [
-              _buildKey('1'),
-              _buildKey('2'),
-              _buildKey('3'),
+              _buildKey(context, '1'),
+              _buildKey(context, '2'),
+              _buildKey(context, '3'),
             ],
           ),
         ),
         Expanded(
           child: Row(
             children: [
-              _buildKey('C', color: AppTheme.error.withValues(alpha: 0.1)),
-              _buildKey('0'),
-              _buildKey('DEL', icon: Icons.backspace_outlined, color: AppTheme.warning.withValues(alpha: 0.1)),
+              _buildKey(context, 'C', color: AppTheme.error.withValues(alpha: 0.1)),
+              _buildKey(context, '0'),
+              _buildKey(context, 'DEL', icon: Icons.backspace_outlined, color: AppTheme.warning.withValues(alpha: 0.1)),
             ],
           ),
         ),

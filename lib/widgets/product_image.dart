@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../theme/app_theme.dart';
+import 'premium_widgets.dart';
 
 class ProductImage extends StatelessWidget {
   final String? imageUrl;
@@ -69,24 +70,10 @@ class ProductImage extends StatelessWidget {
   }
 
   Widget _buildLoading(double w, double h, BorderRadius radius) {
-    // Ensure width and height are finite for calculations
-    final safeW = w.isFinite ? w : 40.0;
-    final loaderSize = (safeW * 0.3).clamp(10.0, 30.0).toDouble();
-    
-    return Container(
+    return SkeletonLoader(
       width: w,
       height: h,
-      decoration: BoxDecoration(
-        color: AppTheme.primary.withValues(alpha: 0.05),
-        borderRadius: radius,
-      ),
-      child: Center(
-        child: SizedBox(
-          width: loaderSize,
-          height: loaderSize,
-          child: const CircularProgressIndicator(strokeWidth: 2),
-        ),
-      ),
+      borderRadius: radius.topLeft.x,
     );
   }
 }

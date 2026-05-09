@@ -6,7 +6,7 @@ class CartItem {
 
   CartItem({required this.product, this.quantity = 1});
 
-  double get subtotal => product.price * quantity;
+  double get subtotal => (product.price * quantity * 100).roundToDouble() / 100;
 
   CartItem copyWith({Product? product, int? quantity}) {
     return CartItem(

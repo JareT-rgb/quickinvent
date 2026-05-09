@@ -1,13 +1,19 @@
 import 'dart:math';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/sale.dart';
 import '../models/sale_detail_item.dart';
+import '../database/local_db.dart';
+import 'package:drift/drift.dart' as drift;
 
 
 class SalesRepository {
-  final _client = Supabase.instance.client;
+  final SupabaseClient _client;
+  final AppDatabase? _db;
+
+  SalesRepository(this._client, [this._db]);
 
   List<Sale> getAllSales() {
     // placeholder para providers síncronos; idealmente se usaría un FutureProvider
@@ -41,83 +47,76 @@ class SalesRepository {
     required double receivedAmount,
     required double change,
     required List<SaleDetailItem> items,
+    String? customerId,
   }) async {
     final user = _client.auth.currentUser;
-    final saleData = {
-      'total_amount': totalAmount,
-      'payment_method': paymentMethod,
-      'received_amount': receivedAmount,
-      'change': change,
-      'item_count': items.fold<int>(0, (sum, i) => sum + i.quantity),
-      if (user != null) 'user_id': user.id,
-    };
+    
+    // 1. Save Directly to Supabase
+    try {
+      final saleData = {
+        'total_amount': totalAmount,
+        'payment_method': paymentMethod,
+        'received_amount': receivedAmount,
+        'change': change,
+        'item_count': items.fold<int>(0, (sum, i) => sum + i.quantity),
+        if (user != null) 'user_id': user.id,
+        if (customerId != null) 'customer_id': int.tryParse(customerId ?? ''),
+      };
 
-    final saleResponse = await _client
-        .from('sales')
-        .insert(saleData)
-        .select()
-        .single();
-    final saleId = saleResponse['id'] as int;
+      final saleResponse = await _client.from('sales').insert(saleData).select().single();
+      final remoteId = saleResponse['id'];
 
-    final details = items
-        .map(
-          (i) => {
-            'sale_id': saleId,
-            'product_name': i.productName,
-            'quantity': i.quantity,
-            'price_at_sale': i.priceAtSale,
-            'subtotal': i.subtotal,
-          },
-        )
-        .toList();
+      final details = items.map((i) => {
+        'sale_id': remoteId,
+        'product_id': i.productId != null ? int.tryParse(i.productId!) : null,
+        'product_name': i.productName,
+        'quantity': i.quantity,
+        'price_at_sale': i.priceAtSale,
+        'cost_price_at_sale': i.costPriceAtSale,
+        'subtotal': i.subtotal,
+      }).toList();
 
-    if (details.isNotEmpty) {
-      await _client.from('sale_items').insert(details);
+      if (details.isNotEmpty) {
+        await _client.from('sale_items').insert(details);
+      }
 
-      // Deduct stock for each product sold
+      // 2. Update customer balance if payment is on credit
+      if (paymentMethod == 'Crédito' && customerId != null) {
+        final customerResponse = await _client
+            .from('customers')
+            .select('balance')
+            .eq('id', int.parse(customerId))
+            .single();
+        
+        final currentBalance = (customerResponse['balance'] as num).toDouble();
+        await _client
+            .from('customers')
+            .update({'balance': currentBalance + totalAmount})
+            .eq('id', int.parse(customerId));
+      }
+
+      // 3. Deduct stock (simplified for online only)
       for (final item in items) {
         if (item.productId != null) {
-          // If we have the ID, we can update directly using RPC-like logic or fetch and update
-          // Here we fetch current stock by ID to ensure we have the latest value
-          final productResponse = await _client
-              .from('products')
-              .select('stock_quantity')
-              .eq('id', item.productId!)
-              .maybeSingle();
-
-          if (productResponse != null) {
-            final currentStock = productResponse['stock_quantity'] as int;
-            final newStock = max(0, currentStock - item.quantity);
-            
-            await _client
-                .from('products')
-                .update({'stock_quantity': newStock})
-                .eq('id', item.productId!);
-          }
-        } else {
-          // Fallback to name if ID is missing (legacy items)
-          final productResponse = await _client
-              .from('products')
-              .select('id, stock_quantity')
-              .eq('name', item.productName)
-              .limit(1)
-              .maybeSingle();
-
-          if (productResponse != null) {
-            final currentStock = productResponse['stock_quantity'] as int;
-            final newStock = max(0, currentStock - item.quantity);
-            
-            await _client
-                .from('products')
-                .update({'stock_quantity': newStock})
-                .eq('id', productResponse['id']);
-          }
+          await _client.rpc('deduct_stock', params: {
+            'p_id': int.tryParse(item.productId!),
+            'p_qty': item.quantity,
+          }).catchError((_) => null); // Silent error if RPC missing
         }
       }
-    }
 
-    final fullSale = await getSaleById(saleId);
-    return fullSale!;
+      return Sale.fromMap(saleResponse);
+    } catch (e) {
+      print('Error al crear venta en Supabase: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> deleteSale(int id) async {
+    // Borrado silencioso: solo quita el registro del historial
+    // No afecta stock ni saldos de clientes
+    await _client.from('sale_items').delete().eq('sale_id', id);
+    await _client.from('sales').delete().eq('id', id);
   }
 
   Stream<List<Map<String, dynamic>>> getSalesStream() {
@@ -396,6 +395,83 @@ class SalesRepository {
     };
   }
 
+  Future<List<MapEntry<int, double>>> getHourlySales() async {
+    final now = DateTime.now();
+    final startOfDay = DateTime(now.year, now.month, now.day).toIso8601String();
+    
+    final response = await _client
+        .from('sales')
+        .select('created_at, total_amount')
+        .gte('created_at', startOfDay);
+
+    final result = List.generate(24, (i) => MapEntry(i, 0.0));
+    if (response == null) return result;
+
+    for (final row in response as List) {
+      final date = DateTime.parse(row['created_at'] as String).toLocal();
+      final hour = date.hour;
+      result[hour] = MapEntry(hour, result[hour].value + (row['total_amount'] as num).toDouble());
+    }
+    return result;
+  }
+
+  Future<Map<String, double>> getCategorySalesDistribution() async {
+    final response = await _client
+        .from('sale_items')
+        .select('product_id, quantity, price_at_sale');
+    
+    final categoryTotals = <String, double>{};
+    if (response == null) return categoryTotals;
+
+    // We need to map product_id to category name. 
+    // For efficiency in this demo, we'll fetch products and their categories.
+    final productsResponse = await _client
+        .from('products')
+        .select('id, categories(name)');
+    
+    final productToCategory = <int, String>{};
+    for (final p in productsResponse as List) {
+      final cat = p['categories'];
+      productToCategory[p['id']] = cat != null ? cat['name'] : 'Sin Categoría';
+    }
+
+    for (final row in response as List) {
+      final pid = row['product_id'];
+      if (pid == null) continue;
+      
+      final catName = productToCategory[pid] ?? 'Desconocido';
+      final total = (row['quantity'] as int) * (row['price_at_sale'] as num).toDouble();
+      categoryTotals[catName] = (categoryTotals[catName] ?? 0.0) + total;
+    }
+    return categoryTotals;
+  }
+
+  Future<Map<String, double>> getProfitStats() async {
+    final response = await _client
+        .from('sale_items')
+        .select('quantity, price_at_sale, cost_price_at_sale');
+    
+    double totalRevenue = 0;
+    double totalCost = 0;
+    
+    if (response == null) return {'revenue': 0, 'cost': 0, 'profit': 0};
+    
+    for (final row in response as List) {
+      final qty = row['quantity'] as int;
+      final price = (row['price_at_sale'] as num).toDouble();
+      final cost = (row['cost_price_at_sale'] as num?)?.toDouble() ?? 0.0;
+      
+      totalRevenue += price * qty;
+      totalCost += cost * qty;
+    }
+    
+    return {
+      'revenue': totalRevenue,
+      'cost': totalCost,
+      'profit': totalRevenue - totalCost,
+    };
+  }
+
   Future<List<Map<String, dynamic>>> getDeadStock(
     List<String> allProductNames,
   ) async {
@@ -426,7 +502,13 @@ class SalesRepository {
   }
 }
 
-final salesRepositoryProvider = Provider((ref) => SalesRepository());
+final salesRepositoryProvider = Provider((ref) {
+  if (kIsWeb) {
+    return SalesRepository(Supabase.instance.client);
+  }
+  final db = ref.watch(localDbProvider);
+  return SalesRepository(Supabase.instance.client, db);
+});
 
 final salesStreamProvider = StreamProvider<List<Map<String, dynamic>>>((ref) {
   return ref.read(salesRepositoryProvider).getSalesStream();
@@ -444,12 +526,12 @@ final expensesStreamProvider = StreamProvider<List<Map<String, dynamic>>>((ref) 
 });
 
 final salesProvider = FutureProvider<List<Sale>>((ref) async {
-  ref.watch(salesStreamProvider); // Auto-refresh when sales change in real-time
+  ref.watch(salesStreamProvider);
   return ref.read(salesRepositoryProvider).fetchAllSales();
 });
 
 final salesStatsProvider = FutureProvider<Map<String, dynamic>>((ref) async {
-  ref.watch(salesStreamProvider); // Invalidate when sales change
+  ref.watch(salesStreamProvider);
   return ref.read(salesRepositoryProvider).getStats();
 });
 
@@ -457,24 +539,29 @@ class ReportData {
   final Map<String, dynamic> stats;
   final List<MapEntry<DateTime, double>> monthly;
   final List<MapEntry<DateTime, double>> daily;
+  final List<MapEntry<int, double>> hourly;
   final Map<String, double> paymentMethods;
+  final Map<String, double> categorySales;
   final List<MapEntry<String, int>> topProducts;
   final List<Map<String, dynamic>> cashCuts;
   final List<Map<String, dynamic>> expenses;
+  final double estimatedProfit;
 
   ReportData({
     required this.stats,
     required this.monthly,
     required this.daily,
+    required this.hourly,
     required this.paymentMethods,
+    required this.categorySales,
     required this.topProducts,
     required this.cashCuts,
     required this.expenses,
+    required this.estimatedProfit,
   });
 }
 
 final reportDataProvider = FutureProvider<ReportData>((ref) async {
-  // Watch all relevant streams to trigger updates
   ref.watch(salesStreamProvider);
   ref.watch(cashCutsStreamProvider);
   ref.watch(expensesStreamProvider);
@@ -486,24 +573,29 @@ final reportDataProvider = FutureProvider<ReportData>((ref) async {
     final monthly = await repo.getMonthlyRevenueLastNMonths(6);
     final now = DateTime.now();
     final daily = await repo.getDailySalesForMonth(now.year, now.month);
+    final hourly = await repo.getHourlySales();
     final paymentMethods = await repo.getPaymentMethodDistribution();
+    final categorySales = await repo.getCategorySalesDistribution();
     final topProducts = await repo.getTopProducts(limit: 5);
     final cashCuts = await repo.fetchCashCuts();
     final expenses = await repo.fetchExpenses();
+    final profitStats = await repo.getProfitStats();
 
     return ReportData(
       stats: stats,
       monthly: monthly,
       daily: daily,
+      hourly: hourly,
       paymentMethods: paymentMethods,
+      categorySales: categorySales,
       topProducts: topProducts,
       cashCuts: cashCuts,
       expenses: expenses,
+      estimatedProfit: profitStats['profit']! - (stats['todayExpenses'] ?? 0),
     );
   } catch (e, stack) {
     print('Error generating report data: $e');
     print(stack);
-    // Return a default empty ReportData instead of throwing
     return ReportData(
       stats: {
         'totalRevenue': 0.0,
@@ -514,10 +606,13 @@ final reportDataProvider = FutureProvider<ReportData>((ref) async {
       },
       monthly: [],
       daily: [],
+      hourly: [],
       paymentMethods: {},
+      categorySales: {},
       topProducts: [],
       cashCuts: [],
       expenses: [],
+      estimatedProfit: 0.0,
     );
   }
 });

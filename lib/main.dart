@@ -3,9 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'providers/theme_notifier.dart';
+import 'providers/shared_prefs_provider.dart';
 import 'theme/app_theme.dart';
 import 'widgets/auth_gate.dart';
 import 'package:intl/date_symbol_data_local.dart';
+
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -31,6 +33,9 @@ class MyApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Start synchronization service
+    // ref.read(syncServiceProvider).start();
+    
     final themeMode = ref.watch(themeProvider);
     return MaterialApp(
       title: 'QuickInvent',

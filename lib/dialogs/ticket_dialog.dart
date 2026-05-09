@@ -6,6 +6,7 @@ import '../theme/app_theme.dart';
 import '../models/sale.dart';
 import '../models/sale_detail_item.dart';
 import '../repositories/sales_repository.dart';
+import '../providers/app_settings_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
@@ -64,6 +65,7 @@ class _TicketDialogState extends ConsumerState<TicketDialog> {
         NumberFormat.currency(locale: 'es_MX', symbol: '\$');
     final dateFormat = DateFormat('dd/MM/yyyy HH:mm');
     final items = _sale!.items ?? [];
+    final settings = ref.watch(appSettingsProvider);
 
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(0)),
@@ -76,10 +78,10 @@ class _TicketDialogState extends ConsumerState<TicketDialog> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             // Header
-            const Text(
-              'QUICKINVENT',
+            Text(
+              settings.businessName.toUpperCase(),
               textAlign: TextAlign.center,
-              style: TextStyle(
+              style: const TextStyle(
                 fontFamily: 'Courier',
                 fontWeight: FontWeight.bold,
                 fontSize: 22,
@@ -105,6 +107,14 @@ class _TicketDialogState extends ConsumerState<TicketDialog> {
                 color: Colors.black54,
               ),
             ),
+            if (_sale!.paymentMethod == 'Crédito')
+              Text(
+                'TIPO: CRÉDITO (FIADO)',
+                style: const TextStyle(
+                    fontFamily: 'Courier',
+                    fontWeight: FontWeight.bold,
+                    color: Colors.red),
+              ),
             const SizedBox(height: 16),
             const Divider(color: Colors.black, thickness: 1),
             const SizedBox(height: 8),
@@ -121,55 +131,62 @@ class _TicketDialogState extends ConsumerState<TicketDialog> {
                   ),
                 ),
               )
-            else if (items.isEmpty)
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 12),
-                child: Text(
-                  'Sin artículos registrados',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                      fontFamily: 'Courier',
-                      color: Colors.black54,
-                      fontSize: 12),
-                ),
-              )
-            else
+            else if (items.isNotEmpty)
               ConstrainedBox(
                 constraints: const BoxConstraints(maxHeight: 280),
                 child: SingleChildScrollView(
                   child: Column(
                     children: items.map((item) {
                       return Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 3),
+                        padding: const EdgeInsets.symmetric(vertical: 4),
                         child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              '${item.quantity}x ',
-                              style: const TextStyle(
-                                  fontFamily: 'Courier',
-                                  color: Colors.black,
-                                  fontWeight: FontWeight.bold),
-                            ),
-                            Expanded(
-                              child: Text(
-                                item.productName,
+                            Text('${item.quantity}x',
                                 style: const TextStyle(
                                     fontFamily: 'Courier',
-                                    color: Colors.black),
-                              ),
+                                    fontWeight: FontWeight.bold)),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(item.productName ?? 'Producto',
+                                  style: const TextStyle(fontFamily: 'Courier')),
                             ),
-                            Text(
-                              currencyFormat.format(item.subtotal),
-                              style: const TextStyle(
-                                  fontFamily: 'Courier',
-                                  color: Colors.black),
-                            ),
+                            Text('\$${item.subtotal.toStringAsFixed(2)}',
+                                style: const TextStyle(fontFamily: 'Courier')),
                           ],
                         ),
                       );
                     }).toList(),
                   ),
+                ),
+              )
+            else
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 20),
+                child: Column(
+                  children: [
+                    Text(
+                      (_sale!.notes?.contains('Abono') ?? false)
+                          ? '*** ABONO A CUENTA ***'
+                          : 'Sin artículos registrados',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: (_sale!.notes?.contains('Abono') ?? false)
+                            ? AppTheme.success
+                            : null,
+                      ),
+                    ),
+                    if (_sale!.notes != null && _sale!.notes!.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: Text(
+                          _sale!.notes!,
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(fontStyle: FontStyle.italic),
+                        ),
+                      ),
+                  ],
                 ),
               ),
 
@@ -229,11 +246,20 @@ class _TicketDialogState extends ConsumerState<TicketDialog> {
                         fontFamily: 'Courier', color: Colors.black)),
               ],
             ),
+            if (_sale!.paymentMethod == 'Transferencia' && settings.transferAccount.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text('BANCO: ${settings.transferBank}', 
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontFamily: 'Courier', fontSize: 10, color: Colors.black54)),
+              Text('CUENTA: ${settings.transferAccount}', 
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontFamily: 'Courier', fontSize: 10, color: Colors.black54)),
+            ],
             const SizedBox(height: 20),
-            const Text(
-              '¡Gracias por su compra!',
+            Text(
+              settings.footerMessage,
               textAlign: TextAlign.center,
-              style: TextStyle(
+              style: const TextStyle(
                   fontFamily: 'Courier',
                   fontWeight: FontWeight.bold,
                   color: Colors.black),
@@ -258,7 +284,7 @@ class _TicketDialogState extends ConsumerState<TicketDialog> {
                   onPressed: _isLoading
                       ? null
                       : () => _printTicket(
-                          _sale!, currencyFormat, dateFormat),
+                          _sale!, currencyFormat, dateFormat, settings),
                   icon: const Icon(Icons.print),
                   label: const Text('Imprimir'),
                   style: ElevatedButton.styleFrom(
@@ -276,19 +302,23 @@ class _TicketDialogState extends ConsumerState<TicketDialog> {
 }
 
 
-Future<void> _printTicket(Sale sale, NumberFormat currencyFmt, DateFormat dateFmt) async {
+Future<void> _printTicket(Sale sale, NumberFormat currencyFmt, DateFormat dateFmt, AppSettings settings) async {
   final pdf = pw.Document();
 
   pdf.addPage(
     pw.Page(
-      pageFormat: const PdfPageFormat(80 * PdfPageFormat.mm, double.infinity, marginAll: 5 * PdfPageFormat.mm),
+      pageFormat: settings.paperWidth == 58 
+          ? const PdfPageFormat(58 * PdfPageFormat.mm, double.infinity, marginAll: 2 * PdfPageFormat.mm)
+          : const PdfPageFormat(80 * PdfPageFormat.mm, double.infinity, marginAll: 5 * PdfPageFormat.mm),
       build: (pw.Context context) {
         return pw.Column(
           crossAxisAlignment: pw.CrossAxisAlignment.start,
           children: [
             pw.Center(
-              child: pw.Text('QUICKINVENT', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 18)),
+              child: pw.Text(settings.businessName, style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 18)),
             ),
+            if (settings.businessAddress.isNotEmpty)
+              pw.Center(child: pw.Text(settings.businessAddress, style: const pw.TextStyle(fontSize: 8))),
             pw.SizedBox(height: 5),
             pw.Center(child: pw.Text('Ticket #${sale.id}', style: const pw.TextStyle(fontSize: 10))),
             pw.Center(child: pw.Text(dateFmt.format(sale.createdAt), style: const pw.TextStyle(fontSize: 9))),
@@ -342,9 +372,9 @@ Future<void> _printTicket(Sale sale, NumberFormat currencyFmt, DateFormat dateFm
               ],
             ),
             pw.SizedBox(height: 15),
-            pw.Center(child: pw.Text('¡Gracias por su compra!', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10))),
+            pw.Center(child: pw.Text(settings.footerMessage, style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10))),
             pw.SizedBox(height: 5),
-            pw.Center(child: pw.Text('www.quickinvent.com', style: const pw.TextStyle(fontSize: 8))),
+            pw.Center(child: pw.Text('QuickInvent POS', style: const pw.TextStyle(fontSize: 8))),
           ],
         );
       },

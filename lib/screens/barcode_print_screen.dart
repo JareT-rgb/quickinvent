@@ -3,6 +3,7 @@ import 'package:barcode_widget/barcode_widget.dart';
 import 'package:printing/printing.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
+import 'package:animate_do/animate_do.dart';
 import '../models/product.dart';
 import '../theme/app_theme.dart';
 
@@ -13,44 +14,61 @@ class BarcodePrintScreen extends StatelessWidget {
 
   Future<void> _printLabels() async {
     final doc = pw.Document();
-    
     final productsWithBarcode = products.where((p) => p.barcode != null && p.barcode!.isNotEmpty).toList();
+
+    // Dimensiones en puntos (1cm = 28.346 points)
+    const double labelWidth = 6.0 * 28.346;
+    const double labelHeight = 2.0 * 28.346;
 
     doc.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
-        margin: const pw.EdgeInsets.all(20),
+        margin: const pw.EdgeInsets.all(15),
         build: (pw.Context context) {
           return [
-            pw.Header(
-              level: 0,
-              child: pw.Text('Etiquetas de Inventario - QuickInvent', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 18)),
-            ),
-            pw.SizedBox(height: 20),
-            pw.GridView(
-              crossAxisCount: 3,
-              childAspectRatio: 1.5,
+            pw.Wrap(
+              spacing: 5,
+              runSpacing: 5,
               children: productsWithBarcode.map((p) {
                 return pw.Container(
-                  padding: const pw.EdgeInsets.all(10),
+                  width: labelWidth,
+                  height: labelHeight,
+                  padding: const pw.EdgeInsets.symmetric(horizontal: 5, vertical: 3),
                   decoration: pw.BoxDecoration(
-                    border: pw.Border.all(color: PdfColors.grey300),
+                    border: pw.Border.all(color: PdfColors.grey300, width: 0.5),
                   ),
-                  child: pw.Column(
-                    mainAxisAlignment: pw.MainAxisAlignment.center,
+                  child: pw.Row(
                     children: [
-                      pw.Text(p.name, style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold), textAlign: pw.TextAlign.center),
-                      pw.SizedBox(height: 5),
-                      pw.BarcodeWidget(
-                        barcode: pw.Barcode.code128(),
-                        data: p.barcode!,
-                        width: 100,
-                        height: 40,
-                        drawText: true,
-                        textStyle: pw.TextStyle(fontSize: 8),
+                      pw.Expanded(
+                        flex: 2,
+                        child: pw.Column(
+                          mainAxisAlignment: pw.MainAxisAlignment.center,
+                          crossAxisAlignment: pw.CrossAxisAlignment.start,
+                          children: [
+                            pw.Text(
+                              p.name,
+                              style: pw.TextStyle(fontSize: 7, fontWeight: pw.FontWeight.bold),
+                              maxLines: 2,
+                              overflow: pw.TextOverflow.clip,
+                            ),
+                            pw.SizedBox(height: 2),
+                            pw.Text(
+                              '\$${p.price}',
+                              style: const pw.TextStyle(fontSize: 8),
+                            ),
+                          ],
+                        ),
                       ),
-                      pw.SizedBox(height: 5),
-                      pw.Text('\$ ${p.price}', style: const pw.TextStyle(fontSize: 9)),
+                      pw.SizedBox(width: 5),
+                      pw.Expanded(
+                        flex: 3,
+                        child: pw.BarcodeWidget(
+                          barcode: pw.Barcode.code128(),
+                          data: p.barcode!,
+                          drawText: true,
+                          textStyle: const pw.TextStyle(fontSize: 6),
+                        ),
+                      ),
                     ],
                   ),
                 );
@@ -107,46 +125,94 @@ class BarcodePrintScreen extends StatelessWidget {
                 ),
                 Expanded(
                   child: GridView.builder(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(24),
                     gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: MediaQuery.of(context).size.width > 900 ? 5 : 2,
-                      crossAxisSpacing: 12,
-                      mainAxisSpacing: 12,
-                      childAspectRatio: 1.2,
+                      crossAxisCount: MediaQuery.of(context).size.width > 1200 ? 4 : (MediaQuery.of(context).size.width > 800 ? 3 : 1),
+                      crossAxisSpacing: 20,
+                      mainAxisSpacing: 20,
+                      childAspectRatio: 3.0, // 6:2 ratio
                     ),
                     itemCount: productsWithBarcode.length,
                     itemBuilder: (context, index) {
                       final p = productsWithBarcode[index];
-                      return Card(
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          side: BorderSide(color: Colors.grey.shade300),
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.all(8.0),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                p.name,
-                                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                                textAlign: TextAlign.center,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
+                      return ZoomIn(
+                        duration: Duration(milliseconds: 300 + (index * 50)),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.grey.shade200),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.03),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
                               ),
-                              const SizedBox(height: 8),
-                              BarcodeWidget(
-                                barcode: Barcode.code128(),
-                                data: p.barcode!,
-                                width: double.infinity,
-                                height: 40,
-                                drawText: true,
-                                style: const TextStyle(fontSize: 10),
-                              ),
-                              const SizedBox(height: 4),
-                              Text('\$${p.price}', style: const TextStyle(fontSize: 11, color: AppTheme.primary, fontWeight: FontWeight.bold)),
                             ],
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 8,
+                                  color: AppTheme.primary.withValues(alpha: 0.7),
+                                ),
+                                Expanded(
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(12.0),
+                                    child: Row(
+                                      children: [
+                                        Expanded(
+                                          flex: 2,
+                                          child: Column(
+                                            mainAxisAlignment: MainAxisAlignment.center,
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                p.name,
+                                                style: const TextStyle(
+                                                  fontSize: 13,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: AppTheme.textPrimary,
+                                                ),
+                                                maxLines: 2,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                              const SizedBox(height: 4),
+                                              Text(
+                                                '\$${p.price.toStringAsFixed(2)}',
+                                                style: const TextStyle(
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: AppTheme.primary,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          flex: 3,
+                                          child: Column(
+                                            mainAxisAlignment: MainAxisAlignment.center,
+                                            children: [
+                                              BarcodeWidget(
+                                                barcode: Barcode.code128(),
+                                                data: p.barcode!,
+                                                height: 45,
+                                                drawText: true,
+                                                style: const TextStyle(fontSize: 9),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       );

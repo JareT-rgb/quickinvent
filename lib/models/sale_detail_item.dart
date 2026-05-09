@@ -3,6 +3,7 @@ class SaleDetailItem {
   final String productName;
   final int quantity;
   final double priceAtSale;
+  final double costPriceAtSale;
   final double subtotal;
 
   SaleDetailItem({
@@ -10,6 +11,7 @@ class SaleDetailItem {
     required this.productName,
     required this.quantity,
     required this.priceAtSale,
+    this.costPriceAtSale = 0.0,
     required this.subtotal,
   });
 
@@ -23,6 +25,7 @@ class SaleDetailItem {
           (map['price_at_sale'] as num?)?.toDouble() ??
           (map['price'] as num?)?.toDouble() ??
           0.0,
+      costPriceAtSale: (map['cost_price_at_sale'] as num?)?.toDouble() ?? 0.0,
       subtotal: (map['subtotal'] as num?)?.toDouble() ?? 0.0,
     );
   }
@@ -33,6 +36,7 @@ class SaleDetailItem {
       'product_name': productName,
       'quantity': quantity,
       'price_at_sale': priceAtSale,
+      'cost_price_at_sale': costPriceAtSale,
       'subtotal': subtotal,
     };
   }
@@ -49,6 +53,7 @@ class SaleDetailItem {
       productName: productName ?? this.productName,
       quantity: quantity ?? this.quantity,
       priceAtSale: priceAtSale ?? this.priceAtSale,
+      costPriceAtSale: costPriceAtSale ?? this.costPriceAtSale,
       subtotal: subtotal ?? this.subtotal,
     );
   }

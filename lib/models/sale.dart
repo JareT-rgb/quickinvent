@@ -9,6 +9,8 @@ class Sale {
   final double change;
   final DateTime createdAt;
   final int? itemCount;
+  final String? notes;
+  final String? customerId;
 
   Sale({
     required this.id,
@@ -19,6 +21,8 @@ class Sale {
     this.change = 0.0,
     required this.createdAt,
     this.itemCount,
+    this.notes,
+    this.customerId,
   });
 
   factory Sale.fromMap(Map<String, dynamic> data) {
@@ -52,6 +56,8 @@ class Sale {
       change: (data['change'] as num?)?.toDouble() ?? 0.0,
       createdAt: parsedDate,
       itemCount: data['item_count'] as int? ?? parsedItems?.length,
+      notes: data['notes'] as String?,
+      customerId: data['customer_id']?.toString() ?? data['customerId']?.toString(),
     );
   }
 
@@ -65,6 +71,8 @@ class Sale {
       'change': change,
       'created_at': createdAt.toIso8601String(),
       'item_count': itemCount ?? items?.length ?? 0,
+      'notes': notes,
+      'customer_id': customerId,
     };
   }
 
@@ -87,6 +95,7 @@ class Sale {
       change: change ?? this.change,
       createdAt: createdAt ?? this.createdAt,
       itemCount: itemCount ?? this.itemCount,
+      customerId: customerId ?? this.customerId,
     );
   }
 }

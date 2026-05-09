@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:animate_do/animate_do.dart';
 import '../repositories/sales_repository.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_dialog.dart';
+import '../widgets/animated_pressable.dart';
+import '../dialogs/held_carts_dialog.dart';
 
 class CashRegisterScreen extends ConsumerStatefulWidget {
   const CashRegisterScreen({super.key});
@@ -41,27 +44,21 @@ class _CashRegisterScreenState extends ConsumerState<CashRegisterScreen> {
     try {
       final stats = await ref.read(salesRepositoryProvider).getStats();
       setState(() {
-        _expectedCash = stats['todayCash'] as double;
+        _expectedCash = (stats['todayCash'] as num).toDouble();
         _isLoading = false;
       });
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al cargar ventas: $e')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
       }
     }
   }
 
   double get _calculatedTotal {
-    if (_useManualInput) {
-      return (double.tryParse(_manualInputController.text) ?? 0.0);
-    }
+    if (_useManualInput) return (double.tryParse(_manualInputController.text) ?? 0.0);
     double total = 0;
-    _counts.forEach((value, qty) {
-      total += value * qty;
-    });
+    _counts.forEach((value, qty) => total += value * qty);
     return total;
   }
 
@@ -72,132 +69,6 @@ class _CashRegisterScreenState extends ConsumerState<CashRegisterScreen> {
     super.dispose();
   }
 
-  Future<void> _showAddExpenseDialog() async {
-    final amountController = TextEditingController();
-    final descController = TextEditingController();
-    bool isSavingExpense = false;
-
-    await showDialog(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AppDialog(
-          headerIcon: Icons.money_off_rounded,
-          headerColor: AppTheme.error,
-          title: 'Registrar Gasto',
-          subtitle: 'Este monto se restará del efectivo esperado',
-          footer: AppDialogFooterButtons(
-            actionLabel: 'Registrar',
-            actionIcon: Icons.check,
-            actionColor: AppTheme.error,
-            isLoading: isSavingExpense,
-            onAction: () async {
-              if (amountController.text.isEmpty || descController.text.isEmpty) return;
-              setDialogState(() => isSavingExpense = true);
-              try {
-                await ref.read(salesRepositoryProvider).createExpense(
-                  amount: double.parse(amountController.text),
-                  description: descController.text,
-                );
-                if (context.mounted) {
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Gasto registrado')),
-                  );
-                  _loadTodayCashSales();
-                }
-              } catch (e) {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Error: $e'), backgroundColor: AppTheme.error),
-                  );
-                }
-              } finally {
-                setDialogState(() => isSavingExpense = false);
-              }
-            },
-          ),
-          body: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: amountController,
-                  keyboardType: TextInputType.number,
-                  decoration: appInputDecoration(context, label: 'Monto', icon: Icons.attach_money),
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: descController,
-                  decoration: appInputDecoration(context, label: 'Descripción', icon: Icons.description_outlined, hint: 'Ej: Pago de luz, Proveedor Coca-Cola'),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Future<void> _performCashCut() async {
-    if (_calculatedTotal == 0 && !_useManualInput) {
-       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Por favor, ingresa el dinero contado antes de guardar')),
-      );
-      return;
-    }
-
-    setState(() => _isSaving = true);
-    
-    try {
-      final repo = ref.read(salesRepositoryProvider);
-      final realCash = _calculatedTotal;
-      final totalExpected = _expectedCash + _startingCash;
-      final diff = realCash - totalExpected;
-
-      // Convert Map<double, int> to Map<String, int> for JSON storage
-      final denominationsJson = _counts.map((key, value) => MapEntry(key.toString(), value));
-
-      await repo.saveCashCut(
-        expectedCash: _expectedCash,
-        startingCash: _startingCash,
-        actualCash: realCash,
-        difference: diff,
-        denominations: denominationsJson,
-      );
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Row(
-              children: [
-                Icon(Icons.check_circle, color: Colors.white),
-                SizedBox(width: 10),
-                Text('Corte de caja registrado exitosamente'),
-              ],
-            ),
-            backgroundColor: AppTheme.success,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-        setState(() {
-          _isSaving = false;
-          _counts.updateAll((key, value) => 0);
-          _manualInputController.clear();
-          _startingCashController.text = '0';
-        });
-        _loadTodayCashSales();
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _isSaving = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al guardar el corte: $e'), backgroundColor: AppTheme.error),
-        );
-      }
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     if (_isLoading) return const Center(child: CircularProgressIndicator());
@@ -206,302 +77,392 @@ class _CashRegisterScreenState extends ConsumerState<CashRegisterScreen> {
     final totalExpected = _expectedCash + _startingCash;
     final diff = realCash - totalExpected;
     final format = NumberFormat.currency(locale: 'es_MX', symbol: '\$');
-    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: cs.surface,
-      body: RefreshIndicator(
-        onRefresh: _loadTodayCashSales,
-        child: CustomScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          slivers: [
-            SliverAppBar.large(
-              title: const Text('Arqueo de Caja', style: TextStyle(fontWeight: FontWeight.bold)),
-              backgroundColor: cs.surface,
-              surfaceTintColor: Colors.transparent,
-              automaticallyImplyLeading: false,
-              actions: [
-                TextButton.icon(
-                  onPressed: _showAddExpenseDialog,
-                  icon: const Icon(Icons.remove_circle_outline, color: AppTheme.error),
-                  label: const Text('Gasto', style: TextStyle(color: AppTheme.error, fontWeight: FontWeight.bold)),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.refresh),
-                  onPressed: _loadTodayCashSales,
-                ),
-                const SizedBox(width: 8),
-              ],
-            ),
-            SliverPadding(
-              padding: const EdgeInsets.all(24),
-              sliver: SliverList(
-                delegate: SliverChildListDelegate([
-                  _buildAccountingHeader(format, totalExpected, realCash, diff),
-                  const SizedBox(height: 32),
-                  
-                  _buildSectionTitle('Configuración Inicial'),
-                  const SizedBox(height: 12),
-                  _buildStartingCashField(cs),
-                  const SizedBox(height: 32),
+      backgroundColor: isDark ? AppTheme.backgroundDark : AppTheme.backgroundLight,
+      body: CustomScrollView(
+        physics: const BouncingScrollPhysics(),
+        slivers: [
+          _buildSliverAppBar(),
+          SliverPadding(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            sliver: SliverList(
+              delegate: SliverChildListDelegate([
+                _buildDynamicSummary(format, totalExpected, realCash, diff),
+                const SizedBox(height: 32),
+                
+                _buildConfigCard(isDark),
+                const SizedBox(height: 32),
 
-                  _buildModeSelector(cs),
-                  const SizedBox(height: 24),
-                  
-                  if (_useManualInput)
-                    _buildManualInputSection(cs)
-                  else ...[
-                    _buildDenominationGrid('Billetes', _counts.keys.where((v) => v >= 20).toList()),
-                    const SizedBox(height: 32),
-                    _buildDenominationGrid('Monedas', _counts.keys.where((v) => v < 20).toList()),
-                  ],
-                  
-                  const SizedBox(height: 48),
-                  _buildFooterButton(),
-                  const SizedBox(height: 60),
-                ]),
-              ),
+                _buildModeSelector(isDark),
+                const SizedBox(height: 24),
+                
+                if (_useManualInput)
+                  _buildManualInputSection(isDark)
+                else ...[
+                  _buildDenominationSection('Billetes', _counts.keys.where((v) => v >= 20).toList(), isDark),
+                  const SizedBox(height: 32),
+                  _buildDenominationSection('Monedas', _counts.keys.where((v) => v < 20).toList(), isDark),
+                ],
+                
+                const SizedBox(height: 48),
+                _buildFinalizeButton(),
+                const SizedBox(height: 100),
+              ]),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildAccountingHeader(NumberFormat format, double expected, double real, double diff) {
-    final cs = Theme.of(context).colorScheme;
-    final color = diff == 0 ? AppTheme.success : (diff > 0 ? AppTheme.info : AppTheme.error);
-
-    return Column(
-      children: [
-        Row(
-          children: [
-            Expanded(child: _buildSummaryItem('Ventas Hoy', format.format(_expectedCash), Icons.sell_outlined, cs.primary)),
-            const SizedBox(width: 16),
-            Expanded(child: _buildSummaryItem('Fondo Inicial', format.format(_startingCash), Icons.storefront_outlined, AppTheme.info)),
-          ],
+  Widget _buildSliverAppBar() {
+    return SliverAppBar.large(
+      title: const Text('Cierre de Caja'),
+      backgroundColor: Colors.transparent,
+      surfaceTintColor: Colors.transparent,
+      automaticallyImplyLeading: false,
+      actions: [
+        TextButton.icon(
+          onPressed: _showAddExpenseDialog,
+          icon: const Icon(Icons.remove_circle_outline, color: AppTheme.error, size: 18),
+          label: const Text('GASTO', style: TextStyle(color: AppTheme.error, fontWeight: FontWeight.w900, fontSize: 12)),
         ),
-        const SizedBox(height: 16),
-        Container(
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: color.withValues(alpha: 0.3), width: 2),
-          ),
-          child: Column(
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('DIFERENCIA TOTAL', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: color, letterSpacing: 1)),
-                      const SizedBox(height: 4),
-                      Text(format.format(diff), style: TextStyle(fontSize: 32, fontWeight: FontWeight.w900, color: color)),
-                    ],
-                  ),
-                  Icon(diff == 0 ? Icons.check_circle_rounded : (diff > 0 ? Icons.add_circle_rounded : Icons.remove_circle_rounded), 
-                       color: color, size: 48),
-                ],
-              ),
-              const SizedBox(height: 16),
-              LinearProgressIndicator(
-                value: expected == 0 ? 0 : (real / expected).clamp(0, 1),
-                backgroundColor: color.withValues(alpha: 0.1),
-                color: color,
-                borderRadius: BorderRadius.circular(10),
-                minHeight: 8,
-              ),
-            ],
-          ),
-        ),
+        IconButton(icon: const Icon(Icons.refresh_rounded), onPressed: _loadTodayCashSales),
+        const SizedBox(width: 8),
       ],
     );
   }
 
-  Widget _buildSummaryItem(String label, String value, IconData icon, Color color) {
-    final cs = Theme.of(context).colorScheme;
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: cs.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.5)),
+  Widget _buildDynamicSummary(NumberFormat format, double expected, double real, double diff) {
+    final color = diff == 0 ? AppTheme.success : (diff > 0 ? AppTheme.info : AppTheme.error);
+    
+    return FadeInDown(
+      duration: const Duration(milliseconds: 300),
+      child: Container(
+        padding: const EdgeInsets.all(28),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.05),
+          borderRadius: AppTheme.radiusLarge,
+          border: Border.all(color: color.withValues(alpha: 0.15), width: 2),
+          boxShadow: AppTheme.softShadow,
+        ),
+        child: Column(
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('BALANCE DE CIERRE', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: color, letterSpacing: 2)),
+                    const SizedBox(height: 8),
+                    Text(format.format(diff), style: TextStyle(fontSize: 36, fontWeight: FontWeight.w900, color: color, letterSpacing: -1.5)),
+                  ],
+                ),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(color: color.withValues(alpha: 0.1), shape: BoxShape.circle),
+                  child: Icon(diff == 0 ? Icons.check_circle_rounded : (diff > 0 ? Icons.trending_up_rounded : Icons.trending_down_rounded), color: color, size: 32),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                _miniStat('Ventas', format.format(_expectedCash), AppTheme.primary),
+                const SizedBox(width: 12),
+                _miniStat('Fondo', format.format(_startingCash), AppTheme.accent),
+              ],
+            ),
+          ],
+        ),
       ),
+    );
+  }
+
+  Widget _miniStat(String label, String value, Color color) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.5), borderRadius: BorderRadius.circular(16)),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: AppTheme.textMuted)),
+            Text(value, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: color)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildConfigCard(bool isDark) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: AppTheme.radiusMedium, boxShadow: AppTheme.softShadow),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: color, size: 20),
-          const SizedBox(height: 12),
-          Text(label, style: const TextStyle(fontSize: 11, color: AppTheme.textMuted, fontWeight: FontWeight.bold)),
-          Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          const Text('CONFIGURACIÓN INICIAL', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: AppTheme.textMuted, letterSpacing: 1.5)),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _startingCashController,
+            keyboardType: TextInputType.number,
+            style: const TextStyle(fontWeight: FontWeight.w900),
+            decoration: const InputDecoration(
+              labelText: 'Fondo inicial (Cambio)',
+              prefixIcon: Icon(Icons.storefront_rounded),
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildStartingCashField(ColorScheme cs) {
-    return TextField(
-      controller: _startingCashController,
-      keyboardType: TextInputType.number,
-      decoration: appInputDecoration(context, 
-        label: 'Fondo de Caja (Cambio inicial)', 
-        icon: Icons.payments_outlined,
-        hint: '0.00'),
-    );
-  }
-
-  Widget _buildModeSelector(ColorScheme cs) {
+  Widget _buildModeSelector(bool isDark) {
     return Container(
-      padding: const EdgeInsets.all(6),
-      decoration: BoxDecoration(color: cs.surfaceContainerHigh, borderRadius: BorderRadius.circular(16)),
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.5), borderRadius: BorderRadius.circular(20)),
       child: Row(
         children: [
-          Expanded(child: _buildTab('Desglose', !_useManualInput, Icons.account_tree_outlined)),
-          Expanded(child: _buildTab('Manual', _useManualInput, Icons.edit_document)),
+          _modeTab('DESGLOSE', !_useManualInput),
+          _modeTab('MANUAL', _useManualInput),
         ],
       ),
     );
   }
 
-  Widget _buildTab(String label, bool active, IconData icon) {
-    final cs = Theme.of(context).colorScheme;
-    return GestureDetector(
-      onTap: () => setState(() => _useManualInput = label == 'Manual'),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        decoration: BoxDecoration(
-          color: active ? cs.surface : Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: active ? [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4)] : [],
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 18, color: active ? cs.primary : cs.onSurfaceVariant),
-            const SizedBox(width: 8),
-            Text(label, style: TextStyle(fontSize: 13, fontWeight: active ? FontWeight.bold : FontWeight.normal)),
-          ],
+  Widget _modeTab(String label, bool active) {
+    return Expanded(
+      child: AnimatedPressable(
+        onTap: () => setState(() => _useManualInput = label == 'MANUAL'),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          decoration: BoxDecoration(
+            color: active ? AppTheme.primary : Colors.transparent,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: active ? [BoxShadow(color: AppTheme.primary.withValues(alpha: 0.3), blurRadius: 10, offset: const Offset(0, 4))] : [],
+          ),
+          alignment: Alignment.center,
+          child: Text(label, style: TextStyle(color: active ? Colors.white : AppTheme.textMuted, fontWeight: FontWeight.w900, fontSize: 12, letterSpacing: 1)),
         ),
       ),
     );
   }
 
-  Widget _buildDenominationGrid(String title, List<double> values) {
+  Widget _buildDenominationSection(String title, List<double> values, bool isDark) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionTitle(title),
-        const SizedBox(height: 16),
+        Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: 16),
+          child: Text(title.toUpperCase(), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: AppTheme.textMuted, letterSpacing: 1.5)),
+        ),
         GridView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2, childAspectRatio: 1.4, crossAxisSpacing: 16, mainAxisSpacing: 16),
+          gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+            maxCrossAxisExtent: 220, 
+            childAspectRatio: 1.8, 
+            crossAxisSpacing: 12, 
+            mainAxisSpacing: 12
+          ),
           itemCount: values.length,
-          itemBuilder: (context, i) => _buildCounterCard(values[i]),
+          itemBuilder: (context, i) => _DenominationCard(
+            value: values[i], 
+            count: _counts[values[i]] ?? 0, 
+            onUpdate: (n) => _updateCount(values[i], n)
+          ),
         ),
       ],
-    );
-  }
-
-  Widget _buildCounterCard(double value) {
-    final cs = Theme.of(context).colorScheme;
-    final qty = _counts[value] ?? 0;
-    final format = NumberFormat.simpleCurrency(locale: 'es_MX', decimalDigits: value < 1 ? 2 : 0);
-    
-    final color = value == 1000 ? const Color(0xFF6A1B9A) :
-                 value == 500 ? const Color(0xFF1565C0) :
-                 value == 200 ? const Color(0xFF2E7D32) :
-                 value == 100 ? const Color(0xFFC62828) :
-                 value == 50 ? const Color(0xFFAD1457) :
-                 value == 20 ? const Color(0xFF00695C) : cs.primary;
-
-    return Container(
-      decoration: BoxDecoration(
-        color: cs.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: qty > 0 ? color : cs.outlineVariant.withValues(alpha: 0.3), width: qty > 0 ? 2 : 1),
-      ),
-      padding: const EdgeInsets.all(12),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(format.format(value), style: TextStyle(fontWeight: FontWeight.w900, color: color, fontSize: 16)),
-              if (qty > 0)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(6)),
-                  child: Text(format.format(value * qty), style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: color)),
-                ),
-            ],
-          ),
-          const Spacer(),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              _circleBtn(Icons.remove, () => _updateCount(value, -1), color, qty > 0),
-              Text('$qty', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
-              _circleBtn(Icons.add, () => _updateCount(value, 1), color, true),
-            ],
-          ),
-          const Spacer(),
-        ],
-      ),
-    );
-  }
-
-  Widget _circleBtn(IconData icon, VoidCallback onTap, Color color, bool enabled) {
-    return GestureDetector(
-      onTap: enabled ? onTap : null,
-      child: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: enabled ? color.withValues(alpha: 0.1) : Colors.grey.withValues(alpha: 0.1),
-          shape: BoxShape.circle,
-        ),
-        child: Icon(icon, size: 18, color: enabled ? color : Colors.grey),
-      ),
     );
   }
 
   void _updateCount(double val, int delta) {
-    setState(() {
-      _counts[val] = (_counts[val]! + delta).clamp(0, 9999);
-    });
+    setState(() => _counts[val] = (_counts[val]! + delta).clamp(0, 9999));
   }
 
-  Widget _buildSectionTitle(String title) {
-    return Text(title.toUpperCase(), 
-      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1.2, color: AppTheme.textMuted));
-  }
-
-  Widget _buildManualInputSection(ColorScheme cs) {
-    return TextField(
-      controller: _manualInputController,
-      keyboardType: TextInputType.number,
-      style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
-      decoration: appInputDecoration(context, label: 'Monto Contado', icon: Icons.payments, hint: '0.00'),
+  Widget _buildManualInputSection(bool isDark) {
+    return FadeInUp(
+      duration: const Duration(milliseconds: 300),
+      child: Container(
+        padding: const EdgeInsets.all(32),
+        decoration: BoxDecoration(color: Colors.white, borderRadius: AppTheme.radiusLarge, boxShadow: AppTheme.softShadow),
+        child: Column(
+          children: [
+            const Icon(Icons.edit_document, size: 48, color: AppTheme.primary),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _manualInputController,
+              keyboardType: TextInputType.number,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 40, fontWeight: FontWeight.w900, color: AppTheme.primary),
+              decoration: const InputDecoration(hintText: '0.00', border: InputBorder.none, enabledBorder: InputBorder.none, focusedBorder: InputBorder.none, filled: false),
+            ),
+            const Text('MONTO TOTAL CONTADO', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: AppTheme.textMuted, letterSpacing: 2)),
+          ],
+        ),
+      ),
     );
   }
 
-  Widget _buildFooterButton() {
-    return SizedBox(
-      width: double.infinity,
-      height: 60,
-      child: FilledButton.icon(
-        onPressed: _isSaving ? null : _performCashCut,
-        style: FilledButton.styleFrom(
-          backgroundColor: AppTheme.primary,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+  Widget _buildFinalizeButton() {
+    return FadeInUp(
+      duration: const Duration(milliseconds: 300),
+      child: SizedBox(
+        width: double.infinity,
+        height: 70,
+        child: AnimatedPressable(
+          onTap: _isSaving ? null : _performCashCut,
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: AppTheme.primaryGradient,
+              borderRadius: AppTheme.radiusMedium,
+              boxShadow: [BoxShadow(color: AppTheme.primary.withValues(alpha: 0.3), blurRadius: 20, offset: const Offset(0, 10))],
+            ),
+            alignment: Alignment.center,
+            child: _isSaving 
+              ? const CircularProgressIndicator(color: Colors.white) 
+              : const Text('FINALIZAR Y CERRAR CAJA', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16, letterSpacing: 1)),
+          ),
         ),
-        icon: _isSaving ? const CircularProgressIndicator(color: Colors.white) : const Icon(Icons.check_circle),
-        label: Text(_isSaving ? 'Guardando...' : 'Finalizar Arqueo', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+      ),
+    );
+  }
+
+  Future<void> _performCashCut() async {
+    if (_calculatedTotal == 0 && !_useManualInput) {
+       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Ingresa el dinero contado')));
+       return;
+    }
+    setState(() => _isSaving = true);
+    try {
+      final realCash = _calculatedTotal;
+      final totalExpected = _expectedCash + _startingCash;
+      final diff = realCash - totalExpected;
+      await ref.read(salesRepositoryProvider).saveCashCut(
+        expectedCash: _expectedCash,
+        startingCash: _startingCash,
+        actualCash: realCash,
+        difference: diff,
+        denominations: _counts.map((k, v) => MapEntry(k.toString(), v)),
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Corte registrado'), backgroundColor: AppTheme.success));
+        setState(() {
+          _isSaving = false;
+          _counts.updateAll((k, v) => 0);
+          _manualInputController.clear();
+        });
+        _loadTodayCashSales();
+      }
+    } catch (e) {
+      if (mounted) setState(() => _isSaving = false);
+    }
+  }
+
+  Future<void> _showAddExpenseDialog() async {
+    final amountC = TextEditingController();
+    final descC = TextEditingController();
+    await showDialog(
+      context: context,
+      builder: (context) => AppDialog(
+        headerIcon: Icons.money_off_rounded,
+        headerColor: AppTheme.error,
+        title: 'Registrar Gasto',
+        subtitle: 'El monto se descontará del efectivo esperado',
+        body: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(controller: amountC, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Monto')),
+              const SizedBox(height: 16),
+              TextField(controller: descC, decoration: const InputDecoration(labelText: 'Motivo / Descripción')),
+            ],
+          ),
+        ),
+        footer: AppDialogFooterButtons(
+          actionLabel: 'REGISTRAR GASTO',
+          actionIcon: Icons.check_circle_rounded,
+          actionColor: AppTheme.error,
+          onAction: () async {
+            if (amountC.text.isNotEmpty) {
+              await ref.read(salesRepositoryProvider).createExpense(
+                amount: double.parse(amountC.text), 
+                description: descC.text
+              );
+              if (context.mounted) { 
+                Navigator.pop(context); 
+                _loadTodayCashSales(); 
+              }
+            }
+          },
+        ),
+      ),
+    );
+  }
+}
+
+class _DenominationCard extends StatelessWidget {
+  final double value;
+  final int count;
+  final Function(int) onUpdate;
+
+  const _DenominationCard({required this.value, required this.count, required this.onUpdate});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = value >= 1000 ? const Color(0xFF6A1B9A) :
+                 value >= 500 ? const Color(0xFF1565C0) :
+                 value >= 200 ? const Color(0xFF2E7D32) :
+                 value >= 100 ? const Color(0xFFC62828) :
+                 value >= 50 ? const Color(0xFFAD1457) :
+                 value >= 20 ? const Color(0xFF00695C) : AppTheme.primary;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: AppTheme.radiusMedium,
+        boxShadow: AppTheme.softShadow,
+        border: Border.all(color: count > 0 ? color.withValues(alpha: 0.3) : AppTheme.divider.withValues(alpha: 0.5), width: count > 0 ? 2 : 1),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('\$$value', style: TextStyle(fontWeight: FontWeight.w900, color: color, fontSize: 15)),
+              if (count > 0)
+                FadeIn(duration: const Duration(milliseconds: 200), child: Text('\$${(value * count).toStringAsFixed(0)}', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: color))),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _btn(Icons.remove_rounded, () => onUpdate(-1), count > 0),
+              Text('$count', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
+              _btn(Icons.add_rounded, () => onUpdate(1), true),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _btn(IconData icon, VoidCallback onTap, bool enabled) {
+    return AnimatedPressable(
+      onTap: enabled ? onTap : null,
+      child: Container(
+        padding: const EdgeInsets.all(4),
+        decoration: BoxDecoration(color: (enabled ? AppTheme.primary : AppTheme.textMuted).withValues(alpha: 0.1), shape: BoxShape.circle),
+        child: Icon(icon, size: 20, color: enabled ? AppTheme.primary : AppTheme.textMuted),
       ),
     );
   }

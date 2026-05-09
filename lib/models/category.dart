@@ -11,6 +11,8 @@ class Category {
     );
   }
 
+  factory Category.fromJson(Map<String, dynamic> json) => Category.fromMap(json);
+
   // Requerido para que el DropdownButton pueda comparar objetos.
   @override
   bool operator ==(Object other) =>

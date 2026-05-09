@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:printing/printing.dart';
+import 'package:animate_do/animate_do.dart';
+import 'package:lottie/lottie.dart';
 import '../models/sale_detail_item.dart';
 import '../models/cart_item.dart';
+import '../theme/app_theme.dart';
 import '../utils/receipt_generator.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers/app_settings_provider.dart';
 
-class SaleCompletionScreen extends StatelessWidget {
+class SaleCompletionScreen extends ConsumerWidget {
   final double totalAmount;
   final String paymentMethod;
   final double receivedAmount;
@@ -22,7 +27,7 @@ class SaleCompletionScreen extends StatelessWidget {
     this.saleId,
   });
 
-  Future<void> _printReceipt(BuildContext context) async {
+  Future<void> _printReceipt(BuildContext context, AppSettings settings) async {
     try {
       final items = cartItems
           .map(
@@ -39,6 +44,7 @@ class SaleCompletionScreen extends StatelessWidget {
         saleItems: items,
         totalAmount: totalAmount,
         paymentMethod: paymentMethod,
+        settings: settings,
       );
       await Printing.layoutPdf(onLayout: (format) => pdfBytes);
     } catch (e) {
@@ -51,7 +57,8 @@ class SaleCompletionScreen extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final settings = ref.watch(appSettingsProvider);
     final primaryColor = const Color(0xFF2E7D32);
 
     return Scaffold(
@@ -70,13 +77,11 @@ class SaleCompletionScreen extends StatelessWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  CircleAvatar(
-                    radius: 30,
-                    backgroundColor: primaryColor.withValues(alpha: 0.1),
-                    child: Icon(
-                      Icons.check_circle,
-                      color: primaryColor,
-                      size: 40,
+                  SizedBox(
+                    height: 120,
+                    child: Lottie.network(
+                      'https://assets9.lottiefiles.com/packages/lf20_yupep8il.json', // Premium Check Animation
+                      repeat: false,
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -118,7 +123,7 @@ class SaleCompletionScreen extends StatelessWidget {
                     children: [
                       Expanded(
                         child: OutlinedButton.icon(
-                          onPressed: () => _printReceipt(context),
+                          onPressed: () => _printReceipt(context, settings),
                           icon: const Icon(Icons.print_outlined),
                           label: const Text('Imprimir'),
                           style: OutlinedButton.styleFrom(

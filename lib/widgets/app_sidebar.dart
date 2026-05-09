@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:animate_do/animate_do.dart';
 import '../providers/scanner_status_provider.dart';
+import '../theme/app_theme.dart';
 
 class AppSidebar extends ConsumerWidget {
   final String currentRoute;
@@ -14,84 +16,178 @@ class AppSidebar extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final cs = Theme.of(context).colorScheme;
-    final primaryColor = cs.primary;
-    final sidebarBg = Theme.of(context).brightness == Brightness.dark 
-        ? cs.surfaceContainerHigh 
-        : primaryColor;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final primaryColor = AppTheme.primary;
+    final sidebarBg = isDark ? theme.cardColor : const Color(0xFF065F46); // Adaptive background
 
     final scannerStatus = ref.watch(scannerStatusProvider);
 
     return Container(
-      width: 260,
-      color: sidebarBg,
+      width: 280,
+      decoration: BoxDecoration(
+        color: sidebarBg,
+        border: Border(right: BorderSide(color: Colors.white.withValues(alpha: 0.05), width: 1)),
+      ),
       child: Column(
         children: [
-          const SizedBox(height: 40),
-          // Logo QuickInvent
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8)),
-                  child: Icon(Icons.shopping_cart, color: primaryColor, size: 24),
-                ),
-                const SizedBox(width: 12),
-                const Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('QUICKINVENT', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-                    Text('ABARROTES', style: TextStyle(color: Colors.white70, fontSize: 10, letterSpacing: 2)),
-                  ],
-                )
-              ],
-            ),
-          ),
-          const SizedBox(height: 20),
-          // Scanner status banner (visible only on desktop/tablet)
+          // Logo Section with Premium Header
+          _buildBrandHeader(primaryColor),
+          
           if (scannerStatus.isActive)
-            _ScannerActiveBanner(scannerStatus: scannerStatus),
+            FadeInDown(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: _ScannerActiveBanner(scannerStatus: scannerStatus),
+              ),
+            ),
+            
+          const SizedBox(height: 12),
+          
           Expanded(
             child: ListView(
-              padding: EdgeInsets.zero,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
               children: [
-                _buildItem(context, Icons.point_of_sale, 'Punto de Venta', 'pos'),
-                _buildItem(context, Icons.inventory_2_outlined, 'Inventario', 'inventory'),
-                _buildItem(context, Icons.history, 'Historial de Ventas', 'history'),
-                _buildItem(context, Icons.bar_chart, 'Reportes', 'reports'),
-                _buildItem(context, Icons.assignment_return_outlined, 'Devoluciones', 'returns'),
+                _buildSectionLabel('MÓDULOS OPERATIVOS'),
+                _buildItem(context, Icons.grid_view_rounded, 'Terminal de Venta', 'pos'),
+                _buildItem(context, Icons.inventory_2_rounded, 'Inventario Real', 'inventory'),
+                _buildItem(context, Icons.history_rounded, 'Historial de Ventas', 'history'),
+                _buildItem(context, Icons.assignment_return_rounded, 'Devoluciones', 'returns'),
+                _buildItem(context, Icons.account_balance_wallet_rounded, 'Cierre de Caja', 'cash_cut'),
+                
+                const SizedBox(height: 28),
+                _buildSectionLabel('ESTADÍSTICAS & BI'),
+                _buildItem(context, Icons.analytics_rounded, 'Análisis de Negocio', 'reports'),
+                _buildItem(context, Icons.people_alt_rounded, 'Cartera de Clientes', 'customers'),
+                
+                const SizedBox(height: 28),
+                _buildSectionLabel('SISTEMA'),
                 _buildScannerItem(context, scannerStatus),
-                _buildItem(context, Icons.point_of_sale_outlined, 'Corte de Caja', 'cash_cut'),
-                _buildItem(context, Icons.settings, 'Configuración', 'settings'),
+                _buildItem(context, Icons.settings_suggest_rounded, 'Configuración', 'settings'),
               ],
             ),
           ),
-          // Perfil Admin
+          
+          _buildProfileFooter(context),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBrandHeader(Color primaryColor) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(28, 60, 24, 32),
+      child: Row(
+        children: [
           Container(
-            margin: const EdgeInsets.all(16),
             padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(color: Colors.white10, borderRadius: BorderRadius.circular(12)),
-            child: const Row(
-              children: [
-                CircleAvatar(
-                  backgroundColor: Color(0xFF8BC34A),
-                  child: Text('A', style: TextStyle(color: Colors.white)),
+            decoration: BoxDecoration(
+              gradient: AppTheme.primaryGradient,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(color: primaryColor.withValues(alpha: 0.3), blurRadius: 15, offset: const Offset(0, 5))
+              ],
+            ),
+            child: const Icon(Icons.shopping_cart_checkout_rounded, color: Colors.white, size: 26),
+          ),
+          const SizedBox(width: 16),
+          const Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'QuickInvent',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 22,
+                  letterSpacing: -1,
                 ),
-                SizedBox(width: 12),
-                Column(
+              ),
+              Text(
+                'PREMIUM CLOUD POS',
+                style: TextStyle(
+                  color: Colors.white38,
+                  fontSize: 9,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1.5,
+                ),
+              ),
+            ],
+          )
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSectionLabel(String label) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 12, bottom: 12, top: 4),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: Colors.white.withValues(alpha: 0.25),
+          fontSize: 10,
+          fontWeight: FontWeight.w900,
+          letterSpacing: 2,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProfileFooter(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      margin: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: theme.cardColor,
+        borderRadius: AppTheme.radiusMedium,
+        boxShadow: AppTheme.softShadow,
+        border: Border.all(color: theme.dividerColor.withValues(alpha: 0.1)),
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF10B981), Color(0xFF059669)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Center(
+                  child: Text(
+                    'AD',
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Admin', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                    Text('Encargado', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                    Text(
+                      'Admin Master',
+                      style: TextStyle(color: theme.textTheme.titleSmall?.color, fontWeight: FontWeight.w900, fontSize: 14, letterSpacing: -0.2),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      'Licencia Vitalicia',
+                      style: TextStyle(color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.6), fontSize: 11, fontWeight: FontWeight.w600),
+                    ),
                   ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-          _buildItem(context, Icons.logout, 'Cerrar sesión', 'logout', isDestructive: true),
           const SizedBox(height: 16),
+          _buildItem(context, Icons.logout_rounded, 'Cerrar Sesión', 'logout', isDestructive: true, dense: true),
         ],
       ),
     );
@@ -99,144 +195,80 @@ class AppSidebar extends ConsumerWidget {
 
   Widget _buildScannerItem(BuildContext context, ScannerStatus status) {
     final isActive = currentRoute == 'scanner';
+    return _buildItem(
+      context, 
+      Icons.qr_code_scanner_rounded, 
+      'Escáner Móvil', 
+      'scanner',
+      badge: status.isActive ? 'ACTIVO' : null,
+    );
+  }
+
+  Widget _buildItem(BuildContext context, IconData icon, String label, String route, {String? badge, bool isDestructive = false, bool dense = false}) {
+    final isActive = currentRoute == route;
+    final color = isDestructive 
+        ? const Color(0xFFF87171) 
+        : (isActive ? Colors.white : Colors.white.withValues(alpha: 0.4));
+
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      child: ListTile(
-        onTap: () => onNavigate('scanner'),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        tileColor: isActive ? Colors.white.withValues(alpha: 0.1) : Colors.transparent,
-        leading: Stack(
-          children: [
-            Icon(
-              Icons.qr_code_scanner,
-              color: isActive ? Colors.white : Colors.white60,
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: InkWell(
+        onTap: () => onNavigate(route),
+        borderRadius: BorderRadius.circular(16),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 250),
+          padding: EdgeInsets.symmetric(horizontal: 16, vertical: dense ? 10 : 14),
+          decoration: BoxDecoration(
+            color: isActive ? Colors.white.withValues(alpha: 0.08) : Colors.transparent,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: isActive ? Colors.white.withValues(alpha: 0.1) : Colors.transparent,
             ),
-            if (status.isActive)
-              Positioned(
-                right: 0,
-                top: 0,
-                child: _PulsingDot(),
-              ),
-          ],
-        ),
-        title: Text(
-          'Escáner Móvil',
-          style: TextStyle(
-            color: isActive ? Colors.white : (Theme.of(context).brightness == Brightness.dark ? Colors.white70 : Colors.white60),
-            fontSize: 14,
-            fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
           ),
-        ),
-        trailing: status.isActive
-            ? Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF10B981).withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Text(
-                  'ACTIVO',
+          child: Row(
+            children: [
+              Icon(icon, color: color, size: dense ? 20 : 22),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Text(
+                  label,
                   style: TextStyle(
-                    color: Color(0xFF10B981),
-                    fontSize: 9,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 0.5,
+                    color: color,
+                    fontSize: dense ? 13 : 14,
+                    fontWeight: isActive ? FontWeight.w900 : FontWeight.w700,
+                    letterSpacing: -0.2,
                   ),
                 ),
-              )
-            : null,
-        dense: true,
-      ),
-    );
-  }
-
-  Widget _buildItem(BuildContext context, IconData icon, String label, String route, {String? badge, bool isDestructive = false}) {
-    final isActive = currentRoute == route;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      child: ListTile(
-        onTap: () => onNavigate(route),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        tileColor: isActive ? Colors.white.withValues(alpha: 0.1) : Colors.transparent,
-        leading: Icon(
-          icon,
-          color: isDestructive ? Colors.redAccent : (isActive ? Colors.white : Colors.white60),
-        ),
-        title: Text(
-          label,
-          style: TextStyle(
-            color: isDestructive ? Colors.redAccent : (isActive ? Colors.white : (Theme.of(context).brightness == Brightness.dark ? Colors.white70 : Colors.white60)),
-            fontSize: 14,
-            fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
-          ),
-        ),
-        trailing: badge != null
-            ? Container(
-                padding: const EdgeInsets.all(6),
-                decoration: const BoxDecoration(color: Color(0xFFE91E63), shape: BoxShape.circle),
-                child: Text(badge, style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
-              )
-            : null,
-        dense: true,
-      ),
-    );
-  }
-}
-
-/// Animated pulsing green dot to indicate scanner is active.
-class _PulsingDot extends StatefulWidget {
-  @override
-  State<_PulsingDot> createState() => _PulsingDotState();
-}
-
-class _PulsingDotState extends State<_PulsingDot> with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _animation;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1200),
-    )..repeat(reverse: true);
-    _animation = Tween<double>(begin: 0.4, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _animation,
-      builder: (context, child) {
-        return Container(
-          width: 10,
-          height: 10,
-          decoration: BoxDecoration(
-            color: const Color(0xFF10B981).withValues(alpha: _animation.value),
-            shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFF10B981).withValues(alpha: _animation.value * 0.5),
-                blurRadius: 6,
-                spreadRadius: 2,
               ),
+              if (badge != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF10B981).withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.2)),
+                  ),
+                  child: Text(
+                    badge, 
+                    style: const TextStyle(color: Color(0xFF10B981), fontSize: 9, fontWeight: FontWeight.w900, letterSpacing: 0.5)
+                  ),
+                ),
+              if (isActive && !isDestructive && badge == null)
+                FadeIn(
+                  child: Container(
+                    width: 6,
+                    height: 6,
+                    decoration: const BoxDecoration(color: Color(0xFF10B981), shape: BoxShape.circle),
+                  ),
+                ),
             ],
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 }
 
-/// Banner shown at the top of sidebar when scanner is active.
 class _ScannerActiveBanner extends StatefulWidget {
   final ScannerStatus scannerStatus;
   const _ScannerActiveBanner({required this.scannerStatus});
@@ -245,21 +277,15 @@ class _ScannerActiveBanner extends StatefulWidget {
   State<_ScannerActiveBanner> createState() => _ScannerActiveBannerState();
 }
 
-class _ScannerActiveBannerState extends State<_ScannerActiveBanner>
-    with SingleTickerProviderStateMixin {
+class _ScannerActiveBannerState extends State<_ScannerActiveBanner> with SingleTickerProviderStateMixin {
   late AnimationController _controller;
-  late Animation<double> _pulseAnimation;
+  late Animation<double> _pulse;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1500),
-    )..repeat(reverse: true);
-    _pulseAnimation = Tween<double>(begin: 0.6, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
+    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 1500))..repeat(reverse: true);
+    _pulse = Tween<double>(begin: 0.5, end: 1.0).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
   }
 
   @override
@@ -271,57 +297,30 @@ class _ScannerActiveBannerState extends State<_ScannerActiveBanner>
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
-      animation: _pulseAnimation,
+      animation: _pulse,
       builder: (context, child) {
         return Container(
-          margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: const Color(0xFF10B981).withValues(alpha: 0.15 * _pulseAnimation.value),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(
-              color: const Color(0xFF10B981).withValues(alpha: 0.4 * _pulseAnimation.value),
-              width: 1.5,
-            ),
+            color: const Color(0xFF10B981).withValues(alpha: 0.05),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.2 * _pulse.value)),
           ),
           child: Row(
             children: [
               Container(
-                width: 8,
-                height: 8,
+                width: 8, height: 8,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF10B981).withValues(alpha: _pulseAnimation.value),
+                  color: const Color(0xFF10B981).withValues(alpha: _pulse.value),
                   shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF10B981).withValues(alpha: _pulseAnimation.value * 0.5),
-                      blurRadius: 6,
-                      spreadRadius: 1,
-                    ),
-                  ],
+                  boxShadow: [BoxShadow(color: const Color(0xFF10B981).withValues(alpha: 0.3), blurRadius: 8)],
                 ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 12),
               const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '📱 Escáner conectado',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12,
-                      ),
-                    ),
-                    Text(
-                      'Recibiendo escaneos',
-                      style: TextStyle(
-                        color: Colors.white60,
-                        fontSize: 10,
-                      ),
-                    ),
-                  ],
+                child: Text(
+                  'Escáner Remoto Activo',
+                  style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w900),
                 ),
               ),
             ],

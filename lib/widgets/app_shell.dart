@@ -9,6 +9,7 @@ import '../screens/scanner_screen.dart';
 import '../screens/cash_register_screen.dart';
 import '../screens/settings_screen.dart';
 import '../screens/profile_screen.dart';
+import '../screens/customers_screen.dart';
 import '../widgets/app_sidebar.dart';
 import '../repositories/auth_repository.dart';
 
@@ -32,6 +33,7 @@ class _AppShellState extends ConsumerState<AppShell> {
     'cash_cut': const CashRegisterScreen(),
     'settings': const SettingsScreen(),
     'profile': const ProfileScreen(),
+    'customers': const CustomersScreen(),
   };
 
   // Primary items shown in the bottom nav bar (max 5 for mobile)
@@ -49,6 +51,7 @@ class _AppShellState extends ConsumerState<AppShell> {
     _BottomNavItem(route: 'cash_cut', icon: Icons.account_balance_wallet_outlined, activeIcon: Icons.account_balance_wallet, label: 'Corte de Caja'),
     _BottomNavItem(route: 'settings', icon: Icons.settings_outlined, activeIcon: Icons.settings, label: 'Configuración'),
     _BottomNavItem(route: 'profile', icon: Icons.person_outlined, activeIcon: Icons.person, label: 'Mi Perfil'),
+    _BottomNavItem(route: 'customers', icon: Icons.people_outline_rounded, activeIcon: Icons.people_rounded, label: 'Clientes'),
   ];
 
   void _onNavigate(String route) {

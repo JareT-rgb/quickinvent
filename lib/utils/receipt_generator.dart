@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import '../models/sale_detail_item.dart';
+import '../providers/app_settings_provider.dart';
 
 
 Future<Uint8List> generateReceiptPdf({
@@ -12,6 +13,7 @@ Future<Uint8List> generateReceiptPdf({
   required List<SaleDetailItem> saleItems,
   required double totalAmount,
   required String paymentMethod,
+  required AppSettings settings,
 }) async {
   final pdf = pw.Document();
   final currencyFormat = NumberFormat.currency(locale: 'es_MX', symbol: '\$');
@@ -21,14 +23,14 @@ Future<Uint8List> generateReceiptPdf({
 
   pdf.addPage(
     pw.Page(
-      pageFormat: PdfPageFormat.roll80, // Formato para impresora térmica de 80mm
+      pageFormat: settings.paperWidth == 58 ? PdfPageFormat.roll57 : PdfPageFormat.roll80,
       build: (pw.Context context) {
         return pw.Column(
           crossAxisAlignment: pw.CrossAxisAlignment.start,
           children: [
             // Cabecera
             pw.Center(
-              child: pw.Text('QuickInvent', style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
+              child: pw.Text(settings.businessName, style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
             ),
             pw.SizedBox(height: 10),
             pw.Text('Recibo de Venta'),
@@ -69,7 +71,7 @@ Future<Uint8List> generateReceiptPdf({
             pw.SizedBox(height: 5),
             pw.Row(mainAxisAlignment: pw.MainAxisAlignment.end, children: [pw.Text('Pagado con: $paymentMethod')]),
             pw.SizedBox(height: 20),
-            pw.Center(child: pw.Text('¡Gracias por su compra!')),
+            pw.Center(child: pw.Text(settings.footerMessage)),
           ],
         );
       },

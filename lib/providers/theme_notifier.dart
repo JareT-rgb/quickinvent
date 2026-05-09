@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'shared_prefs_provider.dart';
 
 /// Gestiona el estado del tema de la aplicación (claro, oscuro o sistema)
 /// y persiste la selección del usuario.
@@ -32,7 +33,3 @@ final themeProvider = NotifierProvider<ThemeNotifier, ThemeMode>(ThemeNotifier.n
 
 /// Provider que expone si el tema actual es oscuro.
 final isDarkModeProvider = Provider<bool>((ref) => ref.watch(themeProvider) == ThemeMode.dark);
-
-/// Provider que expone la instancia de [SharedPreferences].
-/// Debe ser anulado (overridden) en el `ProviderScope` al iniciar la app.
-final sharedPreferencesProvider = Provider<SharedPreferences>((ref) => throw UnimplementedError());
