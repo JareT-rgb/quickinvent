@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -15,6 +16,8 @@ import '../dialogs/checkout_dialog.dart';
 import '../providers/scanner_status_provider.dart';
 import '../widgets/product_image.dart';
 import 'sale_completion_screen.dart';
+import 'scanner_screen.dart';
+import '../dialogs/scanner_selection_dialog.dart';
 
 class PosScreen extends ConsumerStatefulWidget {
   const PosScreen({super.key});
@@ -25,12 +28,14 @@ class PosScreen extends ConsumerStatefulWidget {
 
 class _PosScreenState extends ConsumerState<PosScreen> {
   final TextEditingController _searchController = TextEditingController();
+  final ScrollController _categoryScrollController = ScrollController();
   String _searchQuery = '';
   String _selectedCategory = 'Todas';
 
   @override
   void dispose() {
     _searchController.dispose();
+    _categoryScrollController.dispose();
     super.dispose();
   }
 
@@ -41,7 +46,9 @@ class _PosScreenState extends ConsumerState<PosScreen> {
     
     // Remote Scanner Listener
     ref.listen(scannerStatusProvider, (previous, next) {
-      if (next.lastBarcode != null && next.lastBarcode != previous?.lastBarcode) {
+      if (next.lastBarcode != null && 
+          next.lastScanMode == 'pos' && 
+          (next.lastScanTime != previous?.lastScanTime)) {
         productsAsync.whenData((products) async {
           try {
             final product = products.firstWhere((p) => p.barcode == next.lastBarcode);
@@ -84,56 +91,76 @@ class _PosScreenState extends ConsumerState<PosScreen> {
       }
     });
 
-    final total = cart.fold<double>(0, (sum, item) => sum + item.subtotal);
-    final isMobile = MediaQuery.of(context).size.width < 900;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final availableWidth = constraints.maxWidth;
+        final isMobile = availableWidth < 600; // Refined threshold for the main content area
+        final total = cart.fold<double>(0, (sum, item) => sum + item.subtotal);
 
-    return Scaffold(
-      backgroundColor: AppTheme.backgroundLight,
-      body: Row(
-        children: [
-          Expanded(
-            flex: 3,
-            child: Column(
-              children: [
-                _buildModernHeader(isMobile),
-                _buildSearchPanel(),
-                Expanded(
-                  child: productsAsync.when(
-                    data: (products) => _buildProductGrid(products),
-                    loading: () => const Center(child: CircularProgressIndicator()),
-                    error: (e, s) => Center(child: Text('Error: $e')),
+        return Scaffold(
+          backgroundColor: AppTheme.backgroundLight,
+          body: Row(
+            children: [
+              Expanded(
+                flex: 3,
+                child: Column(
+                  children: [
+                    _buildModernHeader(isMobile || availableWidth < 500), // Hide text if area is very narrow
+                    _buildSearchPanel(),
+                    Expanded(
+                      child: productsAsync.when(
+                        data: (products) => _buildProductGrid(products),
+                        loading: () => const Center(child: CircularProgressIndicator()),
+                        error: (e, s) => Center(child: Text('Error: $e')),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (availableWidth > 800) // Only show cart panel on side if enough space
+                Container(
+                  width: 380,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 30)],
+                  ),
+                  child: _buildCartPanel(cart, total),
+                ),
+            ],
+          ),
+          floatingActionButton: availableWidth <= 800 ? FloatingActionButton.extended(
+            onPressed: () {
+              HapticFeedback.lightImpact();
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                backgroundColor: Colors.transparent,
+                builder: (context) => DraggableScrollableSheet(
+                  initialChildSize: 0.9,
+                  minChildSize: 0.5,
+                  maxChildSize: 0.95,
+                  builder: (context, controller) => Container(
+                    decoration: const BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                    ),
+                    child: Consumer(
+                      builder: (context, ref, child) {
+                        final cart = ref.watch(cartProvider);
+                        final total = cart.fold<double>(0, (sum, item) => sum + item.subtotal);
+                        return _buildCartPanel(cart, total);
+                      },
+                    ),
                   ),
                 ),
-              ],
-            ),
-          ),
-          if (!isMobile)
-            Container(
-              width: 420,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 30)],
-              ),
-              child: _buildCartPanel(cart, total),
-            ),
-        ],
-      ),
-      floatingActionButton: isMobile ? FloatingActionButton.extended(
-        onPressed: () => showModalBottomSheet(
-          context: context,
-          isScrollControlled: true,
-          builder: (context) => DraggableScrollableSheet(
-            initialChildSize: 0.9,
-            builder: (context, controller) => Container(
-              color: Colors.white,
-              child: _buildCartPanel(cart, total),
-            ),
-          ),
-        ),
-        label: Text('CARRITO (${cart.length})'),
-        icon: const Icon(Icons.shopping_cart),
-        backgroundColor: AppTheme.primary,
-      ) : null,
+              );
+            },
+            label: Text('CARRITO (${cart.length})'),
+            icon: const Icon(Icons.shopping_cart),
+            backgroundColor: AppTheme.primary,
+          ) : null,
+        );
+      },
     );
   }
 
@@ -143,20 +170,31 @@ class _PosScreenState extends ConsumerState<PosScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          FadeInLeft(
-            duration: const Duration(milliseconds: 300),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Terminal de Venta',
-                  style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900, letterSpacing: -1.5),
-                ),
-                Text('Escanea o selecciona productos', style: TextStyle(color: AppTheme.textSecondary, fontSize: 13, fontWeight: FontWeight.w500)),
-              ],
+          Expanded(
+            child: FadeInLeft(
+              duration: const Duration(milliseconds: 300),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Terminal de Venta',
+                    style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900, letterSpacing: -1.5),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                    'Escanea o selecciona productos', 
+                    style: TextStyle(color: AppTheme.textSecondary, fontSize: 13, fontWeight: FontWeight.w500),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
             ),
           ),
+          const SizedBox(width: 16),
           Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
               _HeaderIconButton(
                 icon: Icons.pause_circle_outline_rounded,
@@ -165,8 +203,7 @@ class _PosScreenState extends ConsumerState<PosScreen> {
                 onPressed: () => showDialog(context: context, builder: (context) => const HeldCartsDialog()),
               ),
               const SizedBox(width: 8),
-              const SizedBox(width: 8),
-              _buildSyncIndicator(ref.watch(scannerStatusProvider).isActive),
+              _buildSyncIndicator(ref.watch(scannerStatusProvider).isActive, isMobile),
             ],
           ),
         ],
@@ -174,32 +211,47 @@ class _PosScreenState extends ConsumerState<PosScreen> {
     );
   }
 
-  Widget _buildSyncIndicator(bool isActive) {
-    return Container(
+  Widget _buildSyncIndicator(bool isActive, bool isMobile) {
+    // Para la demo asumimos online, en producción se usaría connectivity_plus
+    const bool isOnline = true; 
+
+    final indicator = Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: (isActive ? AppTheme.primary : AppTheme.textMuted).withValues(alpha: 0.1),
+        color: (!isOnline ? AppTheme.error : (isActive ? AppTheme.primary : AppTheme.textMuted)).withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
         children: [
           Icon(
-            isActive ? Icons.cloud_done_rounded : Icons.cloud_off_rounded,
-            color: isActive ? AppTheme.primary : AppTheme.textMuted,
+            !isOnline ? Icons.wifi_off_rounded : (isActive ? Icons.cloud_done_rounded : Icons.mobile_off_rounded),
+            color: !isOnline ? AppTheme.error : (isActive ? AppTheme.primary : AppTheme.textMuted),
             size: 16,
           ),
-          const SizedBox(width: 8),
-          Text(
-            isActive ? 'ESCÁNER ACTIVO' : 'MÓVIL DESCONECTADO',
-            style: TextStyle(
-              color: isActive ? AppTheme.primary : AppTheme.textMuted,
-              fontSize: 11,
-              fontWeight: FontWeight.w900,
+          if (!isMobile) ...[
+            const SizedBox(width: 8),
+            Text(
+              !isOnline ? 'SIN INTERNET' : (isActive ? 'ESCANER VINCULADO' : 'ESCANER DESCONECTADO'),
+              style: TextStyle(
+                color: !isOnline ? AppTheme.error : (isActive ? AppTheme.primary : AppTheme.textMuted),
+                fontSize: 11,
+                fontWeight: FontWeight.w900,
+              ),
             ),
-          ),
+          ],
         ],
       ),
     );
+
+    if (isActive && isOnline) {
+      return Pulse(
+        infinite: true,
+        duration: const Duration(seconds: 2),
+        child: indicator,
+      );
+    }
+
+    return indicator;
   }
 
   Widget _buildSearchPanel() {
@@ -215,10 +267,20 @@ class _PosScreenState extends ConsumerState<PosScreen> {
             decoration: InputDecoration(
               hintText: 'Buscar por nombre o código...',
               prefixIcon: const Icon(Icons.search_rounded, color: AppTheme.primary),
-              suffixIcon: _searchQuery.isNotEmpty ? IconButton(icon: const Icon(Icons.close), onPressed: () {
-                _searchController.clear();
-                setState(() => _searchQuery = '');
-              }) : null,
+              suffixIcon: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.qr_code_scanner_rounded, color: AppTheme.primary),
+                    onPressed: () => showDialog(context: context, builder: (_) => const ScannerSelectionDialog()),
+                  ),
+                  if (_searchQuery.isNotEmpty) 
+                    IconButton(icon: const Icon(Icons.close), onPressed: () {
+                      _searchController.clear();
+                      setState(() => _searchQuery = '');
+                    }),
+                ],
+              ),
               filled: true,
               fillColor: Colors.white,
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: BorderSide.none),
@@ -227,25 +289,52 @@ class _PosScreenState extends ConsumerState<PosScreen> {
           ),
           const SizedBox(height: 12),
           categoriesAsync.maybeWhen(
-            data: (cats) => SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  _FilterChip(
-                    label: 'Todos', 
-                    isSelected: _selectedCategory == 'Todas',
-                    onTap: () => setState(() => _selectedCategory = 'Todas'),
-                  ),
-                  ...cats.map((c) => Padding(
-                    padding: const EdgeInsets.only(left: 8),
-                    child: _FilterChip(
-                      label: c.name, 
-                      isSelected: _selectedCategory == c.name,
-                      onTap: () => setState(() => _selectedCategory = c.name),
+            data: (cats) => Row(
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.chevron_left_rounded, color: AppTheme.primary),
+                  onPressed: () {
+                    _categoryScrollController.animateTo(
+                      _categoryScrollController.offset - 100,
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeInOut,
+                    );
+                  },
+                ),
+                Expanded(
+                  child: SingleChildScrollView(
+                    controller: _categoryScrollController,
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        _FilterChip(
+                          label: 'Todos', 
+                          isSelected: _selectedCategory == 'Todas',
+                          onTap: () => setState(() => _selectedCategory = 'Todas'),
+                        ),
+                        ...cats.map((c) => Padding(
+                          padding: const EdgeInsets.only(left: 8),
+                          child: _FilterChip(
+                            label: c.name, 
+                            isSelected: _selectedCategory == c.name,
+                            onTap: () => setState(() => _selectedCategory = c.name),
+                          ),
+                        )),
+                      ],
                     ),
-                  )),
-                ],
-              ),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.chevron_right_rounded, color: AppTheme.primary),
+                  onPressed: () {
+                    _categoryScrollController.animateTo(
+                      _categoryScrollController.offset + 100,
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeInOut,
+                    );
+                  },
+                ),
+              ],
             ),
             orElse: () => const SizedBox.shrink(),
           ),
@@ -266,13 +355,25 @@ class _PosScreenState extends ConsumerState<PosScreen> {
       return matchesSearch && matchesCategory;
     }).toList();
 
-    return RepaintBoundary(
-      child: GridView.builder(
-        padding: const EdgeInsets.all(24),
-        gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(maxCrossAxisExtent: 220, childAspectRatio: 0.78, crossAxisSpacing: 20, mainAxisSpacing: 20),
-        itemCount: filtered.length,
-        itemBuilder: (context, index) => _PosProductCard(product: filtered[index]),
-      ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth;
+        final crossAxisCount = width > 900 ? 4 : (width > 600 ? 3 : 2);
+        
+        return RepaintBoundary(
+          child: GridView.builder(
+            padding: const EdgeInsets.all(24),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: crossAxisCount,
+              childAspectRatio: 0.72,
+              crossAxisSpacing: 16,
+              mainAxisSpacing: 16,
+            ),
+            itemCount: filtered.length,
+            itemBuilder: (context, index) => _PosProductCard(product: filtered[index]),
+          ),
+        );
+      },
     );
   }
 
@@ -297,10 +398,33 @@ class _PosScreenState extends ConsumerState<PosScreen> {
           const Text('Carrito Activo', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, letterSpacing: -0.5)),
           const Spacer(),
           if (count > 0)
-            IconButton(
-              icon: const Icon(Icons.delete_sweep_rounded, color: AppTheme.error, size: 24),
-              onPressed: () => ref.read(cartProvider.notifier).clearCart(),
-              tooltip: 'Vaciar Carrito',
+            Material(
+              color: Colors.transparent,
+              child: IconButton(
+                padding: const EdgeInsets.all(12),
+                icon: const Icon(Icons.delete_sweep_rounded, color: AppTheme.error, size: 28),
+                onPressed: () {
+                  HapticFeedback.mediumImpact();
+                  showDialog(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      title: const Text('Vaciar Carrito'),
+                      content: const Text('¿Estás seguro de que deseas eliminar todos los productos del carrito?'),
+                      actions: [
+                        TextButton(onPressed: () => Navigator.pop(context), child: const Text('CANCELAR')),
+                        TextButton(
+                          onPressed: () {
+                            ref.read(cartProvider.notifier).clearCart();
+                            Navigator.pop(context);
+                          }, 
+                          child: const Text('VACIAR', style: TextStyle(color: AppTheme.error))
+                        ),
+                      ],
+                    ),
+                  );
+                },
+                tooltip: 'Vaciar Carrito',
+              ),
             ),
         ],
       ),
@@ -387,7 +511,10 @@ class _PosScreenState extends ConsumerState<PosScreen> {
               Expanded(
                 flex: 3,
                 child: AnimatedPressable(
-                  onTap: cart.isEmpty ? null : () => _startCheckout(cart, total),
+                  onTap: cart.isEmpty ? null : () {
+                    HapticFeedback.heavyImpact();
+                    _startCheckout(cart, total);
+                  },
                   child: Container(
                     height: 60,
                     decoration: BoxDecoration(
@@ -454,7 +581,7 @@ class _PosScreenState extends ConsumerState<PosScreen> {
         cartItems: cart,
         totalAmount: total,
         onComplete: () {
-          // Additional logic after checkout if needed
+          ref.read(cartProvider.notifier).clearCart();
         },
       ),
     );
@@ -520,7 +647,17 @@ class _PosProductCardState extends ConsumerState<_PosProductCard> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(widget.product.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 14)),
+                    SizedBox(
+                      height: 18,
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          widget.product.name, 
+                          style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 14)
+                        ),
+                      ),
+                    ),
                     const SizedBox(height: 4),
                     Text('\$${widget.product.price.toStringAsFixed(2)}', style: const TextStyle(color: AppTheme.primary, fontWeight: FontWeight.w900, fontSize: 18)),
                     const SizedBox(height: 8),
@@ -578,8 +715,12 @@ class _CartItemRow extends ConsumerWidget {
           Text('\$${item.subtotal.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: AppTheme.primary)),
           const SizedBox(width: 8),
           IconButton(
-            icon: const Icon(Icons.remove_circle_outline, color: AppTheme.error, size: 20),
-            onPressed: () => ref.read(cartProvider.notifier).decrementQuantity(item.product.id),
+            padding: const EdgeInsets.all(12),
+            icon: const Icon(Icons.remove_circle_outline, color: AppTheme.error, size: 24),
+            onPressed: () {
+              HapticFeedback.lightImpact();
+              ref.read(cartProvider.notifier).removeItem(item.product.id);
+            },
           ),
         ],
       ),

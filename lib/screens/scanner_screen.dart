@@ -107,7 +107,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
         } catch (e) {
           debugPrint('Error: $e');
         } finally {
-          Future.delayed(const Duration(milliseconds: 1000), () {
+          Future.delayed(const Duration(milliseconds: 500), () {
             if (mounted) setState(() => _isProcessing = false);
           });
         }

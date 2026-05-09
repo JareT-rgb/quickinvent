@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:animate_do/animate_do.dart';
 import '../providers/products_provider.dart';
@@ -14,6 +15,7 @@ import '../utils/excel_helper.dart';
 import '../theme/app_theme.dart';
 import '../widgets/product_image.dart';
 import '../widgets/premium_widgets.dart';
+import '../screens/barcode_print_screen.dart';
 
 class InventoryScreen extends ConsumerStatefulWidget {
   const InventoryScreen({super.key});
@@ -26,6 +28,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
   String _searchQuery = '';
   String _selectedCategory = 'Todas';
   bool _onlyLowStock = false;
+  bool _isGridView = true;
   final _searchController = TextEditingController();
 
   @override
@@ -89,6 +92,11 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
               onTap: () => showDialog(context: context, builder: (context) => const QuickImportDialog()),
             ),
             ExpandableFabItem(
+              icon: Icons.qr_code_2_rounded,
+              label: 'Imprimir Etiquetas',
+              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => BarcodePrintScreen(products: products))),
+            ),
+            ExpandableFabItem(
               icon: Icons.download_rounded,
               label: 'Exportar Inventario',
               onTap: () => ExcelHelper.exportProducts(products),
@@ -107,69 +115,58 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          FadeInLeft(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Gestión de Stock', 
-                  style: TextStyle(fontSize: 32, fontWeight: FontWeight.w900, letterSpacing: -1.5)
-                ),
-                Text(
-                  'Control total de tu inventario premium', 
-                  style: TextStyle(color: AppTheme.textSecondary, fontSize: 14, fontWeight: FontWeight.w500)
-                ),
-              ],
+          Expanded(
+            child: FadeInLeft(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Gestión de Stock', 
+                    style: TextStyle(fontSize: 32, fontWeight: FontWeight.w900, letterSpacing: -1.5),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                    'Control total de tu inventario premium', 
+                    style: TextStyle(color: AppTheme.textSecondary, fontSize: 14, fontWeight: FontWeight.w500),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
             ),
           ),
-          FadeInRight(
-            child: _HeaderIconButton(
-              icon: Icons.refresh_rounded,
-              color: AppTheme.primary,
-              tooltip: 'Sincronizar',
-              onPressed: () => ref.invalidate(productsProvider),
-            ),
+          const SizedBox(width: 16),
+          Row(
+            children: [
+              _HeaderIconButton(
+                icon: _isGridView ? Icons.view_list_rounded : Icons.grid_view_rounded,
+                color: AppTheme.primary,
+                tooltip: _isGridView ? 'Ver como lista' : 'Ver como cuadrícula',
+                onPressed: () => setState(() => _isGridView = !_isGridView),
+              ),
+              const SizedBox(width: 8),
+              _HeaderIconButton(
+                icon: Icons.qr_code_2_rounded,
+                color: AppTheme.primary,
+                tooltip: 'Imprimir Etiquetas',
+                onPressed: () {
+                  productsAsync.whenData((products) {
+                    Navigator.push(context, MaterialPageRoute(builder: (context) => BarcodePrintScreen(products: products)));
+                  });
+                },
+              ),
+              const SizedBox(width: 8),
+              _HeaderIconButton(
+                icon: Icons.refresh_rounded,
+                color: AppTheme.primary,
+                tooltip: 'Sincronizar',
+                onPressed: () => ref.invalidate(productsProvider),
+              ),
+            ],
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildActionsMenu(BuildContext context, WidgetRef ref, List<Product> products) {
-    return PopupMenuButton<String>(
-      tooltip: 'Acciones de Catálogo',
-      icon: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: AppTheme.accent.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: const Icon(Icons.more_vert_rounded, color: AppTheme.accent, size: 22),
-      ),
-      onSelected: (value) {
-        if (value == 'export') ExcelHelper.exportProducts(products);
-        if (value == 'import') {
-           showDialog(context: context, builder: (context) => const BulkImportDialog());
-        }
-        if (value == 'quick') {
-           showDialog(context: context, builder: (context) => const QuickImportDialog());
-        }
-      },
-      itemBuilder: (context) => [
-        const PopupMenuItem(
-          value: 'export',
-          child: Row(children: [Icon(Icons.download_rounded, size: 18), SizedBox(width: 12), Text('Exportar Excel')]),
-        ),
-        const PopupMenuItem(
-          value: 'import',
-          child: Row(children: [Icon(Icons.upload_rounded, size: 18), SizedBox(width: 12), Text('Importación Masiva')]),
-        ),
-        const PopupMenuDivider(),
-        const PopupMenuItem(
-          value: 'quick',
-          child: Row(children: [Icon(Icons.auto_fix_high_rounded, size: 18, color: AppTheme.primary), SizedBox(width: 12), Text('Carga Rápida (Abarrotes)')]),
-        ),
-      ],
     );
   }
 
@@ -272,14 +269,16 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
 
         return LayoutBuilder(
           builder: (context, constraints) {
-            final crossAxisCount = constraints.maxWidth > 1200 ? 5 : (constraints.maxWidth > 900 ? 4 : (constraints.maxWidth > 600 ? 2 : 1));
-            
-            if (crossAxisCount > 1) {
+            final width = constraints.maxWidth;
+            final crossAxisCount = width > 900 ? 4 : (width > 600 ? 2 : 1);
+            final isMobile = width < 600;
+
+            if (_isGridView && !isMobile) {
               return GridView.builder(
                 padding: const EdgeInsets.all(24),
                 gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: crossAxisCount,
-                  childAspectRatio: 0.78,
+                  childAspectRatio: 0.75,
                   crossAxisSpacing: 24,
                   mainAxisSpacing: 24,
                 ),
@@ -288,14 +287,17 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                   delay: Duration(milliseconds: index * 50),
                   child: _ProductGridCard(
                     product: filtered[index],
-                    onTap: () => showDialog(context: context, builder: (context) => EditProductDialog(product: filtered[index])),
+                    onTap: () {
+                      HapticFeedback.lightImpact();
+                      showDialog(context: context, builder: (context) => EditProductDialog(product: filtered[index]));
+                    },
                   ),
                 ),
               );
             }
 
             return ListView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               itemCount: filtered.length,
               itemBuilder: (context, index) => FadeInRight(
                 delay: Duration(milliseconds: index * 50),
@@ -464,7 +466,17 @@ class _ProductGridCardState extends State<_ProductGridCard> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(widget.product.name, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16), maxLines: 1, overflow: TextOverflow.ellipsis),
+                    SizedBox(
+                      height: 20,
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          widget.product.name, 
+                          style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16)
+                        ),
+                      ),
+                    ),
                     const SizedBox(height: 6),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -518,7 +530,17 @@ class _ProductListTile extends StatelessWidget {
         onTap: onTap,
         contentPadding: const EdgeInsets.all(16),
         leading: ProductImage(imageUrl: product.imageUrl, size: 60, borderRadius: BorderRadius.circular(12)),
-        title: Text(product.name, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
+        title: SizedBox(
+          height: 20,
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              product.name, 
+              style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16)
+            ),
+          ),
+        ),
         subtitle: Padding(
           padding: const EdgeInsets.only(top: 8),
           child: Row(

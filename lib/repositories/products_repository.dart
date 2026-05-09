@@ -194,6 +194,10 @@ class ProductsRepository {
   }
 
   Future<void> deleteCategory(int id) async {
+    // 1. Unlink products from this category first to avoid FK constraint error
+    await _client.from('products').update({'category_id': null}).eq('category_id', id);
+    
+    // 2. Now delete the category
     await _client.from('categories').delete().eq('id', id);
   }
 

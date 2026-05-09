@@ -12,6 +12,7 @@ import '../screens/profile_screen.dart';
 import '../screens/customers_screen.dart';
 import '../widgets/app_sidebar.dart';
 import '../repositories/auth_repository.dart';
+import '../theme/app_theme.dart';
 
 class AppShell extends ConsumerStatefulWidget {
   const AppShell({super.key});
@@ -22,6 +23,7 @@ class AppShell extends ConsumerStatefulWidget {
 
 class _AppShellState extends ConsumerState<AppShell> {
   String _currentRoute = 'pos';
+  bool _isSidebarVisible = true;
 
   final Map<String, Widget> _screens = {
     'pos': const PosScreen(),
@@ -215,12 +217,33 @@ class _AppShellState extends ConsumerState<AppShell> {
           body: Row(
             children: [
               if (!isMobile)
-                AppSidebar(
-                  currentRoute: _currentRoute,
-                  onNavigate: _onNavigate,
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeInOutQuart,
+                  width: _isSidebarVisible ? 280 : 0,
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    physics: const NeverScrollableScrollPhysics(),
+                    child: SizedBox(
+                      width: 280,
+                      child: AppSidebar(
+                        currentRoute: _currentRoute,
+                        onNavigate: _onNavigate,
+                      ),
+                    ),
+                  ),
                 ),
               Expanded(
                 child: Scaffold(
+                  appBar: !isMobile ? AppBar(
+                    backgroundColor: Colors.transparent,
+                    elevation: 0,
+                    leading: IconButton(
+                      icon: Icon(_isSidebarVisible ? Icons.menu_open_rounded : Icons.menu_rounded, color: AppTheme.primary),
+                      onPressed: () => setState(() => _isSidebarVisible = !_isSidebarVisible),
+                      tooltip: _isSidebarVisible ? 'Contraer lateral' : 'Expandir lateral',
+                    ),
+                  ) : null,
                   body: AnimatedSwitcher(
                     duration: const Duration(milliseconds: 300),
                     child: KeyedSubtree(

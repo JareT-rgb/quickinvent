@@ -7,12 +7,14 @@ class ScannerStatus {
   final bool isActive;
   final String? lastBarcode;
   final String? lastProductName;
+  final String? lastScanMode; // 'pos' or 'audit'
   final DateTime? lastScanTime;
 
   const ScannerStatus({
     this.isActive = false,
     this.lastBarcode,
     this.lastProductName,
+    this.lastScanMode,
     this.lastScanTime,
   });
 
@@ -20,12 +22,14 @@ class ScannerStatus {
     bool? isActive,
     String? lastBarcode,
     String? lastProductName,
+    String? lastScanMode,
     DateTime? lastScanTime,
   }) {
     return ScannerStatus(
       isActive: isActive ?? this.isActive,
       lastBarcode: lastBarcode ?? this.lastBarcode,
       lastProductName: lastProductName ?? this.lastProductName,
+      lastScanMode: lastScanMode ?? this.lastScanMode,
       lastScanTime: lastScanTime ?? this.lastScanTime,
     );
   }
@@ -66,11 +70,13 @@ class ScannerStatusNotifier extends Notifier<ScannerStatus> {
           callback: (payload) {
             final barcode = payload.newRecord['barcode'] as String?;
             final productName = payload.newRecord['product_name'] as String?;
+            final mode = payload.newRecord['mode'] as String? ?? 'pos';
 
             state = ScannerStatus(
               isActive: true,
               lastBarcode: barcode,
               lastProductName: productName,
+              lastScanMode: mode,
               lastScanTime: DateTime.now(),
             );
 

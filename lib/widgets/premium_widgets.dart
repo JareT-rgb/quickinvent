@@ -35,7 +35,7 @@ class AnimatedCounter extends StatelessWidget {
 }
 
 /// Control segmentado premium con indicador animado.
-class PremiumSegmentedControl extends StatelessWidget {
+class PremiumSegmentedControl extends StatefulWidget {
   final List<String> options;
   final int selectedIndex;
   final Function(int) onSelected;
@@ -48,58 +48,87 @@ class PremiumSegmentedControl extends StatelessWidget {
   });
 
   @override
+  State<PremiumSegmentedControl> createState() => _PremiumSegmentedControlState();
+}
+
+class _PremiumSegmentedControlState extends State<PremiumSegmentedControl> {
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _scroll(double offset) {
+    _scrollController.animateTo(
+      _scrollController.offset + offset,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
     return Container(
-      height: 50,
-      padding: const EdgeInsets.all(4),
+      height: 54,
       decoration: BoxDecoration(
         color: AppTheme.primary.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(16),
       ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final itemWidth = (constraints.maxWidth - 8) / options.length;
-          return Stack(
-            children: [
-              AnimatedPositioned(
-                duration: const Duration(milliseconds: 300),
-                curve: Curves.easeInOutBack,
-                left: selectedIndex * itemWidth,
-                width: itemWidth,
-                height: 42,
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: isDark ? theme.cardColor : Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: AppTheme.softShadow,
-                  ),
-                ),
-              ),
-              Row(
-                children: List.generate(options.length, (i) => Expanded(
-                  child: GestureDetector(
-                    onTap: () => onSelected(i),
+      child: Row(
+        children: [
+          IconButton(
+            icon: const Icon(Icons.chevron_left_rounded, color: AppTheme.primary, size: 20),
+            onPressed: () => _scroll(-150),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 40),
+          ),
+          Expanded(
+            child: SingleChildScrollView(
+              controller: _scrollController,
+              scrollDirection: Axis.horizontal,
+              physics: const BouncingScrollPhysics(),
+              child: Row(
+                children: List.generate(widget.options.length, (i) {
+                  final isSelected = widget.selectedIndex == i;
+                  return GestureDetector(
+                    onTap: () => widget.onSelected(i),
                     behavior: HitTestBehavior.opaque,
-                    child: Center(
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 300),
+                      margin: const EdgeInsets.symmetric(horizontal: 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: isSelected ? (isDark ? theme.cardColor : Colors.white) : Colors.transparent,
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: isSelected ? AppTheme.softShadow : null,
+                      ),
                       child: AnimatedDefaultTextStyle(
                         duration: const Duration(milliseconds: 300),
                         style: TextStyle(
-                          color: selectedIndex == i ? AppTheme.primary : theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.5),
-                          fontWeight: selectedIndex == i ? FontWeight.w900 : FontWeight.w600,
+                          color: isSelected ? AppTheme.primary : theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.5),
+                          fontWeight: isSelected ? FontWeight.w900 : FontWeight.w600,
                           fontSize: 13,
                         ),
-                        child: Text(options[i]),
+                        child: Text(widget.options[i]),
                       ),
                     ),
-                  ),
-                )),
+                  );
+                }),
               ),
-            ],
-          );
-        },
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.chevron_right_rounded, color: AppTheme.primary, size: 20),
+            onPressed: () => _scroll(150),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 40),
+          ),
+        ],
       ),
     );
   }
@@ -263,6 +292,7 @@ class SparklineCard extends StatelessWidget {
   final num value;
   final List<double> data;
   final String prefix;
+  final String suffix;
   final Color color;
 
   const SparklineCard({
@@ -271,6 +301,7 @@ class SparklineCard extends StatelessWidget {
     required this.value,
     required this.data,
     this.prefix = '',
+    this.suffix = '',
     this.color = AppTheme.primary,
   });
 
@@ -293,6 +324,7 @@ class SparklineCard extends StatelessWidget {
           AnimatedCounter(
             value: value,
             prefix: prefix,
+            suffix: suffix,
             style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: theme.textTheme.titleLarge?.color),
           ),
           const SizedBox(height: 16),
@@ -305,9 +337,9 @@ class SparklineCard extends StatelessWidget {
                   titlesData: const FlTitlesData(show: false),
                   borderData: FlBorderData(show: false),
                   minX: 0,
-                  maxX: (data.length - 1).toDouble(),
-                  minY: data.reduce((a, b) => a < b ? a : b) * 0.9,
-                  maxY: data.reduce((a, b) => a > b ? a : b) * 1.1,
+                  maxX: data.isEmpty ? 1.0 : (data.length - 1).toDouble(),
+                  minY: data.isEmpty ? 0 : data.reduce((a, b) => a < b ? a : b) * 0.9,
+                  maxY: data.isEmpty ? 10 : data.reduce((a, b) => a > b ? a : b) * 1.1,
                   lineBarsData: [
                     LineChartBarData(
                       spots: data.asMap().entries.map((e) => FlSpot(e.key.toDouble(), e.value)).toList(),

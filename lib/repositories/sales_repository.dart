@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'package:flutter/material.dart' show DateTimeRange;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/sale.dart';
@@ -371,6 +372,80 @@ class SalesRepository {
     };
   }
 
+  Future<Map<String, dynamic>> getFilteredStats({
+    DateTime? from,
+    DateTime? to,
+    String? categoryId,
+  }) async {
+    // We select sales and join with sale_items and their products to filter by category
+    var query = _client.from('sales').select('total_amount, payment_method, created_at, sale_items(*, products(category_id))');
+    
+    if (from != null) query = query.gte('created_at', from.toIso8601String());
+    if (to != null) query = query.lte('created_at', to.toIso8601String());
+
+    final sales = await query;
+    
+    double revenue = 0;
+    double cost = 0;
+    int count = 0;
+    Map<String, double> paymentMethods = {};
+    Map<int, double> hourlySales = {};
+    Map<DateTime, double> dailySales = {};
+    Map<String, double> categorySales = {};
+    
+    for (final s in sales as List) {
+      final createdAt = DateTime.parse(s['created_at']).toLocal();
+      final dayKey = DateTime(createdAt.year, createdAt.month, createdAt.day);
+      
+      double saleRevenue = 0;
+      double saleCost = 0;
+      bool hasTargetCategory = categoryId == null;
+
+      for (final item in s['sale_items'] as List) {
+        final product = item['products'] as Map<String, dynamic>?;
+        final itemCatId = product?['category_id']?.toString();
+        
+        if (categoryId != null && itemCatId == categoryId) {
+          hasTargetCategory = true;
+        }
+
+        // We only add to sub-metrics if the item matches the category (if filtered)
+        // BUT, if we filter by category, usually we want to see only those items' revenue
+        if (categoryId == null || itemCatId == categoryId) {
+          saleRevenue += (item['subtotal'] as num).toDouble();
+          saleCost += ((item['cost_price_at_sale'] ?? 0) as num).toDouble() * (item['quantity'] as int);
+        }
+      }
+
+      if (!hasTargetCategory) continue;
+
+      revenue += saleRevenue;
+      cost += saleCost;
+      count++;
+
+      // Payment method
+      final pm = s['payment_method'] as String? ?? 'Efectivo';
+      paymentMethods[pm] = (paymentMethods[pm] ?? 0) + saleRevenue;
+
+      // Hourly
+      final hour = createdAt.hour;
+      hourlySales[hour] = (hourlySales[hour] ?? 0) + saleRevenue;
+
+      // Daily
+      dailySales[dayKey] = (dailySales[dayKey] ?? 0) + saleRevenue;
+    }
+
+    return {
+      'revenue': revenue,
+      'cost': cost,
+      'profit': revenue - cost,
+      'count': count,
+      'hourly': hourlySales,
+      'daily': dailySales,
+      'paymentMethods': paymentMethods,
+    };
+  }
+
   Future<List<MapEntry<int, double>>> getHourlySales() async {
     final now = DateTime.now();
     final startOfDay = DateTime(now.year, now.month, now.day).toIso8601String();
@@ -501,92 +576,3 @@ final salesStatsProvider = FutureProvider<Map<String, dynamic>>((ref) async {
   return ref.read(salesRepositoryProvider).getStats();
 });
 
-class ReportData {
-  final Map<String, dynamic> stats;
-  final List<MapEntry<DateTime, double>> monthly;
-  final List<MapEntry<DateTime, double>> daily;
-  final List<MapEntry<int, double>> hourly;
-  final Map<String, double> paymentMethods;
-  final Map<String, double> categorySales;
-  final List<MapEntry<String, int>> topProducts;
-  final List<Map<String, dynamic>> cashCuts;
-  final List<Map<String, dynamic>> expenses;
-  final double estimatedProfit;
-
-  ReportData({
-    required this.stats,
-    required this.monthly,
-    required this.daily,
-    required this.hourly,
-    required this.paymentMethods,
-    required this.categorySales,
-    required this.topProducts,
-    required this.cashCuts,
-    required this.expenses,
-    required this.estimatedProfit,
-  });
-}
-
-final reportDataProvider = FutureProvider<ReportData>((ref) async {
-  ref.watch(salesStreamProvider);
-  ref.watch(cashCutsStreamProvider);
-  ref.watch(expensesStreamProvider);
-  
-  final repo = ref.read(salesRepositoryProvider);
-  
-  try {
-    final stats = await repo.getStats();
-    final monthly = await repo.getMonthlyRevenueLastNMonths(6);
-    final now = DateTime.now();
-    final daily = await repo.getDailySalesForMonth(now.year, now.month);
-    final hourly = await repo.getHourlySales();
-    final paymentMethods = await repo.getPaymentMethodDistribution();
-    final categorySales = await repo.getCategorySalesDistribution();
-    final topProducts = await repo.getTopProducts(limit: 5);
-    final cashCuts = await repo.fetchCashCuts();
-    final expenses = await repo.fetchExpenses();
-    final profitStats = await repo.getProfitStats();
-
-    return ReportData(
-      stats: stats,
-      monthly: monthly,
-      daily: daily,
-      hourly: hourly,
-      paymentMethods: paymentMethods,
-      categorySales: categorySales,
-      topProducts: topProducts,
-      cashCuts: cashCuts,
-      expenses: expenses,
-      estimatedProfit: profitStats['profit']! - (stats['todayExpenses'] ?? 0),
-    );
-  } catch (e, stack) {
-    print('Error generating report data: $e');
-    print(stack);
-    return ReportData(
-      stats: {
-        'totalRevenue': 0.0,
-        'todayRevenue': 0.0,
-        'todayCount': 0,
-        'todayCash': 0.0,
-        'totalCount': 0,
-      },
-      monthly: [],
-      daily: [],
-      hourly: [],
-      paymentMethods: {},
-      categorySales: {},
-      topProducts: [],
-      cashCuts: [],
-      expenses: [],
-      estimatedProfit: 0.0,
-    );
-  }
-});
-
-final deadStockProvider =
-    FutureProvider.family<List<Map<String, dynamic>>, List<String>>((
-      ref,
-      productNames,
-    ) async {
-      return ref.read(salesRepositoryProvider).getDeadStock(productNames);
-    });

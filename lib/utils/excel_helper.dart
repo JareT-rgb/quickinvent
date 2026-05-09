@@ -5,70 +5,77 @@ import '../models/product.dart';
 import '../models/sale.dart';
 
 class ExcelHelper {
-  static Future<void> exportProducts(List<Product> products) async {
-    final excel = Excel.createExcel();
-    final String sheetName = 'Inventario';
-    excel.rename(excel.getDefaultSheet()!, sheetName);
-    final sheet = excel[sheetName];
+  static Future<bool> exportProducts(List<Product> products) async {
+    try {
+      final excel = Excel.createExcel();
+      final String sheetName = 'Inventario';
+      excel.rename(excel.getDefaultSheet()!, sheetName);
+      final sheet = excel[sheetName];
 
-    // Define Styles
-    CellStyle headerStyle = CellStyle(
-      bold: true,
-      fontColorHex: ExcelColor.white,
-      backgroundColorHex: ExcelColor.fromHexString('#2E7D32'), 
-      horizontalAlign: HorizontalAlign.Center,
-      verticalAlign: VerticalAlign.Center,
-    );
-
-    // Headers
-    List<String> headers = [
-      'ID',
-      'Nombre del Producto',
-      'Precio Venta',
-      'Costo',
-      'Margen %',
-      'Stock Actual',
-      'Stock Minimo',
-      'Codigo de Barras',
-      'Categoria ID',
-      'Estado'
-    ];
-
-    for (var i = 0; i < headers.length; i++) {
-      var cell = sheet.cell(CellIndex.indexByColumnRow(columnIndex: i, rowIndex: 0));
-      cell.value = TextCellValue(headers[i]);
-      cell.cellStyle = headerStyle;
-    }
-
-    // Data
-    for (var i = 0; i < products.length; i++) {
-      final p = products[i];
-      final rowIndex = i + 1;
-      
-      final margin = p.price > 0 ? ((p.price - p.costPrice) / p.price * 100) : 0.0;
-
-      sheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex)).value = TextCellValue(p.id);
-      sheet.cell(CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: rowIndex)).value = TextCellValue(p.name);
-      sheet.cell(CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: rowIndex)).value = DoubleCellValue(p.price);
-      sheet.cell(CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: rowIndex)).value = DoubleCellValue(p.costPrice);
-      sheet.cell(CellIndex.indexByColumnRow(columnIndex: 4, rowIndex: rowIndex)).value = TextCellValue('${margin.toStringAsFixed(1)}%');
-      sheet.cell(CellIndex.indexByColumnRow(columnIndex: 5, rowIndex: rowIndex)).value = IntCellValue(p.stockQuantity);
-      sheet.cell(CellIndex.indexByColumnRow(columnIndex: 6, rowIndex: rowIndex)).value = IntCellValue(p.minStock);
-      sheet.cell(CellIndex.indexByColumnRow(columnIndex: 7, rowIndex: rowIndex)).value = TextCellValue(p.barcode ?? '');
-      sheet.cell(CellIndex.indexByColumnRow(columnIndex: 8, rowIndex: rowIndex)).value = TextCellValue(p.categoryId ?? '');
-      sheet.cell(CellIndex.indexByColumnRow(columnIndex: 9, rowIndex: rowIndex)).value = TextCellValue(p.isActive ? 'Activo' : 'Inactivo');
-    }
-
-    // Set Column Widths (Manual)
-    sheet.setColumnWidth(1, 30); // Name
-    sheet.setColumnWidth(7, 20); // Barcode
-
-    final bytes = excel.save();
-    if (bytes != null) {
-      await FileSaver.instance.saveFile(
-        name: 'Inventario_QuickInvent_${DateTime.now().millisecondsSinceEpoch}.xlsx',
-        bytes: Uint8List.fromList(bytes),
+      // Define Styles
+      CellStyle headerStyle = CellStyle(
+        bold: true,
+        fontColorHex: ExcelColor.white,
+        backgroundColorHex: ExcelColor.fromHexString('#2E7D32'), 
+        horizontalAlign: HorizontalAlign.Center,
+        verticalAlign: VerticalAlign.Center,
       );
+
+      // Headers
+      List<String> headers = [
+        'ID',
+        'Nombre del Producto',
+        'Precio Venta',
+        'Costo',
+        'Margen %',
+        'Stock Actual',
+        'Stock Minimo',
+        'Codigo de Barras',
+        'Categoria ID',
+        'Estado'
+      ];
+
+      for (var i = 0; i < headers.length; i++) {
+        var cell = sheet.cell(CellIndex.indexByColumnRow(columnIndex: i, rowIndex: 0));
+        cell.value = TextCellValue(headers[i]);
+        cell.cellStyle = headerStyle;
+      }
+
+      // Data
+      for (var i = 0; i < products.length; i++) {
+        final p = products[i];
+        final rowIndex = i + 1;
+        
+        final margin = p.price > 0 ? ((p.price - p.costPrice) / p.price * 100) : 0.0;
+
+        sheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex)).value = TextCellValue(p.id);
+        sheet.cell(CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: rowIndex)).value = TextCellValue(p.name);
+        sheet.cell(CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: rowIndex)).value = DoubleCellValue(p.price);
+        sheet.cell(CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: rowIndex)).value = DoubleCellValue(p.costPrice);
+        sheet.cell(CellIndex.indexByColumnRow(columnIndex: 4, rowIndex: rowIndex)).value = TextCellValue('${margin.toStringAsFixed(1)}%');
+        sheet.cell(CellIndex.indexByColumnRow(columnIndex: 5, rowIndex: rowIndex)).value = IntCellValue(p.stockQuantity);
+        sheet.cell(CellIndex.indexByColumnRow(columnIndex: 6, rowIndex: rowIndex)).value = IntCellValue(p.minStock);
+        sheet.cell(CellIndex.indexByColumnRow(columnIndex: 7, rowIndex: rowIndex)).value = TextCellValue(p.barcode ?? '');
+        sheet.cell(CellIndex.indexByColumnRow(columnIndex: 8, rowIndex: rowIndex)).value = TextCellValue(p.categoryId ?? '');
+        sheet.cell(CellIndex.indexByColumnRow(columnIndex: 9, rowIndex: rowIndex)).value = TextCellValue(p.isActive ? 'Activo' : 'Inactivo');
+      }
+
+      // Set Column Widths (Manual)
+      sheet.setColumnWidth(1, 30); // Name
+      sheet.setColumnWidth(7, 20); // Barcode
+
+      final bytes = excel.save();
+      if (bytes != null) {
+        await FileSaver.instance.saveFile(
+          name: 'Inventario_QuickInvent_${DateTime.now().millisecondsSinceEpoch}.xlsx',
+          bytes: Uint8List.fromList(bytes),
+        );
+        return true;
+      }
+      return false;
+    } catch (e) {
+      print('Error exporting products: $e');
+      return false;
     }
   }
 

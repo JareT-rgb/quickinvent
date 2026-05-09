@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../repositories/sales_repository.dart';
+import '../providers/reports_provider.dart';
 import '../theme/app_theme.dart';
 
 class DeadStockReport extends ConsumerWidget {

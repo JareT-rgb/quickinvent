@@ -139,112 +139,137 @@ class _EditProductDialogState extends ConsumerState<EditProductDialog>
 
   Widget _buildDesktopLayout() {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(32),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Expanded(
-            flex: 2,
+            flex: 3,
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildSectionTitle('Identificación del Producto', Icons.badge_outlined),
-                const SizedBox(height: 16),
-                ImagePickerWidget(
-                  initialImageUrl: _currentImageUrl,
-                  onImageChanged: (file, url) {
-                    setState(() {
-                      _selectedImageFile = file;
-                      _currentImageUrl = url;
-                    });
-                  },
-                  height: 160,
-                  width: 160,
-                  shape: BoxShape.rectangle,
-                ),
-                const SizedBox(height: 24),
-                TextFormField(
-                  controller: _nameController,
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  decoration: appInputDecoration(context, label: 'Nombre del Producto', icon: Icons.shopping_bag_outlined),
-                  validator: (v) => v!.isEmpty ? 'Requerido' : null,
-                ),
-                const SizedBox(height: 16),
-                DropdownButtonFormField<String>(
-                  initialValue: _selectedCategoryId,
-                  decoration: appInputDecoration(context, label: 'Categoría', icon: Icons.category_outlined),
-                  items: _categories.map((c) => DropdownMenuItem(value: c['id'] as String, child: Text(c['name'] as String))).toList(),
-                  onChanged: (v) => setState(() => _selectedCategoryId = v),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: _barcodeController,
-                        decoration: appInputDecoration(context, label: 'Código de Barras', icon: Icons.qr_code_scanner),
+                _buildSectionCard(
+                  title: 'Identificación del Producto',
+                  icon: Icons.badge_rounded,
+                  child: Column(
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          ImagePickerWidget(
+                            initialImageUrl: _currentImageUrl,
+                            onImageChanged: (file, url) {
+                              setState(() {
+                                _selectedImageFile = file;
+                                _currentImageUrl = url;
+                              });
+                            },
+                            height: 120,
+                            width: 120,
+                            shape: BoxShape.rectangle,
+                          ),
+                          const SizedBox(width: 24),
+                          Expanded(
+                            child: Column(
+                              children: [
+                                TextFormField(
+                                  controller: _nameController,
+                                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                                  decoration: appInputDecoration(context, label: 'Nombre del Producto', icon: Icons.shopping_bag_outlined),
+                                  validator: (v) => v!.isEmpty ? 'Requerido' : null,
+                                ),
+                                const SizedBox(height: 16),
+                                DropdownButtonFormField<String>(
+                                  value: _selectedCategoryId,
+                                  decoration: appInputDecoration(context, label: 'Categoría', icon: Icons.category_outlined),
+                                  items: _categories.map((c) => DropdownMenuItem(value: c['id'] as String, child: Text(c['name'] as String))).toList(),
+                                  onChanged: (v) => setState(() => _selectedCategoryId = v),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    IconButton(
-                      icon: const Icon(Icons.auto_fix_high, color: AppTheme.primary),
-                      tooltip: 'Generar código automáticamente',
-                      onPressed: () {
-                        setState(() {
-                          _barcodeController.text = DateTime.now().millisecondsSinceEpoch.toString();
-                        });
-                      },
-                    ),
-                  ],
+                      const SizedBox(height: 24),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextFormField(
+                              controller: _barcodeController,
+                              decoration: appInputDecoration(context, label: 'Código de Barras', icon: Icons.qr_code_rounded),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          _ActionButton(
+                            icon: Icons.auto_fix_high_rounded,
+                            onPressed: () => setState(() => _barcodeController.text = DateTime.now().millisecondsSinceEpoch.toString()),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
           ),
           const SizedBox(width: 32),
-          Container(width: 1, height: 400, color: AppTheme.divider.withValues(alpha: 0.5)),
-          const SizedBox(width: 32),
           Expanded(
             flex: 2,
             child: Column(
               children: [
-                _buildSectionTitle('Finanzas e Inventario', Icons.analytics_outlined),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: _priceController,
-                  keyboardType: TextInputType.number,
-                  style: const TextStyle(fontSize: 20, color: AppTheme.primary, fontWeight: FontWeight.w900),
-                  decoration: appInputDecoration(context, label: 'Precio de Venta', icon: Icons.attach_money),
-                  validator: (v) => v!.isEmpty ? 'Requerido' : null,
-                ),
-                const SizedBox(height: 24),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: _stockController,
+                _buildSectionCard(
+                  title: 'Inventario y Estado',
+                  icon: Icons.analytics_rounded,
+                  child: Column(
+                    children: [
+                      TextFormField(
+                        controller: _priceController,
                         keyboardType: TextInputType.number,
-                        decoration: appInputDecoration(context, label: 'Stock Actual', icon: Icons.inventory_2_outlined),
+                        style: const TextStyle(fontSize: 24, color: AppTheme.primary, fontWeight: FontWeight.w900),
+                        decoration: appInputDecoration(context, label: 'Precio de Venta', icon: Icons.attach_money),
+                        validator: (v) => v!.isEmpty ? 'Requerido' : null,
                       ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: TextFormField(
-                        controller: _minStockController,
-                        keyboardType: TextInputType.number,
-                        decoration: appInputDecoration(context, label: 'Stock Mínimo', icon: Icons.warning_amber_outlined),
+                      const SizedBox(height: 24),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextFormField(
+                              controller: _stockController,
+                              keyboardType: TextInputType.number,
+                              decoration: appInputDecoration(context, label: 'Stock Actual', icon: Icons.inventory_2_rounded),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: TextFormField(
+                              controller: _minStockController,
+                              keyboardType: TextInputType.number,
+                              decoration: appInputDecoration(context, label: 'Mínimo', icon: Icons.notification_important_rounded),
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 24),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: AppTheme.primary.withValues(alpha: 0.05),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: SwitchListTile(
+                          contentPadding: EdgeInsets.zero,
+                          title: const Text('Producto Activo', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                          subtitle: const Text('Visible en el punto de venta', style: TextStyle(fontSize: 11)),
+                          value: widget.product.isActive,
+                          onChanged: (v) {}, // This would need to be updated in a real scenario
+                          activeColor: AppTheme.primary,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 24),
                 _buildTipCard('Última actualización: ${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year}'),
-                const SizedBox(height: 16),
-                SwitchListTile(
-                  title: const Text('Producto Activo', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                  subtitle: const Text('Si se desactiva, no aparecerá en el POS', style: TextStyle(fontSize: 12)),
-                  value: widget.product.isActive,
-                  onChanged: null,
-                  activeThumbColor: AppTheme.primary,
-                ),
               ],
             ),
           ),
@@ -254,89 +279,184 @@ class _EditProductDialogState extends ConsumerState<EditProductDialog>
   }
 
   Widget _buildMobileLayout() {
-    return Column(
-      children: [
-        TabBar(
-          controller: _tabController,
-          labelColor: AppTheme.primary,
-          indicatorColor: AppTheme.primary,
-          tabs: const [Tab(text: 'Básico'), Tab(text: 'Stock')],
-        ),
-        Expanded(
-          child: TabBarView(
-            controller: _tabController,
-            children: [
-              SingleChildScrollView(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  children: [
-                    ImagePickerWidget(initialImageUrl: _currentImageUrl, onImageChanged: (file, url) => setState(() { _selectedImageFile = file; _currentImageUrl = url; }), height: 120, width: 120),
-                    const SizedBox(height: 20),
-                    TextFormField(controller: _nameController, decoration: appInputDecoration(context, label: 'Nombre', icon: Icons.shopping_bag_outlined)),
-                    const SizedBox(height: 12),
-                    DropdownButtonFormField<String>(initialValue: _selectedCategoryId, items: _categories.map((c) => DropdownMenuItem(value: c['id'] as String, child: Text(c['name'] as String))).toList(), onChanged: (v) => setState(() => _selectedCategoryId = v), decoration: appInputDecoration(context, label: 'Categoría', icon: Icons.category_outlined)),
-                  ],
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        children: [
+          _buildSectionCard(
+            title: 'Detalles del Producto',
+            icon: Icons.edit_rounded,
+            child: Column(
+              children: [
+                Center(
+                  child: ImagePickerWidget(
+                    initialImageUrl: _currentImageUrl,
+                    onImageChanged: (file, url) => setState(() {
+                      _selectedImageFile = file;
+                      _currentImageUrl = url;
+                    }),
+                    height: 140,
+                    width: 140,
+                  ),
                 ),
-              ),
-              SingleChildScrollView(
-                padding: const EdgeInsets.all(20),
-                child: Column(
+                const SizedBox(height: 24),
+                TextFormField(
+                  controller: _nameController,
+                  decoration: appInputDecoration(context, label: 'Nombre', icon: Icons.shopping_bag_outlined),
+                ),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<String>(
+                  value: _selectedCategoryId,
+                  decoration: appInputDecoration(context, label: 'Categoría', icon: Icons.category_outlined),
+                  items: _categories.map((c) => DropdownMenuItem(value: c['id'] as String, child: Text(c['name'] as String))).toList(),
+                  onChanged: (v) => setState(() => _selectedCategoryId = v),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+          _buildSectionCard(
+            title: 'Control de Stock',
+            icon: Icons.inventory_2_rounded,
+            child: Column(
+              children: [
+                TextFormField(
+                  controller: _priceController,
+                  keyboardType: TextInputType.number,
+                  decoration: appInputDecoration(context, label: 'Precio', icon: Icons.attach_money),
+                ),
+                const SizedBox(height: 16),
+                Row(
                   children: [
-                    TextFormField(controller: _priceController, keyboardType: TextInputType.number, decoration: appInputDecoration(context, label: 'Precio', icon: Icons.attach_money)),
-                    const SizedBox(height: 12),
-                    TextFormField(controller: _stockController, keyboardType: TextInputType.number, decoration: appInputDecoration(context, label: 'Stock', icon: Icons.inventory_2_outlined)),
-                    const SizedBox(height: 12),
-                    TextFormField(controller: _minStockController, keyboardType: TextInputType.number, decoration: appInputDecoration(context, label: 'Mínimo', icon: Icons.warning_amber_outlined)),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextFormField(
-                            controller: _barcodeController,
-                            decoration: appInputDecoration(context, label: 'Código', icon: Icons.qr_code_scanner),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        IconButton(
-                          icon: const Icon(Icons.auto_fix_high, color: AppTheme.primary),
-                          onPressed: () {
-                            setState(() {
-                              _barcodeController.text = DateTime.now().millisecondsSinceEpoch.toString();
-                            });
-                          },
-                        ),
-                      ],
+                    Expanded(
+                      child: TextFormField(
+                        controller: _stockController,
+                        keyboardType: TextInputType.number,
+                        decoration: appInputDecoration(context, label: 'Stock', icon: Icons.add_business_rounded),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: TextFormField(
+                        controller: _minStockController,
+                        keyboardType: TextInputType.number,
+                        decoration: appInputDecoration(context, label: 'Mínimo', icon: Icons.warning_rounded),
+                      ),
                     ),
                   ],
                 ),
-              ),
-            ],
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        controller: _barcodeController,
+                        decoration: appInputDecoration(context, label: 'Código', icon: Icons.qr_code_rounded),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    _ActionButton(
+                      icon: Icons.auto_fix_high_rounded,
+                      onPressed: () => setState(() => _barcodeController.text = DateTime.now().millisecondsSinceEpoch.toString()),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
-  Widget _buildSectionTitle(String title, IconData icon) {
-    return Row(
-      children: [
-        Icon(icon, size: 18, color: AppTheme.textSecondary),
-        const SizedBox(width: 8),
-        Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppTheme.textSecondary, letterSpacing: 0.5)),
-      ],
+  Widget _buildSectionCard({required String title, required IconData icon, required Widget child}) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppTheme.primary.withValues(alpha: 0.1)),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.primary.withValues(alpha: 0.03),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppTheme.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, size: 18, color: AppTheme.primary),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                title,
+                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: AppTheme.primary, letterSpacing: -0.2),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          child,
+        ],
+      ),
     );
   }
 
   Widget _buildTipCard(String tip) {
     return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: AppTheme.primary.withValues(alpha: 0.05), borderRadius: AppTheme.radiusSmall, border: Border.all(color: AppTheme.primary.withValues(alpha: 0.1))),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [AppTheme.primary.withValues(alpha: 0.08), AppTheme.primary.withValues(alpha: 0.02)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppTheme.primary.withValues(alpha: 0.1)),
+      ),
       child: Row(
         children: [
-          const Icon(Icons.history, size: 20, color: AppTheme.primary),
-          const SizedBox(width: 12),
-          Expanded(child: Text(tip, style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary))),
+          const Icon(Icons.history_rounded, size: 24, color: AppTheme.primary),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Text(
+              tip,
+              style: TextStyle(fontSize: 13, color: AppTheme.primary.withValues(alpha: 0.8), height: 1.5, fontWeight: FontWeight.w500),
+            ),
+          ),
         ],
+      ),
+    );
+  }
+}
+
+class _ActionButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onPressed;
+
+  const _ActionButton({required this.icon, required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppTheme.primary.withValues(alpha: 0.1),
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          child: Icon(icon, color: AppTheme.primary, size: 20),
+        ),
       ),
     );
   }
