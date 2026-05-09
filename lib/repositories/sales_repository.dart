@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/sale.dart';
@@ -375,6 +376,8 @@ class SalesRepository {
     final startOfDay = DateTime(now.year, now.month, now.day).toIso8601String();
     
     final response = await _client
+        .from('sales')
+        .select('created_at, total_amount')
         .gte('created_at', startOfDay);
 
     final result = List.generate(24, (i) => MapEntry(i, 0.0));
