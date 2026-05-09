@@ -1,18 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:animate_do/animate_do.dart';
+import 'package:audioplayers/audioplayers.dart';
 import '../theme/app_theme.dart';
+import '../models/product.dart';
+import '../repositories/products_repository.dart';
+import '../dialogs/edit_product_dialog.dart';
 
-class ScannerScreen extends StatefulWidget {
+class ScannerScreen extends ConsumerStatefulWidget {
   const ScannerScreen({super.key});
 
   @override
-  State<ScannerScreen> createState() => _ScannerScreenState();
+  ConsumerState<ScannerScreen> createState() => _ScannerScreenState();
 }
 
-class _ScannerScreenState extends State<ScannerScreen> {
+class _ScannerScreenState extends ConsumerState<ScannerScreen> {
   final MobileScannerController _controller = MobileScannerController(
     detectionSpeed: DetectionSpeed.noDuplicates,
     formats: [BarcodeFormat.all],
@@ -20,8 +25,10 @@ class _ScannerScreenState extends State<ScannerScreen> {
 
   bool _isProcessing = false;
   bool _auditMode = false; // Toggle between POS and Audit
+  String? _detectedCode;
   Map<String, dynamic>? _lastProduct;
   RealtimeChannel? _feedbackSubscription;
+  final AudioPlayer _audioPlayer = AudioPlayer();
 
   @override
   void initState() {
@@ -83,43 +90,84 @@ class _ScannerScreenState extends State<ScannerScreen> {
   }
 
   Future<void> _handleBarcode(BarcodeCapture capture) async {
-    if (_isProcessing) return;
-
     final List<Barcode> barcodes = capture.barcodes;
     if (barcodes.isNotEmpty) {
       final code = barcodes.first.rawValue;
-      if (code != null && code.isNotEmpty) {
+      if (code != null && code.isNotEmpty && code != _detectedCode) {
         setState(() {
-          _isProcessing = true;
-          _lastProduct = null;
+          _detectedCode = code;
         });
-
-        try {
-          final userId = Supabase.instance.client.auth.currentUser?.id;
-          if (userId != null) {
-            await Supabase.instance.client.from('barcode_scans').insert({
-              'barcode': code,
-              'user_id': userId,
-              'processed': false,
-              'status': _auditMode ? 'audit_view' : 'pending',
-            });
-          }
-        } catch (e) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Error al enviar escaneo: $e'),
-                backgroundColor: AppTheme.error,
-              ),
-            );
-          }
-          debugPrint('Error: $e');
-        } finally {
-          Future.delayed(const Duration(milliseconds: 500), () {
-            if (mounted) setState(() => _isProcessing = false);
-          });
-        }
+        HapticFeedback.selectionClick();
       }
+    }
+  }
+
+  Future<void> _processDetectedCode() async {
+    if (_detectedCode == null || _isProcessing) return;
+
+    setState(() {
+      _isProcessing = true;
+      _lastProduct = null;
+    });
+
+    try {
+      // Play beep sound
+      await _audioPlayer.play(UrlSource('https://www.soundjay.com/buttons/button-09a.mp3')).catchError((e) {
+        // Fallback to a system click if URL fails
+        HapticFeedback.lightImpact();
+        return null;
+      });
+
+      final userId = Supabase.instance.client.auth.currentUser?.id;
+      if (userId == null) return;
+
+      if (_auditMode) {
+        // En modo auditoría, buscamos el producto directamente
+        final product = await ref.read(productsRepositoryProvider).getProductByBarcode(_detectedCode!);
+        
+        if (product != null) {
+          setState(() {
+            _lastProduct = {
+              'id': product.id,
+              'name': product.name,
+              'stock': product.stockQuantity,
+              'price': product.price,
+              'barcode': product.barcode,
+              'status': 'success',
+              'full_product': product, // Guardamos el objeto completo para editar
+            };
+          });
+          _provideFeedback('success');
+        } else {
+          setState(() {
+            _lastProduct = {
+              'name': null,
+              'barcode': _detectedCode,
+              'status': 'not_found',
+            };
+          });
+          _provideFeedback('not_found');
+        }
+      } else {
+        // En modo POS, seguimos usando la tabla de scans para que el backend procese el carrito
+        await Supabase.instance.client.from('barcode_scans').insert({
+          'barcode': _detectedCode,
+          'user_id': userId,
+          'processed': false,
+          'status': 'pending',
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: AppTheme.error,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isProcessing = false);
     }
   }
 
@@ -127,6 +175,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
   void dispose() {
     _controller.dispose();
     _feedbackSubscription?.unsubscribe();
+    _audioPlayer.dispose();
     super.dispose();
   }
 
@@ -144,6 +193,9 @@ class _ScannerScreenState extends State<ScannerScreen> {
           // Custom Overlay
           _buildScannerOverlay(),
 
+          // Manual Scan Trigger Button
+          _buildManualScanButton(),
+
           // Top Toolbar
           _buildTopToolbar(),
 
@@ -158,7 +210,70 @@ class _ScannerScreenState extends State<ScannerScreen> {
             ),
           
           if (_isProcessing && _lastProduct == null)
-            const Center(child: CircularProgressIndicator(color: AppTheme.primary)),
+            Center(
+              child: Container(
+                padding: const EdgeInsets.all(24),
+                decoration: const BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
+                child: const CircularProgressIndicator(color: AppTheme.primary, strokeWidth: 5),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildManualScanButton() {
+    return Align(
+      alignment: Alignment.center,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const SizedBox(height: 250), // Position below the cutout
+          GestureDetector(
+            onTap: _processDetectedCode,
+            child: ZoomIn(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 20),
+                decoration: BoxDecoration(
+                  color: _detectedCode != null ? AppTheme.primary : Colors.white24,
+                  borderRadius: BorderRadius.circular(40),
+                  boxShadow: [
+                    if (_detectedCode != null)
+                      BoxShadow(color: AppTheme.primary.withValues(alpha: 0.4), blurRadius: 20, spreadRadius: 2),
+                  ],
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      _detectedCode != null ? Icons.barcode_reader : Icons.center_focus_weak, 
+                      color: Colors.white,
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      _detectedCode != null ? 'TOMAR CÓDIGO' : 'APUNTE AL CÓDIGO',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 16,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          if (_detectedCode != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 12),
+              child: FadeIn(
+                child: Text(
+                  'Detectado: $_detectedCode',
+                  style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.bold, fontSize: 12),
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -197,6 +312,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
   Widget _buildProductCard() {
     final status = _lastProduct!['status'];
     final isError = status == 'not_found' || status == 'out_of_stock';
+    final product = _lastProduct!['full_product'] as Product?;
     
     return Container(
       padding: const EdgeInsets.all(20),
@@ -231,6 +347,11 @@ class _ScannerScreenState extends State<ScannerScreen> {
                   ],
                 ),
               ),
+              if (_auditMode && !isError)
+                IconButton(
+                  onPressed: () => setState(() => _lastProduct = null),
+                  icon: const Icon(Icons.close_rounded, color: AppTheme.textSecondary),
+                ),
             ],
           ),
           if (!isError && !_auditMode) ...[
@@ -244,9 +365,52 @@ class _ScannerScreenState extends State<ScannerScreen> {
               ],
             ),
           ],
+          if (_auditMode && !isError && product != null) ...[
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () => _openEditDialog(product),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  elevation: 0,
+                ),
+                icon: const Icon(Icons.edit_rounded, size: 20),
+                label: const Text('EDITAR PRODUCTO', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14)),
+              ),
+            ),
+          ],
         ],
       ),
     );
+  }
+
+  void _openEditDialog(Product product) async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => EditProductDialog(product: product),
+    );
+    
+    if (result == true) {
+      // Si se editó con éxito, actualizamos la vista local
+      final updatedProduct = await ref.read(productsRepositoryProvider).getProductByBarcode(product.barcode!);
+      if (updatedProduct != null && mounted) {
+        setState(() {
+          _lastProduct = {
+            'id': updatedProduct.id,
+            'name': updatedProduct.name,
+            'stock': updatedProduct.stockQuantity,
+            'price': updatedProduct.price,
+            'barcode': updatedProduct.barcode,
+            'status': 'success',
+            'full_product': updatedProduct,
+          };
+        });
+      }
+    }
   }
 
   Future<void> _updateRemoteQty(int delta) async {

@@ -17,6 +17,15 @@ class ProductsRepository {
     return (response as List<dynamic>).map((e) => Product.fromMap(e)).toList();
   }
 
+  Future<Product?> getProductByBarcode(String barcode) async {
+    final response = await _client
+        .from('products')
+        .select()
+        .eq('barcode', barcode)
+        .maybeSingle();
+    return response != null ? Product.fromMap(response) : null;
+  }
+
   Future<String?> uploadProductImage(String productName, XFile imageFile) async {
     try {
       // Ensure bucket exists and is public
