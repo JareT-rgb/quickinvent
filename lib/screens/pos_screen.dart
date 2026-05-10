@@ -18,6 +18,8 @@ import '../widgets/product_image.dart';
 import 'sale_completion_screen.dart';
 import 'scanner_screen.dart';
 import '../dialogs/scanner_selection_dialog.dart';
+import '../utils/safe_haptic.dart';
+
 
 class PosScreen extends ConsumerStatefulWidget {
   const PosScreen({super.key});
@@ -122,7 +124,7 @@ class _PosScreenState extends ConsumerState<PosScreen> {
                   width: 380,
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 30)],
+                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 30)],
                   ),
                   child: _buildCartPanel(cart, total),
                 ),
@@ -130,7 +132,7 @@ class _PosScreenState extends ConsumerState<PosScreen> {
           ),
           floatingActionButton: availableWidth <= 800 ? FloatingActionButton.extended(
             onPressed: () {
-              HapticFeedback.lightImpact();
+              SafeHaptic.lightImpact();
               showModalBottomSheet(
                 context: context,
                 isScrollControlled: true,
@@ -218,7 +220,7 @@ class _PosScreenState extends ConsumerState<PosScreen> {
     final indicator = Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: (!isOnline ? AppTheme.error : (isActive ? AppTheme.primary : AppTheme.textMuted)).withValues(alpha: 0.1),
+        color: (!isOnline ? AppTheme.error : (isActive ? AppTheme.primary : AppTheme.textMuted)).withOpacity(0.1),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -344,7 +346,7 @@ class _PosScreenState extends ConsumerState<PosScreen> {
         final cat = categoriesAsync.value!.firstWhere((c) => c.name == _selectedCategory);
         matchesCategory = p.categoryId == cat.id.toString();
       }
-      return matchesSearch && matchesCategory;
+      return p.isActive && matchesSearch && matchesCategory;
     }).toList();
 
     return LayoutBuilder(
@@ -352,18 +354,16 @@ class _PosScreenState extends ConsumerState<PosScreen> {
         final width = constraints.maxWidth;
         final crossAxisCount = width > 900 ? 4 : (width > 600 ? 3 : 2);
         
-        return RepaintBoundary(
-          child: GridView.builder(
-            padding: const EdgeInsets.all(24),
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: crossAxisCount,
-              childAspectRatio: 0.72,
-              crossAxisSpacing: 16,
-              mainAxisSpacing: 16,
-            ),
-            itemCount: filtered.length,
-            itemBuilder: (context, index) => _PosProductCard(product: filtered[index]),
+        return GridView.builder(
+          padding: const EdgeInsets.all(24),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: crossAxisCount,
+            childAspectRatio: 0.72,
+            crossAxisSpacing: 16,
+            mainAxisSpacing: 16,
           ),
+          itemCount: filtered.length,
+          itemBuilder: (context, index) => _PosProductCard(product: filtered[index]),
         );
       },
     );
@@ -396,7 +396,7 @@ class _PosScreenState extends ConsumerState<PosScreen> {
                 padding: const EdgeInsets.all(12),
                 icon: const Icon(Icons.delete_sweep_rounded, color: AppTheme.error, size: 28),
                 onPressed: () {
-                  HapticFeedback.mediumImpact();
+                  SafeHaptic.mediumImpact();
                   showDialog(
                     context: context,
                     builder: (context) => AlertDialog(
@@ -431,7 +431,7 @@ class _PosScreenState extends ConsumerState<PosScreen> {
           children: [
             FadeIn(
               duration: const Duration(milliseconds: 200),
-              child: Icon(Icons.shopping_basket_outlined, size: 60, color: AppTheme.textMuted.withValues(alpha: 0.2)),
+              child: Icon(Icons.shopping_basket_outlined, size: 60, color: AppTheme.textMuted.withOpacity(0.2)),
             ),
             const SizedBox(height: 16),
             const Text('Sin productos en el carrito', style: TextStyle(color: AppTheme.textMuted, fontWeight: FontWeight.w600)),
@@ -494,7 +494,7 @@ class _PosScreenState extends ConsumerState<PosScreen> {
                   label: const Text('RETENER'),
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 20),
-                    side: BorderSide(color: AppTheme.accent.withValues(alpha: 0.3)),
+                    side: BorderSide(color: AppTheme.accent.withOpacity(0.3)),
                     foregroundColor: AppTheme.accent,
                   ),
                 ),
@@ -504,17 +504,17 @@ class _PosScreenState extends ConsumerState<PosScreen> {
                 flex: 3,
                 child: AnimatedPressable(
                   onTap: cart.isEmpty ? null : () {
-                    HapticFeedback.heavyImpact();
+                    SafeHaptic.heavyImpact();
                     _startCheckout(cart, total);
                   },
                   child: Container(
                     height: 60,
                     decoration: BoxDecoration(
                       gradient: cart.isEmpty ? null : AppTheme.primaryGradient,
-                      color: cart.isEmpty ? AppTheme.textMuted.withValues(alpha: 0.2) : null,
+                      color: cart.isEmpty ? AppTheme.textMuted.withOpacity(0.2) : null,
                       borderRadius: AppTheme.radiusMedium,
                       boxShadow: cart.isEmpty ? null : [
-                        BoxShadow(color: AppTheme.primary.withValues(alpha: 0.3), blurRadius: 20, offset: const Offset(0, 8))
+                        BoxShadow(color: AppTheme.primary.withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 8))
                       ],
                     ),
                     alignment: Alignment.center,
@@ -602,13 +602,13 @@ class _PosProductCardState extends ConsumerState<_PosProductCard> {
       onExit: (_) => setState(() => _isHovered = false),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 250),
-        transform: _isHovered ? (Matrix4.identity()..translate(0, -5, 0)) : Matrix4.identity(),
+        transform: _isHovered ? (Matrix4.identity()..setEntry(3, 2, 0.001)..translate(0.0, -5.0, 0.0)) : Matrix4.identity(),
         decoration: BoxDecoration(
           color: theme.cardColor,
           borderRadius: AppTheme.radiusMedium,
           boxShadow: _isHovered ? AppTheme.deepShadow : AppTheme.softShadow,
           border: Border.all(
-            color: _isHovered ? AppTheme.primary : theme.dividerColor.withValues(alpha: 0.1),
+            color: _isHovered ? AppTheme.primary : theme.dividerColor.withOpacity(0.1),
             width: _isHovered ? 2 : 1,
           ),
         ),
@@ -627,7 +627,7 @@ class _PosProductCardState extends ConsumerState<_PosProductCard> {
                 child: Container(
                   width: double.infinity,
                   decoration: BoxDecoration(
-                    color: AppTheme.primary.withValues(alpha: 0.05),
+                    color: AppTheme.primary.withOpacity(0.05),
                     borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
                   ),
                   clipBehavior: Clip.antiAlias,
@@ -656,7 +656,7 @@ class _PosProductCardState extends ConsumerState<_PosProductCard> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: (isLowStock ? AppTheme.error : AppTheme.primary).withValues(alpha: 0.1),
+                        color: (isLowStock ? AppTheme.error : AppTheme.primary).withOpacity(0.1),
                         borderRadius: BorderRadius.circular(8)
                       ),
                       child: Text(
@@ -688,7 +688,7 @@ class _CartItemRow extends ConsumerWidget {
       decoration: BoxDecoration(
         color: theme.cardColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: theme.dividerColor.withValues(alpha: 0.1)),
+        border: Border.all(color: theme.dividerColor.withOpacity(0.1)),
       ),
       child: Row(
         children: [
@@ -699,7 +699,7 @@ class _CartItemRow extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(item.product.name, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 14)),
-                  Text('\$${item.product.price} x ${item.quantity}', style: TextStyle(color: theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.6), fontSize: 12)),
+                  Text('\$${item.product.price} x ${item.quantity}', style: TextStyle(color: theme.textTheme.bodyMedium?.color?.withOpacity(0.6), fontSize: 12)),
                 ],
               ),
             ),
@@ -710,7 +710,7 @@ class _CartItemRow extends ConsumerWidget {
             padding: const EdgeInsets.all(12),
             icon: const Icon(Icons.remove_circle_outline, color: AppTheme.error, size: 24),
             onPressed: () {
-              HapticFeedback.lightImpact();
+              SafeHaptic.lightImpact();
               ref.read(cartProvider.notifier).removeItem(item.product.id);
             },
           ),
@@ -741,7 +741,7 @@ class _HeaderIconButton extends StatelessWidget {
       icon: Container(
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.1),
+          color: color.withOpacity(0.1),
           borderRadius: BorderRadius.circular(14),
         ),
         child: Icon(icon, color: color, size: 22),
@@ -768,13 +768,13 @@ class _FilterChip extends StatelessWidget {
         decoration: BoxDecoration(
           color: isSelected ? AppTheme.primary : theme.cardColor,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: isSelected ? AppTheme.primary : theme.dividerColor.withValues(alpha: 0.1)),
-          boxShadow: isSelected ? [BoxShadow(color: AppTheme.primary.withValues(alpha: 0.2), blurRadius: 8, offset: const Offset(0, 4))] : null,
+          border: Border.all(color: isSelected ? AppTheme.primary : theme.dividerColor.withOpacity(0.1)),
+          boxShadow: isSelected ? [BoxShadow(color: AppTheme.primary.withOpacity(0.2), blurRadius: 8, offset: const Offset(0, 4))] : null,
         ),
         child: Text(
           label,
           style: TextStyle(
-            color: isSelected ? Colors.white : theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.7),
+            color: isSelected ? Colors.white : theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
             fontWeight: isSelected ? FontWeight.w900 : FontWeight.w600,
             fontSize: 12,
           ),

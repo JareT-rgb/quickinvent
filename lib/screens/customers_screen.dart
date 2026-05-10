@@ -332,7 +332,7 @@ class _CustomerCard extends ConsumerWidget {
       margin: const EdgeInsets.only(bottom: 12),
       child: ListTile(
         leading: CircleAvatar(
-          backgroundColor: AppTheme.primary.withValues(alpha: 0.1),
+          backgroundColor: AppTheme.primary.withOpacity(0.1),
           child: Text(customer.name[0].toUpperCase(), style: const TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold)),
         ),
         title: Text(customer.name, style: const TextStyle(fontWeight: FontWeight.bold)),

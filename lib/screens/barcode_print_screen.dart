@@ -104,7 +104,7 @@ class BarcodePrintScreen extends StatelessWidget {
               children: [
                 Container(
                   padding: const EdgeInsets.all(16),
-                  color: AppTheme.primary.withValues(alpha: 0.1),
+                  color: AppTheme.primary.withOpacity(0.1),
                   child: Row(
                     children: [
                       const Icon(Icons.info_outline, color: AppTheme.primary),
@@ -144,7 +144,7 @@ class BarcodePrintScreen extends StatelessWidget {
                             border: Border.all(color: Colors.grey.shade200),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.03),
+                                color: Colors.black.withOpacity(0.03),
                                 blurRadius: 10,
                                 offset: const Offset(0, 4),
                               ),
@@ -156,7 +156,7 @@ class BarcodePrintScreen extends StatelessWidget {
                               children: [
                                 Container(
                                   width: 8,
-                                  color: AppTheme.primary.withValues(alpha: 0.7),
+                                  color: AppTheme.primary.withOpacity(0.7),
                                 ),
                                 Expanded(
                                   child: Padding(

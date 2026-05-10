@@ -97,12 +97,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           Positioned(
             top: -100,
             right: -100,
-            child: CircleAvatar(radius: 200, backgroundColor: Colors.white.withValues(alpha: 0.05)),
+            child: CircleAvatar(radius: 200, backgroundColor: Colors.white.withOpacity(0.05)),
           ),
           Positioned(
             bottom: -150,
             left: -150,
-            child: CircleAvatar(radius: 300, backgroundColor: Colors.white.withValues(alpha: 0.03)),
+            child: CircleAvatar(radius: 300, backgroundColor: Colors.white.withOpacity(0.03)),
           ),
           Center(
             child: Padding(
@@ -115,9 +115,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     child: Container(
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.1),
+                        color: Colors.white.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(30),
-                        border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+                        border: Border.all(color: Colors.white.withOpacity(0.2)),
                       ),
                       child: const Icon(Icons.inventory_2_rounded, size: 60, color: Colors.white),
                     ),
@@ -133,7 +133,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     delay: const Duration(milliseconds: 400),
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(10)),
+                      decoration: BoxDecoration(color: Colors.white.withOpacity(0.15), borderRadius: BorderRadius.circular(10)),
                       child: const Text('QUICKINVENT V2.0', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 12, letterSpacing: 3)),
                     ),
                   ),
@@ -201,7 +201,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     backgroundColor: AppTheme.primary,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
                     elevation: 8,
-                    shadowColor: AppTheme.primary.withValues(alpha: 0.4),
+                    shadowColor: AppTheme.primary.withOpacity(0.4),
                   ),
                   child: _isLoading
                       ? const CircularProgressIndicator(color: Colors.white)

@@ -38,7 +38,7 @@ class AppTheme {
   // Premium Shadows
   static List<BoxShadow> get softShadow => [
     BoxShadow(
-      color: const Color(0xFF0F172A).withValues(alpha: 0.04),
+      color: const Color(0xFF0F172A).withOpacity(0.04),
       blurRadius: 24,
       offset: const Offset(0, 8),
     ),
@@ -46,7 +46,7 @@ class AppTheme {
 
   static List<BoxShadow> get deepShadow => [
     BoxShadow(
-      color: const Color(0xFF0F172A).withValues(alpha: 0.08),
+      color: const Color(0xFF0F172A).withOpacity(0.08),
       blurRadius: 40,
       offset: const Offset(0, 16),
       spreadRadius: -4,
@@ -68,13 +68,13 @@ class AppTheme {
 
   static BoxDecoration glassDecoration({bool isDark = false}) => BoxDecoration(
     color: isDark 
-        ? const Color(0xFF1E293B).withValues(alpha: 0.7) 
-        : Colors.white.withValues(alpha: 0.8),
+        ? const Color(0xFF1E293B).withOpacity(0.7) 
+        : Colors.white.withOpacity(0.8),
     borderRadius: radiusMedium,
     border: Border.all(
       color: isDark 
-          ? Colors.white.withValues(alpha: 0.08) 
-          : const Color(0xFFE2E8F0).withValues(alpha: 0.5),
+          ? Colors.white.withOpacity(0.08) 
+          : const Color(0xFFE2E8F0).withOpacity(0.5),
       width: 1,
     ),
   );

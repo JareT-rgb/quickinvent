@@ -9,6 +9,8 @@ import '../theme/app_theme.dart';
 import '../models/product.dart';
 import '../repositories/products_repository.dart';
 import '../dialogs/edit_product_dialog.dart';
+import '../utils/safe_haptic.dart';
+
 
 class ScannerScreen extends ConsumerStatefulWidget {
   const ScannerScreen({super.key});
@@ -79,13 +81,13 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
     if (!mounted) return;
     switch (status) {
       case 'success':
-        HapticFeedback.lightImpact();
+        SafeHaptic.lightImpact();
         break;
       case 'not_found':
-        HapticFeedback.vibrate();
+        SafeHaptic.vibrate();
         break;
       case 'out_of_stock':
-        HapticFeedback.heavyImpact();
+        SafeHaptic.heavyImpact();
         break;
     }
   }
@@ -98,7 +100,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
         setState(() {
           _detectedCode = code;
         });
-        HapticFeedback.selectionClick();
+        SafeHaptic.selectionClick();
       }
     }
   }
@@ -114,10 +116,12 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
 
     try {
       // Play beep sound (don't await so it doesn't block processing)
-      _audioPlayer.play(UrlSource('https://www.soundjay.com/buttons/button-09a.mp3')).catchError((e) {
-        HapticFeedback.lightImpact();
-        return null;
-      });
+      // On web, this might throw UnimplementedError if not handled carefully
+      try {
+        _audioPlayer.play(UrlSource('https://www.soundjay.com/buttons/button-09a.mp3')).catchError((_) => null);
+      } catch (_) {
+        // Silently ignore if audio fails
+      }
 
       // Buscamos el producto localmente para asegurar que la info sea correcta y evitar errores falsos
       final product = await ref.read(productsRepositoryProvider).getProductByBarcode(_detectedCode!);
@@ -236,7 +240,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
                   borderRadius: BorderRadius.circular(40),
                   boxShadow: [
                     if (_detectedCode != null)
-                      BoxShadow(color: AppTheme.primary.withValues(alpha: 0.4), blurRadius: 20, spreadRadius: 2),
+                      BoxShadow(color: AppTheme.primary.withOpacity(0.4), blurRadius: 20, spreadRadius: 2),
                   ],
                 ),
                 child: Row(
@@ -316,7 +320,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 20, offset: const Offset(0, 10))],
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 10))],
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -326,7 +330,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: (isError ? AppTheme.error : AppTheme.primary).withValues(alpha: 0.1),
+                  color: (isError ? AppTheme.error : AppTheme.primary).withOpacity(0.1),
                   borderRadius: BorderRadius.circular(15),
                 ),
                 child: Icon(isError ? Icons.warning_rounded : Icons.check_circle_rounded, color: isError ? AppTheme.error : AppTheme.primary),
@@ -354,9 +358,9 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
           if (!isError && !_auditMode) ...[
             const SizedBox(height: 20),
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                _buildQuantitySelector(),
+                Expanded(child: _buildQuantitySelector()),
+                const SizedBox(width: 8),
                 _QuickQtyButton(
                   label: 'Eliminar', 
                   color: AppTheme.error, 
@@ -420,7 +424,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
     final userId = Supabase.instance.client.auth.currentUser?.id;
     if (userId == null || _lastProduct == null) return;
     
-    HapticFeedback.selectionClick();
+    SafeHaptic.selectionClick();
     await Supabase.instance.client.from('barcode_scans').insert({
       'barcode': _lastProduct!['barcode'],
       'user_id': userId,
@@ -446,9 +450,9 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
   Widget _buildQuantitySelector() {
     return Container(
       decoration: BoxDecoration(
-        color: AppTheme.primary.withValues(alpha: 0.05),
+        color: AppTheme.primary.withOpacity(0.05),
         borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: AppTheme.primary.withValues(alpha: 0.1)),
+        border: Border.all(color: AppTheme.primary.withOpacity(0.1)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -463,10 +467,10 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
             },
           ),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
+            padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Text(
               '$_currentScanQty',
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: AppTheme.primary),
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: AppTheme.primary),
             ),
           ),
           _QtyControl(
@@ -536,7 +540,7 @@ class _QuickQtyButton extends StatelessWidget {
       onPressed: onTap,
       style: OutlinedButton.styleFrom(
         foregroundColor: color,
-        side: BorderSide(color: color.withValues(alpha: 0.5)),
+        side: BorderSide(color: color.withOpacity(0.5)),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       ),

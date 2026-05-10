@@ -127,7 +127,7 @@ class _CheckoutDialogState extends ConsumerState<CheckoutDialog> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Expanded(flex: 5, child: SingleChildScrollView(padding: const EdgeInsets.all(24), child: _buildPaymentForm())),
-                        VerticalDivider(width: 1, color: theme.dividerColor.withValues(alpha: 0.1)),
+                        VerticalDivider(width: 1, color: theme.dividerColor.withOpacity(0.1)),
                         Expanded(flex: 3, child: SingleChildScrollView(padding: const EdgeInsets.all(24), child: _buildSummarySection())),
                       ],
                     )
@@ -146,17 +146,17 @@ class _CheckoutDialogState extends ConsumerState<CheckoutDialog> {
   Widget _buildHeaderTotals(ThemeData theme, ColorScheme cs) {
     return Container(
       padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(color: theme.cardColor, border: Border(bottom: BorderSide(color: theme.dividerColor.withValues(alpha: 0.05)))),
+      decoration: BoxDecoration(color: theme.cardColor, border: Border(bottom: BorderSide(color: theme.dividerColor.withOpacity(0.05)))),
       child: Row(
         children: [
-          Expanded(child: _buildTotalCard('TOTAL A COBRAR', widget.totalAmount, AppTheme.primary, AppTheme.primary.withValues(alpha: 0.05))),
+          Expanded(child: _buildTotalCard('TOTAL A COBRAR', widget.totalAmount, AppTheme.primary, AppTheme.primary.withOpacity(0.05))),
           const SizedBox(width: 16),
           Expanded(
             child: _paymentMethod == 'Efectivo' 
               ? _buildTotalCard(_amountController.text.isEmpty ? 'CAMBIO' : (_hasEnough ? 'CAMBIO' : 'FALTA'), _change.abs(), 
                   _amountController.text.isEmpty ? theme.hintColor : (_hasEnough ? Colors.green : cs.error), 
-                  _amountController.text.isEmpty ? theme.dividerColor.withValues(alpha: 0.05) : (_hasEnough ? Colors.green.withValues(alpha: 0.05) : cs.errorContainer.withValues(alpha: 0.1)))
-              : _buildTotalCard('MÉTODO ACTIVO', 0, Colors.blue, Colors.blue.withValues(alpha: 0.05), isElectronic: true),
+                  _amountController.text.isEmpty ? theme.dividerColor.withOpacity(0.05) : (_hasEnough ? Colors.green.withOpacity(0.05) : cs.errorContainer.withOpacity(0.1)))
+              : _buildTotalCard('MÉTODO ACTIVO', 0, Colors.blue, Colors.blue.withOpacity(0.05), isElectronic: true),
           ),
         ],
       ),
@@ -166,7 +166,7 @@ class _CheckoutDialogState extends ConsumerState<CheckoutDialog> {
   Widget _buildTotalCard(String label, double value, Color color, Color bgColor, {bool isElectronic = false}) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
-      decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(16), border: Border.all(color: color.withValues(alpha: 0.2), width: 1.5)),
+      decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(16), border: Border.all(color: color.withOpacity(0.2), width: 1.5)),
       child: Column(
         children: [
           Text(label, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: color, letterSpacing: 1.2)),
@@ -222,7 +222,7 @@ class _CheckoutDialogState extends ConsumerState<CheckoutDialog> {
   Widget _buildTerminalBridge() {
     return Container(
       padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(color: Colors.blue.withValues(alpha: 0.05), borderRadius: BorderRadius.circular(20), border: Border.all(color: Colors.blue.withValues(alpha: 0.1))),
+      decoration: BoxDecoration(color: Colors.blue.withOpacity(0.05), borderRadius: BorderRadius.circular(20), border: Border.all(color: Colors.blue.withOpacity(0.1))),
       child: Column(
         children: [
           const Icon(Icons.contactless_rounded, size: 48, color: Colors.blue),
@@ -263,7 +263,7 @@ class _CheckoutDialogState extends ConsumerState<CheckoutDialog> {
     
     return Container(
       padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(color: AppTheme.primary.withValues(alpha: 0.05), borderRadius: BorderRadius.circular(20), border: Border.all(color: AppTheme.primary.withValues(alpha: 0.1))),
+      decoration: BoxDecoration(color: AppTheme.primary.withOpacity(0.05), borderRadius: BorderRadius.circular(20), border: Border.all(color: AppTheme.primary.withOpacity(0.1))),
       child: Column(
         children: [
           if (settings.transferAccount.isEmpty)
@@ -375,8 +375,8 @@ class _CheckoutDialogState extends ConsumerState<CheckoutDialog> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: isSelected ? AppTheme.primary : (isExact ? AppTheme.primary.withValues(alpha: 0.1) : theme.cardColor),
-          borderRadius: BorderRadius.circular(12), border: Border.all(color: isSelected || isExact ? AppTheme.primary : theme.dividerColor.withValues(alpha: 0.1)),
+          color: isSelected ? AppTheme.primary : (isExact ? AppTheme.primary.withOpacity(0.1) : theme.cardColor),
+          borderRadius: BorderRadius.circular(12), border: Border.all(color: isSelected || isExact ? AppTheme.primary : theme.dividerColor.withOpacity(0.1)),
         ),
         child: Text(label, style: TextStyle(color: isSelected ? Colors.white : (isExact ? AppTheme.primary : theme.textTheme.bodyLarge?.color), fontWeight: FontWeight.w900, fontSize: 13)),
       ),

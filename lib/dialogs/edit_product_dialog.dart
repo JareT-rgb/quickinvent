@@ -114,6 +114,44 @@ class _EditProductDialogState extends ConsumerState<EditProductDialog>
     }
   }
 
+  Future<void> _deleteProduct() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('¿Borrar producto?', style: TextStyle(fontWeight: FontWeight.w900)),
+        content: Text('¿Estás seguro de que quieres borrar "${widget.product.name}"?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('CANCELAR')),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.error, foregroundColor: Colors.white),
+            child: const Text('BORRAR'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      setState(() => _isLoading = true);
+      try {
+        await ref.read(productsRepositoryProvider).deleteProduct(widget.product.id);
+        if (mounted) {
+          Navigator.pop(context, true);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Producto borrado con éxito'), backgroundColor: AppTheme.success),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          setState(() => _isLoading = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error al borrar: $e'), backgroundColor: AppTheme.error),
+          );
+        }
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
@@ -124,11 +162,26 @@ class _EditProductDialogState extends ConsumerState<EditProductDialog>
       title: 'Editar Producto',
       subtitle: 'Actualiza la información del inventario',
       maxWidth: isDesktop ? 850 : 500,
-      footer: AppDialogFooterButtons(
-        actionLabel: 'Guardar Cambios',
-        actionIcon: Icons.save_rounded,
-        isLoading: _isLoading,
-        onAction: _updateProduct,
+      footer: Row(
+        children: [
+          IconButton(
+            onPressed: _isLoading ? null : _deleteProduct,
+            icon: const Icon(Icons.delete_outline_rounded, color: AppTheme.error),
+            style: IconButton.styleFrom(
+              backgroundColor: AppTheme.error.withOpacity(0.1),
+              padding: const EdgeInsets.all(12),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: AppDialogFooterButtons(
+              actionLabel: 'Guardar Cambios',
+              actionIcon: Icons.save_rounded,
+              isLoading: _isLoading,
+              onAction: _updateProduct,
+            ),
+          ),
+        ],
       ),
       body: Form(
         key: _formKey,
@@ -253,7 +306,7 @@ class _EditProductDialogState extends ConsumerState<EditProductDialog>
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                         decoration: BoxDecoration(
-                          color: AppTheme.primary.withValues(alpha: 0.05),
+                          color: AppTheme.primary.withOpacity(0.05),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: SwitchListTile(
@@ -375,10 +428,10 @@ class _EditProductDialogState extends ConsumerState<EditProductDialog>
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppTheme.primary.withValues(alpha: 0.1)),
+        border: Border.all(color: AppTheme.primary.withOpacity(0.1)),
         boxShadow: [
           BoxShadow(
-            color: AppTheme.primary.withValues(alpha: 0.03),
+            color: AppTheme.primary.withOpacity(0.03),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
@@ -392,7 +445,7 @@ class _EditProductDialogState extends ConsumerState<EditProductDialog>
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: AppTheme.primary.withValues(alpha: 0.1),
+                  color: AppTheme.primary.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(icon, size: 18, color: AppTheme.primary),
@@ -416,12 +469,12 @@ class _EditProductDialogState extends ConsumerState<EditProductDialog>
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [AppTheme.primary.withValues(alpha: 0.08), AppTheme.primary.withValues(alpha: 0.02)],
+          colors: [AppTheme.primary.withOpacity(0.08), AppTheme.primary.withOpacity(0.02)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppTheme.primary.withValues(alpha: 0.1)),
+        border: Border.all(color: AppTheme.primary.withOpacity(0.1)),
       ),
       child: Row(
         children: [
@@ -430,7 +483,7 @@ class _EditProductDialogState extends ConsumerState<EditProductDialog>
           Expanded(
             child: Text(
               tip,
-              style: TextStyle(fontSize: 13, color: AppTheme.primary.withValues(alpha: 0.8), height: 1.5, fontWeight: FontWeight.w500),
+              style: TextStyle(fontSize: 13, color: AppTheme.primary.withOpacity(0.8), height: 1.5, fontWeight: FontWeight.w500),
             ),
           ),
         ],
@@ -448,7 +501,7 @@ class _ActionButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: AppTheme.primary.withValues(alpha: 0.1),
+      color: AppTheme.primary.withOpacity(0.1),
       borderRadius: BorderRadius.circular(12),
       child: InkWell(
         onTap: onPressed,

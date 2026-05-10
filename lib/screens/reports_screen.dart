@@ -154,7 +154,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
       icon: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.1),
+          color: color.withOpacity(0.1),
           borderRadius: BorderRadius.circular(16),
         ),
         child: Icon(icon, color: color, size: 20),
@@ -167,7 +167,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     return PopupMenuButton<String>(
       icon: Container(
         padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(color: AppTheme.primary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(14)),
+        decoration: BoxDecoration(color: AppTheme.primary.withOpacity(0.1), borderRadius: BorderRadius.circular(14)),
         child: const Icon(Icons.ios_share_rounded, color: AppTheme.primary, size: 22),
       ),
       onSelected: (value) async {
@@ -372,7 +372,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
           children: [
             Container(
               padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(color: AppTheme.primary.withValues(alpha: 0.1), shape: BoxShape.circle),
+              decoration: BoxDecoration(color: AppTheme.primary.withOpacity(0.1), shape: BoxShape.circle),
               child: const Icon(Icons.tune_rounded, color: AppTheme.primary, size: 18),
             ),
             const SizedBox(width: 12),
@@ -455,7 +455,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
           color: Colors.white,
           borderRadius: AppTheme.radiusMedium,
           boxShadow: AppTheme.softShadow,
-          border: Border.all(color: AppTheme.divider.withValues(alpha: 0.3)),
+          border: Border.all(color: AppTheme.divider.withOpacity(0.3)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -493,7 +493,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
           color: theme.cardColor,
           borderRadius: AppTheme.radiusLarge,
           boxShadow: AppTheme.softShadow,
-          border: Border.all(color: theme.dividerColor.withValues(alpha: 0.1)),
+          border: Border.all(color: theme.dividerColor.withOpacity(0.1)),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -633,7 +633,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                   backDrawRodData: BackgroundBarChartRodData(
                     show: true,
                     toY: (dailyList.isEmpty ? 10.0 : dailyList.fold(0.0, (max, e) => e.value > max ? e.value : max)) * 1.2,
-                    color: AppTheme.primary.withValues(alpha: 0.05),
+                    color: AppTheme.primary.withOpacity(0.05),
                   ),
                 ),
               ],
@@ -671,7 +671,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
             show: true,
             drawVerticalLine: false,
             horizontalInterval: (dailyList.isEmpty ? 10.0 : dailyList.fold(0.0, (max, entry) => entry.value > max ? entry.value : max)) / 4,
-            getDrawingHorizontalLine: (value) => FlLine(color: theme.dividerColor.withValues(alpha: 0.1), strokeWidth: 1),
+            getDrawingHorizontalLine: (value) => FlLine(color: theme.dividerColor.withOpacity(0.1), strokeWidth: 1),
           ),
           borderData: FlBorderData(show: false),
           barTouchData: BarTouchData(
@@ -712,7 +712,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
             color: theme.cardColor,
             borderRadius: AppTheme.radiusMedium,
             boxShadow: AppTheme.softShadow,
-            border: Border.all(color: theme.dividerColor.withValues(alpha: 0.1)),
+            border: Border.all(color: theme.dividerColor.withOpacity(0.1)),
           ),
           child: Row(
             children: List.generate(24, (i) {
@@ -737,7 +737,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                                   : AppTheme.primary.withValues(alpha: intensity.clamp(0.05, 1.0)),
                               borderRadius: BorderRadius.circular(6),
                               boxShadow: isSelected 
-                                  ? [BoxShadow(color: AppTheme.accent.withValues(alpha: 0.4), blurRadius: 8)] 
+                                  ? [BoxShadow(color: AppTheme.accent.withOpacity(0.4), blurRadius: 8)] 
                                   : null,
                             ),
                           ),
@@ -761,9 +761,9 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 decoration: BoxDecoration(
-                  color: AppTheme.accent.withValues(alpha: 0.1),
+                  color: AppTheme.accent.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppTheme.accent.withValues(alpha: 0.3)),
+                  border: Border.all(color: AppTheme.accent.withOpacity(0.3)),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -788,7 +788,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     return FadeInUp(
       duration: const Duration(milliseconds: 300),
       child: Container(
-        decoration: BoxDecoration(color: theme.cardColor, borderRadius: AppTheme.radiusMedium, boxShadow: AppTheme.softShadow, border: Border.all(color: theme.dividerColor.withValues(alpha: 0.1))),
+        decoration: BoxDecoration(color: theme.cardColor, borderRadius: AppTheme.radiusMedium, boxShadow: AppTheme.softShadow, border: Border.all(color: theme.dividerColor.withOpacity(0.1))),
         child: ListView.separated(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
@@ -825,7 +825,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     
     return Container(
       padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(color: theme.cardColor, borderRadius: AppTheme.radiusMedium, boxShadow: AppTheme.softShadow, border: Border.all(color: theme.dividerColor.withValues(alpha: 0.1))),
+      decoration: BoxDecoration(color: theme.cardColor, borderRadius: AppTheme.radiusMedium, boxShadow: AppTheme.softShadow, border: Border.all(color: theme.dividerColor.withOpacity(0.1))),
       child: Column(
         children: topProducts.map((p) => Padding(
           padding: const EdgeInsets.only(bottom: 16),
@@ -844,7 +844,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                 borderRadius: BorderRadius.circular(4),
                 child: LinearProgressIndicator(
                   value: 0.8 - (topProducts.indexOf(p) * 0.2),
-                  backgroundColor: AppTheme.primary.withValues(alpha: 0.1),
+                  backgroundColor: AppTheme.primary.withOpacity(0.1),
                   color: AppTheme.primary,
                   minHeight: 8,
                 ),
@@ -865,7 +865,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [AppTheme.primary, AppTheme.primary.withValues(alpha: 0.8)],
+          colors: [AppTheme.primary, AppTheme.primary.withOpacity(0.8)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -894,13 +894,23 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
 
   List<PieChartSectionData> _getSections(Map<String, double> data) {
     final values = data.values.toList();
+    final total = values.fold(0.0, (sum, item) => sum + item);
     final colors = [AppTheme.primary, AppTheme.accent, const Color(0xFF8B5CF6), const Color(0xFFF59E0B), const Color(0xFFEF4444), const Color(0xFF06B6D4), const Color(0xFF10B981)];
+    
     return List.generate(values.length, (i) {
       final isTouched = i == _touchedIndex;
       final fontSize = isTouched ? 16.0 : 12.0;
       final radius = isTouched ? 70.0 : 60.0;
       final color = colors[i % colors.length];
-      return PieChartSectionData(color: color, value: values[i], title: '${values[i].toStringAsFixed(0)}%', radius: radius, titleStyle: TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold, color: Colors.white));
+      final percentage = total > 0 ? (values[i] / total * 100) : 0.0;
+      
+      return PieChartSectionData(
+        color: color, 
+        value: values[i], 
+        title: '${percentage.toStringAsFixed(0)}%', 
+        radius: radius, 
+        titleStyle: TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold, color: Colors.white)
+      );
     });
   }
 }
@@ -932,13 +942,13 @@ class _FilterChip extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             decoration: BoxDecoration(
-              color: isSelected ? AppTheme.primary : theme.cardColor.withValues(alpha: 0.5),
+              color: isSelected ? AppTheme.primary : theme.cardColor.withOpacity(0.5),
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
-                color: isSelected ? AppTheme.primary : theme.dividerColor.withValues(alpha: 0.1),
+                color: isSelected ? AppTheme.primary : theme.dividerColor.withOpacity(0.1),
                 width: 1.5,
               ),
-              boxShadow: isSelected ? [BoxShadow(color: AppTheme.primary.withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 4))] : null,
+              boxShadow: isSelected ? [BoxShadow(color: AppTheme.primary.withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 4))] : null,
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,

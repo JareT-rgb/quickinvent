@@ -104,9 +104,9 @@ class _BulkImportDialogState extends ConsumerState<BulkImportDialog> {
                 child: Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: AppTheme.error.withValues(alpha: 0.1),
+                    color: AppTheme.error.withOpacity(0.1),
                     borderRadius: AppTheme.radiusSmall,
-                    border: Border.all(color: AppTheme.error.withValues(alpha: 0.2)),
+                    border: Border.all(color: AppTheme.error.withOpacity(0.2)),
                   ),
                   child: Text(_error!, style: const TextStyle(color: AppTheme.error, fontSize: 12)),
                 ),
@@ -118,9 +118,9 @@ class _BulkImportDialogState extends ConsumerState<BulkImportDialog> {
                     margin: const EdgeInsets.all(16),
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: AppTheme.primary.withValues(alpha: 0.05),
+                      color: AppTheme.primary.withOpacity(0.05),
                       borderRadius: AppTheme.radiusMedium,
-                      border: Border.all(color: AppTheme.primary.withValues(alpha: 0.1)),
+                      border: Border.all(color: AppTheme.primary.withOpacity(0.1)),
                     ),
                     child: const Column(
                       crossAxisAlignment: CrossAxisAlignment.start,

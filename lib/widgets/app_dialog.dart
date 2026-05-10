@@ -103,7 +103,7 @@ class _AppDialogHeader extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.22),
+              color: Colors.white.withOpacity(0.22),
               borderRadius: BorderRadius.circular(13),
             ),
             child: Icon(icon, color: Colors.white, size: 26),
@@ -126,7 +126,7 @@ class _AppDialogHeader extends StatelessWidget {
                 Text(
                   subtitle,
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.82),
+                    color: Colors.white.withOpacity(0.82),
                     fontSize: 13,
                   ),
                 ),
@@ -138,7 +138,7 @@ class _AppDialogHeader extends StatelessWidget {
               onPressed: onClose,
               icon: const Icon(Icons.close_rounded, color: Colors.white),
               style: IconButton.styleFrom(
-                backgroundColor: Colors.white.withValues(alpha: 0.18),
+                backgroundColor: Colors.white.withOpacity(0.18),
                 padding: const EdgeInsets.all(8),
               ),
             ),
@@ -160,7 +160,7 @@ class _AppDialogFooter extends StatelessWidget {
       decoration: BoxDecoration(
         color: cs.surface,
         border: Border(
-          top: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.4)),
+          top: BorderSide(color: cs.outlineVariant.withOpacity(0.4)),
         ),
       ),
       child: child,
@@ -254,14 +254,14 @@ InputDecoration appInputDecoration(
     prefixIcon: Icon(icon, size: 20),
     suffixIcon: suffix,
     filled: true,
-    fillColor: cs.surfaceContainerHighest.withValues(alpha: 0.35),
+    fillColor: cs.surfaceContainerHighest.withOpacity(0.35),
     border: OutlineInputBorder(
       borderRadius: BorderRadius.circular(14),
       borderSide: BorderSide.none,
     ),
     enabledBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(14),
-      borderSide: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.45)),
+      borderSide: BorderSide(color: cs.outlineVariant.withOpacity(0.45)),
     ),
     focusedBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(14),

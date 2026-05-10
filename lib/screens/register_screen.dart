@@ -130,9 +130,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     child: Container(
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.1),
+                        color: Colors.white.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(30),
-                        border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+                        border: Border.all(color: Colors.white.withOpacity(0.2)),
                       ),
                       child: const Icon(Icons.person_add_rounded, size: 60, color: Colors.white),
                     ),
@@ -219,7 +219,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     backgroundColor: AppTheme.primary,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
                     elevation: 8,
-                    shadowColor: AppTheme.primary.withValues(alpha: 0.4),
+                    shadowColor: AppTheme.primary.withOpacity(0.4),
                   ),
                   child: _isLoading
                       ? const CircularProgressIndicator(color: Colors.white)

@@ -103,7 +103,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
               elevation: 0,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
-                side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.5)),
+                side: BorderSide(color: cs.outlineVariant.withOpacity(0.5)),
               ),
               child: Padding(
                 padding: const EdgeInsets.all(24.0),
@@ -115,7 +115,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                         width: 100,
                         height: 100,
                         decoration: BoxDecoration(
-                          color: cs.primaryContainer.withValues(alpha: 0.3),
+                          color: cs.primaryContainer.withOpacity(0.3),
                           shape: BoxShape.circle,
                         ),
                         child: Icon(Icons.add_a_photo_outlined, size: 32, color: cs.primary),
@@ -177,7 +177,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
               elevation: 0,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
-                side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.5)),
+                side: BorderSide(color: cs.outlineVariant.withOpacity(0.5)),
               ),
               child: Padding(
                 padding: const EdgeInsets.all(24.0),

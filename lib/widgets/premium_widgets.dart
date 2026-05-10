@@ -76,7 +76,7 @@ class _PremiumSegmentedControlState extends State<PremiumSegmentedControl> {
     return Container(
       height: 54,
       decoration: BoxDecoration(
-        color: AppTheme.primary.withValues(alpha: 0.1),
+        color: AppTheme.primary.withOpacity(0.1),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
@@ -110,7 +110,7 @@ class _PremiumSegmentedControlState extends State<PremiumSegmentedControl> {
                       child: AnimatedDefaultTextStyle(
                         duration: const Duration(milliseconds: 300),
                         style: TextStyle(
-                          color: isSelected ? AppTheme.primary : theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.5),
+                          color: isSelected ? AppTheme.primary : theme.textTheme.bodyMedium?.color?.withOpacity(0.5),
                           fontWeight: isSelected ? FontWeight.w900 : FontWeight.w600,
                           fontSize: 13,
                         ),
@@ -314,12 +314,12 @@ class SparklineCard extends StatelessWidget {
         color: theme.cardColor,
         borderRadius: AppTheme.radiusMedium,
         boxShadow: AppTheme.softShadow,
-        border: Border.all(color: theme.dividerColor.withValues(alpha: 0.1)),
+        border: Border.all(color: theme.dividerColor.withOpacity(0.1)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.6))),
+          Text(title, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: theme.textTheme.bodyMedium?.color?.withOpacity(0.6))),
           const SizedBox(height: 8),
           AnimatedCounter(
             value: value,
@@ -350,7 +350,7 @@ class SparklineCard extends StatelessWidget {
                       dotData: const FlDotData(show: false),
                       belowBarData: BarAreaData(
                         show: true,
-                        color: color.withValues(alpha: 0.1),
+                        color: color.withOpacity(0.1),
                       ),
                     ),
                   ],
@@ -383,8 +383,8 @@ class SkeletonLoader extends StatelessWidget {
     final isDark = theme.brightness == Brightness.dark;
     
     return Shimmer.fromColors(
-      baseColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.withValues(alpha: 0.1),
-      highlightColor: isDark ? Colors.white.withValues(alpha: 0.02) : Colors.grey.withValues(alpha: 0.05),
+      baseColor: isDark ? Colors.white.withOpacity(0.05) : Colors.grey.withOpacity(0.1),
+      highlightColor: isDark ? Colors.white.withOpacity(0.02) : Colors.grey.withOpacity(0.05),
       child: Container(
         width: width,
         height: height,
@@ -438,23 +438,24 @@ class EmptyStateWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(40),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 20),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              padding: const EdgeInsets.all(32),
+              padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: AppTheme.primary.withValues(alpha: 0.05),
+                color: AppTheme.primary.withOpacity(0.05),
                 shape: BoxShape.circle,
               ),
-              child: Icon(icon, size: 80, color: AppTheme.primary.withValues(alpha: 0.2)),
+              child: Icon(icon, size: 60, color: AppTheme.primary.withOpacity(0.2)),
             ),
-            const SizedBox(height: 24),
-            Text(title, style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: theme.textTheme.titleLarge?.color)),
+            const SizedBox(height: 16),
+            Text(title, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: theme.textTheme.titleLarge?.color)),
             const SizedBox(height: 8),
-            Text(subtitle, textAlign: TextAlign.center, style: TextStyle(fontSize: 14, color: theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.7), fontWeight: FontWeight.w500)),
+            Text(subtitle, textAlign: TextAlign.center, style: TextStyle(fontSize: 13, color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7), fontWeight: FontWeight.w500)),
           ],
         ),
       ),

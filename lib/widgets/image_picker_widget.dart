@@ -95,7 +95,7 @@ class _ImagePickerWidgetState extends State<ImagePickerWidget> {
                 height: 4,
                 margin: const EdgeInsets.only(bottom: 16),
                 decoration: BoxDecoration(
-                  color: Colors.grey[300]?.withValues(alpha: 1.0),
+                  color: Colors.grey[300]?.withOpacity(1.0),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -108,7 +108,7 @@ class _ImagePickerWidgetState extends State<ImagePickerWidget> {
                 leading: Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: Colors.blue.withValues(alpha: 0.1),
+                    color: Colors.blue.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: const Icon(Icons.camera_alt, color: Colors.blue),
@@ -125,7 +125,7 @@ class _ImagePickerWidgetState extends State<ImagePickerWidget> {
                 leading: Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: Colors.green.withValues(alpha: 0.1),
+                    color: Colors.green.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: const Icon(Icons.photo_library, color: Colors.green),
@@ -143,7 +143,7 @@ class _ImagePickerWidgetState extends State<ImagePickerWidget> {
                   leading: Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: Colors.red.withValues(alpha: 0.1),
+                      color: Colors.red.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: const Icon(Icons.delete, color: Colors.red),
@@ -223,13 +223,13 @@ class _ImagePickerWidgetState extends State<ImagePickerWidget> {
                   ? BorderRadius.circular(16)
                   : null,
               border: Border.all(
-                color: theme.colorScheme.outline.withValues(alpha: 0.3),
+                color: theme.colorScheme.outline.withOpacity(0.3),
                 width: 2,
               ),
               boxShadow: hasImage
                   ? [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.1),
+                        color: Colors.black.withOpacity(0.1),
                         blurRadius: 8,
                         offset: const Offset(0, 4),
                       ),
@@ -243,7 +243,7 @@ class _ImagePickerWidgetState extends State<ImagePickerWidget> {
                 imageWidget,
                 if (_isLoading)
                   Container(
-                    color: Colors.black.withValues(alpha: 0.3),
+                    color: Colors.black.withOpacity(0.3),
                     child: const Center(
                       child: CircularProgressIndicator(color: Colors.white),
                     ),
@@ -261,7 +261,7 @@ class _ImagePickerWidgetState extends State<ImagePickerWidget> {
                           end: Alignment.bottomCenter,
                           colors: [
                             Colors.transparent,
-                            Colors.black.withValues(alpha: 0.6),
+                            Colors.black.withOpacity(0.6),
                           ],
                         ),
                       ),
@@ -299,7 +299,7 @@ class _ImagePickerWidgetState extends State<ImagePickerWidget> {
 
   Widget _buildPlaceholder(ThemeData theme) {
     return Container(
-      color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.2),
+      color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.2),
       child: Center(
         child: FittedBox(
           child: Padding(
@@ -310,13 +310,13 @@ class _ImagePickerWidgetState extends State<ImagePickerWidget> {
                 Icon(
                   Icons.add_photo_alternate_outlined,
                   size: 40,
-                  color: theme.colorScheme.primary.withValues(alpha: 0.4),
+                  color: theme.colorScheme.primary.withOpacity(0.4),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   'SIN IMAGEN',
                   style: TextStyle(
-                    color: theme.colorScheme.primary.withValues(alpha: 0.5),
+                    color: theme.colorScheme.primary.withOpacity(0.5),
                     fontSize: 10,
                     fontWeight: FontWeight.bold,
                     letterSpacing: 0.5,

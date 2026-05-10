@@ -30,7 +30,7 @@ class HeldCartsDialog extends ConsumerWidget {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.inbox_rounded, size: 64, color: AppTheme.textMuted.withValues(alpha: 0.2)),
+                      Icon(Icons.inbox_rounded, size: 64, color: AppTheme.textMuted.withOpacity(0.2)),
                       const SizedBox(height: 16),
                       const Text('No hay ventas retenidas', style: TextStyle(color: AppTheme.textMuted, fontWeight: FontWeight.w600)),
                     ],
@@ -51,14 +51,14 @@ class HeldCartsDialog extends ConsumerWidget {
                       decoration: BoxDecoration(
                         color: isDark ? const Color(0xFF1E293B) : Colors.white,
                         borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: AppTheme.divider.withValues(alpha: 0.5)),
+                        border: Border.all(color: AppTheme.divider.withOpacity(0.5)),
                         boxShadow: AppTheme.softShadow,
                       ),
                       child: Row(
                         children: [
                           Container(
                             padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(color: AppTheme.accent.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(14)),
+                            decoration: BoxDecoration(color: AppTheme.accent.withOpacity(0.1), borderRadius: BorderRadius.circular(14)),
                             child: const Icon(Icons.shopping_bag_rounded, color: AppTheme.accent, size: 22),
                           ),
                           const SizedBox(width: 16),

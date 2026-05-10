@@ -105,7 +105,7 @@ class _AppShellState extends ConsumerState<AppShell> {
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: cs.onSurfaceVariant.withValues(alpha: 0.3),
+                    color: cs.onSurfaceVariant.withOpacity(0.3),
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -136,7 +136,7 @@ class _AppShellState extends ConsumerState<AppShell> {
                       decoration: BoxDecoration(
                         color: isSelected
                             ? cs.primaryContainer
-                            : cs.surfaceContainerHighest.withValues(alpha: 0.5),
+                            : cs.surfaceContainerHighest.withOpacity(0.5),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Icon(
@@ -168,7 +168,7 @@ class _AppShellState extends ConsumerState<AppShell> {
                               ),
                             ),
                           )
-                        : Icon(Icons.chevron_right, color: cs.onSurfaceVariant.withValues(alpha: 0.5)),
+                        : Icon(Icons.chevron_right, color: cs.onSurfaceVariant.withOpacity(0.5)),
                     onTap: () {
                       Navigator.pop(context);
                       _onNavigate(item.route);
@@ -181,7 +181,7 @@ class _AppShellState extends ConsumerState<AppShell> {
                   leading: Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: Colors.red.withValues(alpha: 0.1),
+                      color: Colors.red.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: const Icon(Icons.logout, color: Colors.redAccent, size: 22),
@@ -272,7 +272,7 @@ class _AppShellState extends ConsumerState<AppShell> {
         color: cs.surface,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
+            color: Colors.black.withOpacity(0.08),
             blurRadius: 12,
             offset: const Offset(0, -3),
           ),

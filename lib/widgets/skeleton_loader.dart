@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:shimmer/shimmer.dart';
 import '../theme/app_theme.dart';
 
@@ -16,6 +17,22 @@ class SkeletonLoader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDesktop = !kIsWeb && 
+        (defaultTargetPlatform == TargetPlatform.windows || 
+         defaultTargetPlatform == TargetPlatform.linux || 
+         defaultTargetPlatform == TargetPlatform.macOS);
+
+    if (kIsWeb || isDesktop) {
+      return Container(
+        width: width,
+        height: height,
+        decoration: BoxDecoration(
+          color: Colors.grey[200],
+          borderRadius: BorderRadius.circular(borderRadius),
+        ),
+      );
+    }
+
     return Shimmer.fromColors(
       baseColor: Colors.grey[300]!,
       highlightColor: Colors.grey[100]!,
@@ -37,7 +54,7 @@ class SkeletonLoader extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: AppTheme.radiusMedium,
-        border: Border.all(color: AppTheme.divider.withValues(alpha: 0.3)),
+        border: Border.all(color: AppTheme.divider.withOpacity(0.3)),
       ),
       child: Row(
         children: [

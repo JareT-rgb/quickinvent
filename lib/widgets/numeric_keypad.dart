@@ -102,9 +102,9 @@ class NumericKeypad extends StatelessWidget {
         Expanded(
           child: Row(
             children: [
-              _buildKey(context, 'C', color: AppTheme.error.withValues(alpha: 0.1)),
+              _buildKey(context, 'C', color: AppTheme.error.withOpacity(0.1)),
               _buildKey(context, '0'),
-              _buildKey(context, 'DEL', icon: Icons.backspace_outlined, color: AppTheme.warning.withValues(alpha: 0.1)),
+              _buildKey(context, 'DEL', icon: Icons.backspace_outlined, color: AppTheme.warning.withOpacity(0.1)),
             ],
           ),
         ),

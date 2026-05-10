@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../theme/app_theme.dart';
 import 'premium_widgets.dart';
@@ -36,6 +37,29 @@ class ProductImage extends StatelessWidget {
       return _buildPlaceholder(effectiveWidth, effectiveHeight, effectiveRadius);
     }
 
+    final isDesktop = !kIsWeb && 
+        (defaultTargetPlatform == TargetPlatform.windows || 
+         defaultTargetPlatform == TargetPlatform.linux || 
+         defaultTargetPlatform == TargetPlatform.macOS);
+
+    if (kIsWeb || isDesktop) {
+      return ClipRRect(
+        borderRadius: effectiveRadius,
+        child: Image.network(
+          imageUrl!,
+          width: effectiveWidth,
+          height: effectiveHeight,
+          fit: fit,
+          loadingBuilder: (context, child, loadingProgress) {
+            if (loadingProgress == null) return child;
+            return _buildLoading(effectiveWidth, effectiveHeight, effectiveRadius);
+          },
+          errorBuilder: (context, error, stackTrace) => 
+              _buildPlaceholder(effectiveWidth, effectiveHeight, effectiveRadius, isError: true),
+        ),
+      );
+    }
+
     return ClipRRect(
       borderRadius: effectiveRadius,
       child: CachedNetworkImage(
@@ -58,13 +82,13 @@ class ProductImage extends StatelessWidget {
       width: w,
       height: h,
       decoration: BoxDecoration(
-        color: isError ? AppTheme.error.withValues(alpha: 0.05) : AppTheme.primary.withValues(alpha: 0.08),
+        color: isError ? AppTheme.error.withOpacity(0.05) : AppTheme.primary.withOpacity(0.08),
         borderRadius: radius,
       ),
       child: Icon(
         isError ? Icons.broken_image_outlined : placeholderIcon,
         size: iconSize.clamp(12.0, 48.0).toDouble(),
-        color: (isError ? AppTheme.error : AppTheme.primary).withValues(alpha: 0.4),
+        color: (isError ? AppTheme.error : AppTheme.primary).withOpacity(0.4),
       ),
     );
   }

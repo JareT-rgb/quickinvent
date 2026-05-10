@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import '../widgets/image_picker_widget.dart';
 import '../widgets/app_dialog.dart';
+import 'edit_product_dialog.dart';
 import '../repositories/products_repository.dart';
 import '../theme/app_theme.dart';
 
@@ -71,6 +72,34 @@ class _AddProductDialogState extends ConsumerState<AddProductDialog>
     
     setState(() => _isLoading = true);
     try {
+      // 1. Verificar si el código de barras ya existe (si se proporcionó uno)
+      final barcode = _barcodeController.text.trim();
+      if (barcode.isNotEmpty) {
+        final existingProduct = await ref.read(productsRepositoryProvider).getProductByBarcode(barcode);
+        if (existingProduct != null && mounted) {
+          setState(() => _isLoading = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Ya existe el producto "${existingProduct.name}" con ese código.'),
+              backgroundColor: AppTheme.error,
+              behavior: SnackBarBehavior.floating,
+              action: SnackBarAction(
+                label: 'EDITAR',
+                textColor: Colors.white,
+                onPressed: () {
+                  Navigator.pop(context);
+                  showDialog(
+                    context: context, 
+                    builder: (context) => EditProductDialog(product: existingProduct)
+                  );
+                },
+              ),
+            ),
+          );
+          return;
+        }
+      }
+
       String? imageUrl;
       if (_selectedImageFile != null) {
         imageUrl = await ref
@@ -84,12 +113,11 @@ class _AddProductDialogState extends ConsumerState<AddProductDialog>
             stockQuantity: int.tryParse(_stockController.text) ?? 0,
             minStock: int.tryParse(_minStockController.text) ?? 0,
             isActive: true,
-            barcode: _barcodeController.text.trim().isEmpty ? null : _barcodeController.text.trim(),
+            barcode: barcode.isEmpty ? null : barcode,
             categoryId: _selectedCategoryId,
             imageUrl: imageUrl,
           );
 
-      // Real-time streams handle the update automatically
       if (mounted) {
         Navigator.pop(context, true);
         ScaffoldMessenger.of(context).showSnackBar(
@@ -347,10 +375,10 @@ class _AddProductDialogState extends ConsumerState<AddProductDialog>
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppTheme.primary.withValues(alpha: 0.1)),
+        border: Border.all(color: AppTheme.primary.withOpacity(0.1)),
         boxShadow: [
           BoxShadow(
-            color: AppTheme.primary.withValues(alpha: 0.03),
+            color: AppTheme.primary.withOpacity(0.03),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
@@ -364,7 +392,7 @@ class _AddProductDialogState extends ConsumerState<AddProductDialog>
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: AppTheme.primary.withValues(alpha: 0.1),
+                  color: AppTheme.primary.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(icon, size: 18, color: AppTheme.primary),
@@ -388,12 +416,12 @@ class _AddProductDialogState extends ConsumerState<AddProductDialog>
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [AppTheme.primary.withValues(alpha: 0.08), AppTheme.primary.withValues(alpha: 0.02)],
+          colors: [AppTheme.primary.withOpacity(0.08), AppTheme.primary.withOpacity(0.02)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppTheme.primary.withValues(alpha: 0.1)),
+        border: Border.all(color: AppTheme.primary.withOpacity(0.1)),
       ),
       child: Row(
         children: [
@@ -402,7 +430,7 @@ class _AddProductDialogState extends ConsumerState<AddProductDialog>
           Expanded(
             child: Text(
               tip,
-              style: TextStyle(fontSize: 13, color: AppTheme.primary.withValues(alpha: 0.8), height: 1.5, fontWeight: FontWeight.w500),
+              style: TextStyle(fontSize: 13, color: AppTheme.primary.withOpacity(0.8), height: 1.5, fontWeight: FontWeight.w500),
             ),
           ),
         ],
@@ -421,7 +449,7 @@ class _ActionButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: AppTheme.primary.withValues(alpha: 0.1),
+      color: AppTheme.primary.withOpacity(0.1),
       borderRadius: BorderRadius.circular(12),
       child: InkWell(
         onTap: onPressed,

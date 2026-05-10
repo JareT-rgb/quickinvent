@@ -39,7 +39,7 @@ class CategoryManagementScreen extends ConsumerWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.category_outlined, size: 64, color: cs.primary.withValues(alpha: 0.2)),
+                  Icon(Icons.category_outlined, size: 64, color: cs.primary.withOpacity(0.2)),
                   const SizedBox(height: 16),
                   const Text('No hay categorías registradas', style: TextStyle(color: AppTheme.textMuted)),
                   const SizedBox(height: 24),
@@ -62,14 +62,14 @@ class CategoryManagementScreen extends ConsumerWidget {
                 decoration: BoxDecoration(
                   color: cs.surfaceContainerLow,
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.3)),
+                  border: Border.all(color: cs.outlineVariant.withOpacity(0.3)),
                 ),
                 child: ListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
                   leading: Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: cs.primaryContainer.withValues(alpha: 0.3),
+                      color: cs.primaryContainer.withOpacity(0.3),
                       shape: BoxShape.circle,
                     ),
                     child: Icon(Icons.category, color: cs.primary, size: 20),

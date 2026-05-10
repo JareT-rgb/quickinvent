@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' hide Category;
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:animate_do/animate_do.dart';
@@ -7,6 +8,7 @@ import '../providers/products_provider.dart';
 import '../providers/categories_provider.dart';
 import '../models/product.dart';
 import '../models/category.dart';
+import '../repositories/products_repository.dart';
 import '../dialogs/add_product_dialog.dart';
 import '../dialogs/edit_product_dialog.dart';
 import '../dialogs/bulk_import_dialog.dart';
@@ -16,6 +18,8 @@ import '../theme/app_theme.dart';
 import '../widgets/product_image.dart';
 import '../widgets/premium_widgets.dart';
 import '../screens/barcode_print_screen.dart';
+import '../utils/safe_haptic.dart';
+
 
 class InventoryScreen extends ConsumerStatefulWidget {
   const InventoryScreen({super.key});
@@ -42,6 +46,12 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
     final productsAsync = ref.watch(productsProvider);
     final categoriesAsync = ref.watch(categoriesProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    final isMobile = MediaQuery.of(context).size.width < 700;
+    final isDesktop = !kIsWeb && 
+        (defaultTargetPlatform == TargetPlatform.windows || 
+         defaultTargetPlatform == TargetPlatform.linux || 
+         defaultTargetPlatform == TargetPlatform.macOS);
 
     return Scaffold(
       backgroundColor: isDark ? AppTheme.backgroundDark : AppTheme.backgroundLight,
@@ -63,11 +73,11 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
           ),
           Column(
             children: [
-              _buildHeader(productsAsync),
+              _buildHeader(productsAsync, isMobile, isDesktop),
               _buildLowStockBanner(productsAsync),
               _buildGlassFilters(categoriesAsync, isDark),
               Expanded(
-                child: _buildResponsiveProductContent(productsAsync, categoriesAsync),
+                child: _buildResponsiveProductContent(productsAsync, categoriesAsync, isDesktop),
               ),
             ],
           ),
@@ -99,7 +109,20 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
             ExpandableFabItem(
               icon: Icons.download_rounded,
               label: 'Exportar Inventario',
-              onTap: () => ExcelHelper.exportProducts(products),
+              onTap: () async {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Generando archivo Excel...'), duration: Duration(seconds: 2)),
+                );
+                final success = await ExcelHelper.exportProducts(products);
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(success ? 'Inventario exportado con éxito' : 'Error al exportar inventario'),
+                      backgroundColor: success ? AppTheme.success : AppTheme.error,
+                    ),
+                  );
+                }
+              },
             ),
           ],
         ),
@@ -108,33 +131,80 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
     );
   }
 
-  Widget _buildHeader(AsyncValue<List<Product>> productsAsync) {
-    final isMobile = MediaQuery.of(context).size.width < 700;
+  Widget _buildHeader(AsyncValue<List<Product>> productsAsync, bool isMobile, bool isDesktop) {
     return Padding(
       padding: EdgeInsets.fromLTRB(24, isMobile ? 40 : 24, 24, 12),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Expanded(
-            child: FadeInLeft(
-              child: Column(
+            child: isDesktop 
+              ? Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Gestión de Stock', 
-                    style: TextStyle(fontSize: 32, fontWeight: FontWeight.w900, letterSpacing: -1.5),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                  Row(
+                    children: [
+                      const Text(
+                        'Gestión de Stock', 
+                        style: TextStyle(fontSize: 32, fontWeight: FontWeight.w900, letterSpacing: -1.5),
+                      ),
+                      const SizedBox(width: 12),
+                      productsAsync.maybeWhen(
+                        data: (products) => Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: AppTheme.primary.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            '${products.length}',
+                            style: const TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold, fontSize: 16),
+                          ),
+                        ),
+                        orElse: () => const SizedBox.shrink(),
+                      ),
+                    ],
                   ),
                   Text(
                     'Control total de tu inventario premium', 
                     style: TextStyle(color: AppTheme.textSecondary, fontSize: 14, fontWeight: FontWeight.w500),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
+              )
+              : FadeInLeft(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Text(
+                          'Gestión de Stock', 
+                          style: TextStyle(fontSize: 32, fontWeight: FontWeight.w900, letterSpacing: -1.5),
+                        ),
+                        const SizedBox(width: 12),
+                        productsAsync.maybeWhen(
+                          data: (products) => Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: AppTheme.primary.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Text(
+                              '${products.length}',
+                              style: const TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold, fontSize: 16),
+                            ),
+                          ),
+                          orElse: () => const SizedBox.shrink(),
+                        ),
+                      ],
+                    ),
+                    Text(
+                      'Control total de tu inventario premium', 
+                      style: TextStyle(color: AppTheme.textSecondary, fontSize: 14, fontWeight: FontWeight.w500),
+                    ),
+                  ],
+                ),
               ),
-            ),
           ),
           const SizedBox(width: 16),
           Row(
@@ -206,10 +276,10 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
             ),
             const SizedBox(height: 12),
             categoriesAsync.maybeWhen(
-              data: (cats) {
+              data: (List<Category> cats) {
                 final options = ['Todas', ...cats.map((c) => c.name)];
                 return PremiumSegmentedControl(
-                  options: options,
+                  options: options.cast<String>(),
                   selectedIndex: options.indexOf(_selectedCategory).clamp(0, options.length - 1),
                   onSelected: (i) => setState(() => _selectedCategory = options[i]),
                 );
@@ -224,19 +294,19 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
 
   Widget _buildCategoryDropdown(AsyncValue<List<Category>> categoriesAsync) {
     return categoriesAsync.maybeWhen(
-      data: (cats) {
-        final options = ['Todas', ...cats.map((c) => c.name)];
+      data: (List<Category> cats) {
+        final options = ['Todas', ...cats.map((c) => (c as Category).name)];
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           decoration: BoxDecoration(
-            color: AppTheme.primary.withValues(alpha: 0.05),
+            color: AppTheme.primary.withOpacity(0.05),
             borderRadius: BorderRadius.circular(12),
           ),
           child: DropdownButtonHideUnderline(
             child: DropdownButton<String>(
               value: _selectedCategory,
               icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 20, color: AppTheme.primary),
-              items: options.map((o) => DropdownMenuItem(
+              items: options.map((o) => DropdownMenuItem<String>(
                 value: o, 
                 child: Text(o, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800))
               )).toList(),
@@ -249,7 +319,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
     );
   }
 
-  Widget _buildResponsiveProductContent(AsyncValue<List<Product>> productsAsync, AsyncValue<List<Category>> categoriesAsync) {
+  Widget _buildResponsiveProductContent(AsyncValue<List<Product>> productsAsync, AsyncValue<List<Category>> categoriesAsync, bool isDesktop) {
     return productsAsync.when(
       loading: () => Padding(
         padding: const EdgeInsets.all(24),
@@ -276,36 +346,48 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
             if (_isGridView && !isMobile) {
               return GridView.builder(
                 padding: const EdgeInsets.all(24),
+                itemCount: filtered.length,
                 gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: crossAxisCount,
                   childAspectRatio: 0.75,
                   crossAxisSpacing: 24,
                   mainAxisSpacing: 24,
                 ),
-                itemCount: filtered.length,
-                itemBuilder: (context, index) => FadeInUp(
-                  delay: Duration(milliseconds: index * 50),
-                  child: _ProductGridCard(
+                itemBuilder: (context, index) {
+                  final card = _ProductGridCard(
                     product: filtered[index],
                     onTap: () {
-                      HapticFeedback.lightImpact();
+                      SafeHaptic.lightImpact();
                       showDialog(context: context, builder: (context) => EditProductDialog(product: filtered[index]));
                     },
-                  ),
-                ),
+                  );
+
+                  if (isDesktop) return card;
+
+                  return FadeInUp(
+                    delay: Duration(milliseconds: index * 50),
+                    child: card,
+                  );
+                },
               );
             }
 
             return ListView.builder(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               itemCount: filtered.length,
-              itemBuilder: (context, index) => FadeInRight(
-                delay: Duration(milliseconds: index * 50),
-                child: _ProductListTile(
+              itemBuilder: (context, index) {
+                final tile = _ProductListTile(
                   product: filtered[index],
                   onTap: () => showDialog(context: context, builder: (context) => EditProductDialog(product: filtered[index])),
-                ),
-              ),
+                );
+
+                if (isDesktop) return tile;
+
+                return FadeInRight(
+                  delay: Duration(milliseconds: index * 50),
+                  child: tile,
+                );
+              },
             );
           },
         );
@@ -319,7 +401,8 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                            (p.barcode?.contains(_searchQuery) ?? false);
       bool matchesCategory = _selectedCategory == 'Todas';
       if (!matchesCategory && categoriesAsync.hasValue) {
-        final cat = categoriesAsync.value!.firstWhere((c) => c.name == _selectedCategory);
+        final List<Category> cats = categoriesAsync.value!;
+        final cat = cats.firstWhere((c) => c.name == _selectedCategory);
         matchesCategory = p.categoryId == cat.id.toString();
       }
       bool matchesLowStock = !_onlyLowStock || (p.stockQuantity <= p.minStock);
@@ -332,7 +415,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.inventory_2_outlined, size: 80, color: AppTheme.textMuted.withValues(alpha: 0.2)),
+          Icon(Icons.inventory_2_outlined, size: 80, color: AppTheme.textMuted.withOpacity(0.2)),
           const SizedBox(height: 20),
           const Text('Sin resultados', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: AppTheme.textSecondary)),
           TextButton(
@@ -353,9 +436,9 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
         margin: const EdgeInsets.fromLTRB(24, 0, 24, 12),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: AppTheme.error.withValues(alpha: 0.05),
+          color: AppTheme.error.withOpacity(0.05),
           borderRadius: AppTheme.radiusMedium,
-          border: Border.all(color: AppTheme.error.withValues(alpha: 0.1), width: 1.5),
+          border: Border.all(color: AppTheme.error.withOpacity(0.1), width: 1.5),
         ),
         child: Row(
           children: [
@@ -391,7 +474,7 @@ class _HeaderIconButton extends StatelessWidget {
       icon: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.1),
+          color: color.withOpacity(0.1),
           borderRadius: BorderRadius.circular(16),
         ),
         child: Icon(icon, color: color, size: 20),
@@ -418,18 +501,23 @@ class _ProductGridCardState extends State<_ProductGridCard> {
   Widget build(BuildContext context) {
     final isLowStock = widget.product.stockQuantity <= widget.product.minStock;
     
+    final isDesktop = !kIsWeb && 
+        (defaultTargetPlatform == TargetPlatform.windows || 
+         defaultTargetPlatform == TargetPlatform.linux || 
+         defaultTargetPlatform == TargetPlatform.macOS);
+
     return MouseRegion(
       onEnter: (_) => setState(() => _isHovered = true),
       onExit: (_) => setState(() => _isHovered = false),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 250),
-        transform: _isHovered ? (Matrix4.identity()..translate(0, -10, 0)) : Matrix4.identity(),
+        transform: (isDesktop || !_isHovered) ? Matrix4.identity() : (Matrix4.identity()..translate(0, -10, 0)),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: AppTheme.radiusMedium,
           boxShadow: _isHovered ? AppTheme.deepShadow : AppTheme.softShadow,
           border: Border.all(
-            color: _isHovered ? AppTheme.primary.withValues(alpha: 0.4) : AppTheme.divider.withValues(alpha: 0.3),
+            color: _isHovered ? AppTheme.primary.withOpacity(0.4) : AppTheme.divider.withOpacity(0.3),
             width: _isHovered ? 2 : 1,
           ),
         ),
@@ -458,6 +546,23 @@ class _ProductGridCardState extends State<_ProductGridCard> {
                           child: const Text('ALERTA', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w900)),
                         ),
                       ),
+                    Positioned(
+                      top: 12, left: 12,
+                      child: Material(
+                        color: Colors.white,
+                        shape: const CircleBorder(),
+                        elevation: 4,
+                        child: Consumer(
+                          builder: (context, ref, _) => IconButton(
+                            icon: const Icon(Icons.delete_outline_rounded, color: AppTheme.error, size: 18),
+                            onPressed: () => _confirmDelete(context, ref, widget.product),
+                            tooltip: 'Borrar Producto',
+                            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                            padding: EdgeInsets.zero,
+                          ),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -488,7 +593,7 @@ class _ProductGridCardState extends State<_ProductGridCard> {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
-                            color: (isLowStock ? AppTheme.error : AppTheme.primary).withValues(alpha: 0.1),
+                            color: (isLowStock ? AppTheme.error : AppTheme.primary).withOpacity(0.1),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
@@ -524,7 +629,7 @@ class _ProductListTile extends StatelessWidget {
         color: Colors.white,
         borderRadius: AppTheme.radiusMedium,
         boxShadow: AppTheme.softShadow,
-        border: Border.all(color: isLowStock ? AppTheme.error.withValues(alpha: 0.2) : AppTheme.divider.withValues(alpha: 0.3)),
+        border: Border.all(color: isLowStock ? AppTheme.error.withOpacity(0.2) : AppTheme.divider.withOpacity(0.3)),
       ),
       child: ListTile(
         onTap: onTap,
@@ -553,8 +658,49 @@ class _ProductListTile extends StatelessWidget {
             ],
           ),
         ),
-        trailing: const Icon(Icons.chevron_right_rounded, color: AppTheme.textMuted),
+        trailing: Consumer(
+          builder: (context, ref, _) => IconButton(
+            icon: const Icon(Icons.delete_outline_rounded, color: AppTheme.error),
+            onPressed: () => _confirmDelete(context, ref, product),
+            tooltip: 'Borrar Producto',
+          ),
+        ),
       ),
     );
+  }
+}
+
+Future<void> _confirmDelete(BuildContext context, WidgetRef ref, Product product) async {
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('¿Borrar producto?', style: TextStyle(fontWeight: FontWeight.w900)),
+      content: Text('¿Estás seguro de que quieres borrar "${product.name}"?'),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('CANCELAR')),
+        ElevatedButton(
+          onPressed: () => Navigator.pop(context, true),
+          style: ElevatedButton.styleFrom(backgroundColor: AppTheme.error, foregroundColor: Colors.white),
+          child: const Text('BORRAR'),
+        ),
+      ],
+    ),
+  );
+
+  if (confirmed == true) {
+    try {
+      await ref.read(productsRepositoryProvider).deleteProduct(product.id);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Producto borrado (desactivado)'), backgroundColor: AppTheme.success),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al borrar: $e'), backgroundColor: AppTheme.error),
+        );
+      }
+    }
   }
 }

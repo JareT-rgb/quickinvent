@@ -143,9 +143,9 @@ class _CashRegisterScreenState extends ConsumerState<CashRegisterScreen> {
       child: Container(
         padding: const EdgeInsets.all(28),
         decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.05),
+          color: color.withOpacity(0.05),
           borderRadius: AppTheme.radiusLarge,
-          border: Border.all(color: color.withValues(alpha: 0.15), width: 2),
+          border: Border.all(color: color.withOpacity(0.15), width: 2),
           boxShadow: AppTheme.softShadow,
         ),
         child: Column(
@@ -163,7 +163,7 @@ class _CashRegisterScreenState extends ConsumerState<CashRegisterScreen> {
                 ),
                 Container(
                   padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(color: color.withValues(alpha: 0.1), shape: BoxShape.circle),
+                  decoration: BoxDecoration(color: color.withOpacity(0.1), shape: BoxShape.circle),
                   child: Icon(diff == 0 ? Icons.check_circle_rounded : (diff > 0 ? Icons.trending_up_rounded : Icons.trending_down_rounded), color: color, size: 32),
                 ),
               ],
@@ -186,7 +186,7 @@ class _CashRegisterScreenState extends ConsumerState<CashRegisterScreen> {
     return Expanded(
       child: Container(
         padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.5), borderRadius: BorderRadius.circular(16)),
+        decoration: BoxDecoration(color: Colors.white.withOpacity(0.5), borderRadius: BorderRadius.circular(16)),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -224,7 +224,7 @@ class _CashRegisterScreenState extends ConsumerState<CashRegisterScreen> {
   Widget _buildModeSelector(bool isDark) {
     return Container(
       padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.5), borderRadius: BorderRadius.circular(20)),
+      decoration: BoxDecoration(color: Colors.white.withOpacity(0.5), borderRadius: BorderRadius.circular(20)),
       child: Row(
         children: [
           _modeTab('DESGLOSE', !_useManualInput),
@@ -244,7 +244,7 @@ class _CashRegisterScreenState extends ConsumerState<CashRegisterScreen> {
           decoration: BoxDecoration(
             color: active ? AppTheme.primary : Colors.transparent,
             borderRadius: BorderRadius.circular(16),
-            boxShadow: active ? [BoxShadow(color: AppTheme.primary.withValues(alpha: 0.3), blurRadius: 10, offset: const Offset(0, 4))] : [],
+            boxShadow: active ? [BoxShadow(color: AppTheme.primary.withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 4))] : [],
           ),
           alignment: Alignment.center,
           child: Text(label, style: TextStyle(color: active ? Colors.white : AppTheme.textMuted, fontWeight: FontWeight.w900, fontSize: 12, letterSpacing: 1)),
@@ -321,7 +321,7 @@ class _CashRegisterScreenState extends ConsumerState<CashRegisterScreen> {
             decoration: BoxDecoration(
               gradient: AppTheme.primaryGradient,
               borderRadius: AppTheme.radiusMedium,
-              boxShadow: [BoxShadow(color: AppTheme.primary.withValues(alpha: 0.3), blurRadius: 20, offset: const Offset(0, 10))],
+              boxShadow: [BoxShadow(color: AppTheme.primary.withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 10))],
             ),
             alignment: Alignment.center,
             child: _isSaving 
@@ -428,7 +428,7 @@ class _DenominationCard extends StatelessWidget {
         color: Colors.white,
         borderRadius: AppTheme.radiusMedium,
         boxShadow: AppTheme.softShadow,
-        border: Border.all(color: count > 0 ? color.withValues(alpha: 0.3) : AppTheme.divider.withValues(alpha: 0.5), width: count > 0 ? 2 : 1),
+        border: Border.all(color: count > 0 ? color.withOpacity(0.3) : AppTheme.divider.withOpacity(0.5), width: count > 0 ? 2 : 1),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       child: Column(
@@ -461,7 +461,7 @@ class _DenominationCard extends StatelessWidget {
       onTap: enabled ? onTap : null,
       child: Container(
         padding: const EdgeInsets.all(4),
-        decoration: BoxDecoration(color: (enabled ? AppTheme.primary : AppTheme.textMuted).withValues(alpha: 0.1), shape: BoxShape.circle),
+        decoration: BoxDecoration(color: (enabled ? AppTheme.primary : AppTheme.textMuted).withOpacity(0.1), shape: BoxShape.circle),
         child: Icon(icon, size: 20, color: enabled ? AppTheme.primary : AppTheme.textMuted),
       ),
     );

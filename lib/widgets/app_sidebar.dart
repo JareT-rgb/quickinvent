@@ -27,7 +27,7 @@ class AppSidebar extends ConsumerWidget {
       width: 280,
       decoration: BoxDecoration(
         color: sidebarBg,
-        border: Border(right: BorderSide(color: Colors.white.withValues(alpha: 0.05), width: 1)),
+        border: Border(right: BorderSide(color: Colors.white.withOpacity(0.05), width: 1)),
       ),
       child: Column(
         children: [
@@ -85,7 +85,7 @@ class AppSidebar extends ConsumerWidget {
               gradient: AppTheme.primaryGradient,
               borderRadius: BorderRadius.circular(16),
               boxShadow: [
-                BoxShadow(color: primaryColor.withValues(alpha: 0.3), blurRadius: 15, offset: const Offset(0, 5))
+                BoxShadow(color: primaryColor.withOpacity(0.3), blurRadius: 15, offset: const Offset(0, 5))
               ],
             ),
             child: const Icon(Icons.shopping_cart_checkout_rounded, color: Colors.white, size: 26),
@@ -125,7 +125,7 @@ class AppSidebar extends ConsumerWidget {
       child: Text(
         label,
         style: TextStyle(
-          color: Colors.white.withValues(alpha: 0.25),
+          color: Colors.white.withOpacity(0.25),
           fontSize: 10,
           fontWeight: FontWeight.w900,
           letterSpacing: 2,
@@ -142,7 +142,7 @@ class AppSidebar extends ConsumerWidget {
         color: theme.cardColor,
         borderRadius: AppTheme.radiusMedium,
         boxShadow: AppTheme.softShadow,
-        border: Border.all(color: theme.dividerColor.withValues(alpha: 0.1)),
+        border: Border.all(color: theme.dividerColor.withOpacity(0.1)),
       ),
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -179,7 +179,7 @@ class AppSidebar extends ConsumerWidget {
                     ),
                     Text(
                       'Licencia Vitalicia',
-                      style: TextStyle(color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.6), fontSize: 11, fontWeight: FontWeight.w600),
+                      style: TextStyle(color: theme.textTheme.bodySmall?.color?.withOpacity(0.6), fontSize: 11, fontWeight: FontWeight.w600),
                     ),
                   ],
                 ),
@@ -208,7 +208,7 @@ class AppSidebar extends ConsumerWidget {
     final isActive = currentRoute == route;
     final color = isDestructive 
         ? const Color(0xFFF87171) 
-        : (isActive ? Colors.white : Colors.white.withValues(alpha: 0.4));
+        : (isActive ? Colors.white : Colors.white.withOpacity(0.4));
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
@@ -219,10 +219,10 @@ class AppSidebar extends ConsumerWidget {
           duration: const Duration(milliseconds: 250),
           padding: EdgeInsets.symmetric(horizontal: 16, vertical: dense ? 10 : 14),
           decoration: BoxDecoration(
-            color: isActive ? Colors.white.withValues(alpha: 0.08) : Colors.transparent,
+            color: isActive ? Colors.white.withOpacity(0.08) : Colors.transparent,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: isActive ? Colors.white.withValues(alpha: 0.1) : Colors.transparent,
+              color: isActive ? Colors.white.withOpacity(0.1) : Colors.transparent,
             ),
           ),
           child: Row(
@@ -244,9 +244,9 @@ class AppSidebar extends ConsumerWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF10B981).withValues(alpha: 0.2),
+                    color: const Color(0xFF10B981).withOpacity(0.2),
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.2)),
+                    border: Border.all(color: const Color(0xFF10B981).withOpacity(0.2)),
                   ),
                   child: Text(
                     badge, 
@@ -302,7 +302,7 @@ class _ScannerActiveBannerState extends State<_ScannerActiveBanner> with SingleT
         return Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: const Color(0xFF10B981).withValues(alpha: 0.05),
+            color: const Color(0xFF10B981).withOpacity(0.05),
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.2 * _pulse.value)),
           ),
@@ -313,7 +313,7 @@ class _ScannerActiveBannerState extends State<_ScannerActiveBanner> with SingleT
                 decoration: BoxDecoration(
                   color: const Color(0xFF10B981).withValues(alpha: _pulse.value),
                   shape: BoxShape.circle,
-                  boxShadow: [BoxShadow(color: const Color(0xFF10B981).withValues(alpha: 0.3), blurRadius: 8)],
+                  boxShadow: [BoxShadow(color: const Color(0xFF10B981).withOpacity(0.3), blurRadius: 8)],
                 ),
               ),
               const SizedBox(width: 12),
