@@ -185,7 +185,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> with SingleTicker
           await Supabase.instance.client.from('barcode_scans').insert({
             'barcode': _detectedCode,
             'user_id': userId,
-            'quantity': _currentScanQty,
+            'qty': _currentScanQty,
             'processed': false,
             'status': 'pending',
           });
@@ -579,7 +579,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> with SingleTicker
     await Supabase.instance.client.from('barcode_scans').insert({
       'barcode': _lastProduct!['barcode'],
       'user_id': userId,
-      'quantity': delta,
+      'qty': delta,
       'processed': false,
       'status': 'pending', // Esencial para que el POS lo procese
     });
