@@ -275,7 +275,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> with SingleTicker
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const SizedBox(height: 280),
+          const SizedBox(height: 320),
           GestureDetector(
             onTap: _processDetectedCode,
             child: _buildScanPill(),
@@ -302,16 +302,16 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> with SingleTicker
   Widget _buildScanPill() {
     final hasCode = _detectedCode != null;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 18),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
       decoration: BoxDecoration(
         gradient: hasCode ? AppTheme.primaryGradient : null,
-        color: hasCode ? null : Colors.white10,
-        borderRadius: BorderRadius.circular(40),
+        color: hasCode ? null : Colors.black.withOpacity(0.4),
+        borderRadius: BorderRadius.circular(30),
         boxShadow: [
           if (hasCode)
-            BoxShadow(color: AppTheme.primary.withOpacity(0.4), blurRadius: 20, spreadRadius: 2),
+            BoxShadow(color: AppTheme.primary.withOpacity(0.3), blurRadius: 15, spreadRadius: 1),
         ],
-        border: Border.all(color: Colors.white24, width: 1),
+        border: Border.all(color: Colors.white10, width: 1),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -319,11 +319,12 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> with SingleTicker
           Icon(
             hasCode ? Icons.barcode_reader : Icons.center_focus_weak, 
             color: Colors.white,
+            size: 20,
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
           Text(
             hasCode ? 'TOMAR CÓDIGO' : 'BUSCANDO CÓDIGO...',
-            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 15, letterSpacing: 0.5),
+            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 13, letterSpacing: 0.5),
           ),
         ],
       ),
@@ -332,47 +333,50 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> with SingleTicker
 
   Widget _buildTopToolbar() {
     return Positioned(
-      top: 48, left: 20, right: 20,
+      top: 50, left: 16, right: 16,
       child: FadeInDown(
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-          decoration: AppTheme.glassDecoration(isDark: true).copyWith(
-            borderRadius: BorderRadius.circular(40),
-          ),
-          child: Row(
-            children: [
-              _CircleButton(
-                icon: Icons.close_rounded, 
-                onTap: () => Navigator.pop(context),
-                isGlass: true,
+        child: Row(
+          children: [
+            // Exit Button (Left)
+            _CircleButton(
+              icon: Icons.close_rounded, 
+              onTap: () async {
+                await _controller.stop();
+                if (mounted) Navigator.pop(context);
+              },
+              isGlass: true,
+            ),
+            
+            const Spacer(),
+            
+            // Mode Indicator (Center)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: AppTheme.glassDecoration(isDark: true).copyWith(
+                borderRadius: BorderRadius.circular(20),
               ),
-              const Spacer(),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                decoration: BoxDecoration(
-                  color: Colors.black26,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      _auditMode ? Icons.inventory_2_rounded : Icons.shopping_cart_rounded, 
-                      size: 16, color: AppTheme.primaryLight
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      _auditMode ? 'MODO AUDITORÍA' : 'MODO POS',
-                      style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w900, letterSpacing: 1),
-                    ),
-                    const SizedBox(width: 8),
-                    Switch(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    _auditMode ? Icons.inventory_2_rounded : Icons.shopping_cart_rounded, 
+                    size: 14, color: AppTheme.primaryLight
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    _auditMode ? 'AUDITORÍA' : 'POS',
+                    style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1),
+                  ),
+                  const SizedBox(width: 4),
+                  Transform.scale(
+                    scale: 0.7,
+                    child: Switch(
                       value: _auditMode,
                       onChanged: (val) {
                         setState(() {
                           _auditMode = val;
                           _lastProduct = null;
                         });
-                        // Update presence with new mode
                         _presenceChannel?.track({
                           'device': 'mobile_scanner',
                           'at': DateTime.now().toIso8601String(),
@@ -380,26 +384,39 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> with SingleTicker
                         });
                       },
                       activeColor: AppTheme.primary,
-                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-              const Spacer(),
-              _ConnectionIndicator(isConnected: _isConnected),
-              _CircleButton(
-                icon: Icons.flash_on_rounded, 
-                onTap: () => _controller.toggleTorch(),
-                isGlass: true,
+            ),
+            
+            const Spacer(),
+            
+            // Camera Tools (Right)
+            Container(
+              padding: const EdgeInsets.all(4),
+              decoration: AppTheme.glassDecoration(isDark: true).copyWith(
+                borderRadius: BorderRadius.circular(30),
               ),
-              const SizedBox(width: 8),
-              _CircleButton(
-                icon: Icons.flip_camera_ios, 
-                onTap: () => _controller.switchCamera(),
-                isGlass: true,
+              child: Row(
+                children: [
+                  _CircleButton(
+                    icon: Icons.flash_on_rounded, 
+                    onTap: () => _controller.toggleTorch(),
+                    isGlass: false, // Inside glass container
+                    isSmall: true,
+                  ),
+                  const SizedBox(width: 4),
+                  _CircleButton(
+                    icon: Icons.flip_camera_ios, 
+                    onTap: () => _controller.switchCamera(),
+                    isGlass: false, // Inside glass container
+                    isSmall: true,
+                  ),
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -592,7 +609,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> with SingleTicker
                 height: MediaQuery.of(context).size.width * 0.75,
                 child: CustomPaint(
                   painter: ScannerVisorPainter(
-                    color: _detectedCode != null ? AppTheme.primary : Colors.white70,
+                    color: AppTheme.primary,
                     laserPosition: _laserController.value,
                   ),
                 ),
@@ -985,8 +1002,8 @@ class ScannerVisorPainter extends CustomPainter {
     final laserPaint = Paint()
       ..shader = LinearGradient(
         colors: [color.withOpacity(0), color, color.withOpacity(0)],
-      ).createShader(Rect.fromLTWH(0, size.height * laserPosition - 1, size.width, 2))
-      ..strokeWidth = 2;
+      ).createShader(Rect.fromLTWH(0, size.height * laserPosition - 0.5, size.width, 1))
+      ..strokeWidth = 1;
     
     canvas.drawLine(
       Offset(0, size.height * laserPosition),
@@ -996,10 +1013,10 @@ class ScannerVisorPainter extends CustomPainter {
 
     // Laser Glow
     final laserGlowPaint = Paint()
-      ..color = color.withOpacity(0.2)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 15);
+      ..color = color.withOpacity(0.15)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
     canvas.drawRect(
-      Rect.fromLTWH(0, size.height * laserPosition - 10, size.width, 20),
+      Rect.fromLTWH(0, size.height * laserPosition - 5, size.width, 10),
       laserGlowPaint,
     );
   }
