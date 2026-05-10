@@ -181,14 +181,16 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> with SingleTicker
         });
         
         if (!_auditMode && userId != null) {
-          // En modo POS, enviamos el primer scan con delta explícito
-          await Supabase.instance.client.from('barcode_scans').insert({
-            'barcode': _detectedCode,
-            'user_id': userId,
-            'qty': _currentScanQty,
-            'processed': false,
-            'status': 'pending',
-          });
+          // En modo POS, enviamos tantos registros como cantidad se haya seleccionado
+          // ya que la tabla barcode_scans no tiene columna de cantidad
+          for (int i = 0; i < _currentScanQty; i++) {
+            await Supabase.instance.client.from('barcode_scans').insert({
+              'barcode': _detectedCode,
+              'user_id': userId,
+              'processed': false,
+              'status': 'pending',
+            });
+          }
         }
         _provideFeedback('success');
       } else {
@@ -576,13 +578,15 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> with SingleTicker
     if (userId == null || _lastProduct == null) return;
     
     SafeHaptic.selectionClick();
-    await Supabase.instance.client.from('barcode_scans').insert({
-      'barcode': _lastProduct!['barcode'],
-      'user_id': userId,
-      'qty': delta,
-      'processed': false,
-      'status': 'pending', // Esencial para que el POS lo procese
-    });
+    // Enviamos múltiples registros si delta > 1 para compensar la falta de columna 'quantity'
+    for (int i = 0; i < delta; i++) {
+      await Supabase.instance.client.from('barcode_scans').insert({
+        'barcode': _lastProduct!['barcode'],
+        'user_id': userId,
+        'processed': false,
+        'status': 'pending', // Esencial para que el POS lo procese
+      });
+    }
   }
 
   Widget _buildScannerOverlay() {
