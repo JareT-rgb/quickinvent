@@ -185,7 +185,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> with SingleTicker
           await Supabase.instance.client.from('barcode_scans').insert({
             'barcode': _detectedCode,
             'user_id': userId,
-            'quantity_delta': _currentScanQty,
+            'quantity': _currentScanQty,
             'processed': false,
             'status': 'pending',
           });
@@ -278,12 +278,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> with SingleTicker
           const SizedBox(height: 280),
           GestureDetector(
             onTap: _processDetectedCode,
-            child: _detectedCode != null 
-              ? Pulse(
-                  infinite: true,
-                  child: _buildScanPill(),
-                )
-              : _buildScanPill(),
+            child: _buildScanPill(),
           ),
           if (_detectedCode != null)
             Padding(
@@ -567,7 +562,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> with SingleTicker
     await Supabase.instance.client.from('barcode_scans').insert({
       'barcode': _lastProduct!['barcode'],
       'user_id': userId,
-      'quantity_delta': delta,
+      'quantity': delta,
       'processed': false,
       'status': 'pending', // Esencial para que el POS lo procese
     });
