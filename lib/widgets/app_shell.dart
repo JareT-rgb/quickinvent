@@ -13,6 +13,8 @@ import '../screens/customers_screen.dart';
 import '../widgets/app_sidebar.dart';
 import '../repositories/auth_repository.dart';
 import '../theme/app_theme.dart';
+import '../providers/scanner_status_provider.dart';
+import 'package:flutter/foundation.dart';
 
 class AppShell extends ConsumerStatefulWidget {
   const AppShell({super.key});
@@ -61,7 +63,70 @@ class _AppShellState extends ConsumerState<AppShell> {
       _showLogoutDialog();
       return;
     }
+
+    if (route == 'scanner') {
+      final isPC = kIsWeb || 
+          defaultTargetPlatform == TargetPlatform.windows || 
+          defaultTargetPlatform == TargetPlatform.linux || 
+          defaultTargetPlatform == TargetPlatform.macOS;
+      
+      if (isPC) {
+        _showScannerLinkingDialog();
+        return;
+      }
+    }
+
     setState(() => _currentRoute = route);
+  }
+
+  void _showScannerLinkingDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const _ScannerLinkingDialog(),
+    );
+  }
+
+  void _showIncomingLinkingRequest() {
+    final cs = Theme.of(context).colorScheme;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        duration: const Duration(seconds: 10),
+        content: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: cs.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: cs.primary.withOpacity(0.2)),
+            boxShadow: [
+              BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 10, offset: const Offset(0, 4))
+            ],
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.qr_code_scanner, color: cs.primary),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Text(
+                  'Solicitud de Escáner desde PC',
+                  style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 13),
+                ),
+              ),
+              TextButton(
+                onPressed: () {
+                  ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                  ref.read(scannerStatusProvider.notifier).acceptIncomingRequest();
+                  _onNavigate('scanner');
+                },
+                child: Text('VINCULAR', style: TextStyle(color: cs.primary, fontWeight: FontWeight.w900)),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   void _showLogoutDialog() {
@@ -209,6 +274,14 @@ class _AppShellState extends ConsumerState<AppShell> {
 
   @override
   Widget build(BuildContext context) {
+    // Listen for incoming linking requests on mobile
+    ref.listen(scannerStatusProvider, (previous, next) {
+      final isMobile = !kIsWeb && (defaultTargetPlatform == TargetPlatform.android || defaultTargetPlatform == TargetPlatform.iOS);
+      if (isMobile && next.hasIncomingRequest && !(previous?.hasIncomingRequest ?? false)) {
+        _showIncomingLinkingRequest();
+      }
+    });
+
     return LayoutBuilder(
       builder: (context, constraints) {
         final isMobile = constraints.maxWidth < 900;
@@ -362,4 +435,100 @@ class _BottomNavItem {
     required this.activeIcon,
     required this.label,
   });
+}
+
+class _ScannerLinkingDialog extends ConsumerWidget {
+  const _ScannerLinkingDialog();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final status = ref.watch(scannerStatusProvider);
+    final isLinked = status.linkingState == ScannerLinkingState.linked;
+    final isPending = status.linkingState == ScannerLinkingState.pending;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      child: Container(
+        width: 400,
+        padding: const EdgeInsets.all(32),
+        decoration: AppTheme.glassDecoration(isDark: isDark),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (isLinked) ...[
+               const Icon(Icons.check_circle_rounded, color: AppTheme.success, size: 64),
+               const SizedBox(height: 24),
+               const Text('¡Dispositivo Vinculado!', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+               const SizedBox(height: 12),
+               const Text('Ahora puedes usar tu teléfono para escanear productos y se reflejarán aquí al instante.', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey)),
+               const SizedBox(height: 32),
+               SizedBox(
+                 width: double.infinity,
+                 child: ElevatedButton(
+                   onPressed: () => Navigator.pop(context),
+                   style: ElevatedButton.styleFrom(
+                     backgroundColor: AppTheme.success,
+                     padding: const EdgeInsets.symmetric(vertical: 16),
+                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                   ),
+                   child: const Text('LISTO', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+                 ),
+               ),
+            ] else if (isPending) ...[
+               const SizedBox(
+                 height: 64, width: 64,
+                 child: CircularProgressIndicator(strokeWidth: 6, color: AppTheme.primary),
+               ),
+               const SizedBox(height: 24),
+               const Text('Esperando Conexión...', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+               const SizedBox(height: 12),
+               const Text('Abre la app en tu teléfono o tablet. En un momento recibirás la señal de vínculo.', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey)),
+               const SizedBox(height: 32),
+               TextButton(
+                 onPressed: () {
+                   ref.read(scannerStatusProvider.notifier).cancelLinking();
+                   Navigator.pop(context);
+                 },
+                 child: const Text('CANCELAR', style: TextStyle(color: Colors.grey)),
+               ),
+            ] else ...[
+               const Icon(Icons.phone_android_rounded, color: AppTheme.primary, size: 64),
+               const SizedBox(height: 24),
+               const Text('Vincular Escáner', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+               const SizedBox(height: 12),
+               const Text(
+                 'Inicia sesión en tu teléfono o tablet con esta misma cuenta para poder vincularlo como escáner móvil.',
+                 textAlign: TextAlign.center,
+                 style: TextStyle(color: Colors.grey),
+               ),
+               const SizedBox(height: 32),
+               Row(
+                 children: [
+                   Expanded(
+                     child: TextButton(
+                       onPressed: () => Navigator.pop(context), 
+                       child: const Text('CANCELAR', style: TextStyle(color: Colors.grey))
+                     ),
+                   ),
+                   const SizedBox(width: 16),
+                   Expanded(
+                     child: ElevatedButton(
+                       onPressed: () => ref.read(scannerStatusProvider.notifier).initiateLinking(),
+                       style: ElevatedButton.styleFrom(
+                         padding: const EdgeInsets.symmetric(vertical: 16),
+                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                       ),
+                       child: const Text('ACEPTAR', style: TextStyle(fontWeight: FontWeight.bold)),
+                     ),
+                   ),
+                 ],
+               ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
 }

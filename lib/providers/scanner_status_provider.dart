@@ -3,6 +3,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+enum ScannerLinkingState { none, pending, linked }
+
 /// Represents the current status of the mobile scanner connection.
 class ScannerStatus {
   final bool isActive;
@@ -11,6 +13,8 @@ class ScannerStatus {
   final String? lastScanMode; // 'pos' or 'audit'
   final DateTime? lastScanTime;
   final int quantityDelta;
+  final ScannerLinkingState linkingState;
+  final bool hasIncomingRequest;
 
   const ScannerStatus({
     this.isActive = false,
@@ -19,6 +23,8 @@ class ScannerStatus {
     this.lastScanMode,
     this.lastScanTime,
     this.quantityDelta = 1,
+    this.linkingState = ScannerLinkingState.none,
+    this.hasIncomingRequest = false,
   });
 
   ScannerStatus copyWith({
@@ -28,6 +34,8 @@ class ScannerStatus {
     String? lastScanMode,
     DateTime? lastScanTime,
     int? quantityDelta,
+    ScannerLinkingState? linkingState,
+    bool? hasIncomingRequest,
   }) {
     return ScannerStatus(
       isActive: isActive ?? this.isActive,
@@ -36,6 +44,8 @@ class ScannerStatus {
       lastScanMode: lastScanMode ?? this.lastScanMode,
       lastScanTime: lastScanTime ?? this.lastScanTime,
       quantityDelta: quantityDelta ?? this.quantityDelta,
+      linkingState: linkingState ?? this.linkingState,
+      hasIncomingRequest: hasIncomingRequest ?? this.hasIncomingRequest,
     );
   }
 }
@@ -63,6 +73,17 @@ class ScannerStatusNotifier extends Notifier<ScannerStatus> {
     // Use a unique channel for this user's scanner bridge
     final channelName = 'scanner_bridge:$userId';
     _channel = client.channel(channelName);
+
+    // 0. Listen for Linking Requests (For Mobile)
+    _channel!.onBroadcast(
+      event: 'linking_request',
+      callback: (payload) {
+        final isMobile = !kIsWeb && (defaultTargetPlatform == TargetPlatform.android || defaultTargetPlatform == TargetPlatform.iOS);
+        if (isMobile) {
+          state = state.copyWith(hasIncomingRequest: true);
+        }
+      },
+    );
 
     // 1. Listen for Scans with a server-side filter for performance and reliability
     _channel!.onPostgresChanges(
@@ -109,7 +130,10 @@ class ScannerStatusNotifier extends Notifier<ScannerStatus> {
       final hasOtherDevices = presenceState.length > 1;
       
       if (state.isActive != hasOtherDevices) {
-        state = state.copyWith(isActive: hasOtherDevices);
+        state = state.copyWith(
+          isActive: hasOtherDevices,
+          linkingState: hasOtherDevices ? ScannerLinkingState.linked : ScannerLinkingState.none,
+        );
       }
     }).subscribe((status, [error]) {
       if (status == RealtimeSubscribeStatus.subscribed) {
@@ -120,6 +144,32 @@ class ScannerStatusNotifier extends Notifier<ScannerStatus> {
         debugPrint('Scanner bridge subscription error: $error');
       }
     });
+  }
+
+  void initiateLinking() {
+    state = state.copyWith(linkingState: ScannerLinkingState.pending);
+    
+    // Broadcast a linking request to other devices on the same channel
+    // Using dynamic to bypass persistent compilation issues with the enum name in this environment
+    final dynamic channel = _channel;
+    if (channel != null) {
+      channel.send(
+        type: (channel as dynamic).subscription.topic == null ? 'broadcast' : 'broadcast', 
+        event: 'linking_request',
+        payload: {
+          'requested_at': DateTime.now().toIso8601String(),
+          'from': kIsWeb ? 'web_terminal' : 'desktop_terminal',
+        },
+      );
+    }
+  }
+
+  void cancelLinking() {
+    state = state.copyWith(linkingState: ScannerLinkingState.none, hasIncomingRequest: false);
+  }
+
+  void acceptIncomingRequest() {
+    state = state.copyWith(hasIncomingRequest: false);
   }
 }
 
