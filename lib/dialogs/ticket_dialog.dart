@@ -69,11 +69,13 @@ class _TicketDialogState extends ConsumerState<TicketDialog> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(0)),
       child: Container(
         width: 320,
+        constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.9),
         color: Colors.white,
         padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             // Header
             Text(
@@ -145,11 +147,20 @@ class _TicketDialogState extends ConsumerState<TicketDialog> {
                                     fontWeight: FontWeight.bold)),
                             const SizedBox(width: 8),
                             Expanded(
-                              child: Text(item.productName,
-                                  style: const TextStyle(fontFamily: 'Courier')),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(item.productName, style: const TextStyle(fontFamily: 'Courier')),
+                                  if (item.returnedQuantity > 0)
+                                    Text('DEVUELTO: ${item.returnedQuantity}', 
+                                      style: const TextStyle(fontFamily: 'Courier', fontSize: 10, color: Colors.red, fontWeight: FontWeight.bold)),
+                                ],
+                              ),
                             ),
-                            Text('\$${item.subtotal.toStringAsFixed(2)}',
-                                style: const TextStyle(fontFamily: 'Courier')),
+                            Text(currencyFormat.format(item.subtotal),
+                                style: TextStyle(
+                                    fontFamily: 'Courier',
+                                    decoration: item.returnedQuantity >= item.quantity ? TextDecoration.lineThrough : null)),
                           ],
                         ),
                       );
@@ -193,23 +204,39 @@ class _TicketDialogState extends ConsumerState<TicketDialog> {
             const SizedBox(height: 8),
 
             // Totals
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text('TOTAL:',
-                    style: TextStyle(
-                        fontFamily: 'Courier',
-                        fontWeight: FontWeight.bold,
-                        fontSize: 18,
-                        color: Colors.black)),
-                Text(currencyFormat.format(_sale!.totalAmount),
-                    style: const TextStyle(
-                        fontFamily: 'Courier',
-                        fontWeight: FontWeight.bold,
-                        fontSize: 18,
-                        color: Colors.black)),
-              ],
-            ),
+            if (_sale!.hasReturns) ...[
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('TOTAL ORIGINAL:', style: TextStyle(fontFamily: 'Courier', fontSize: 14, color: Colors.black54)),
+                  Text(currencyFormat.format(_sale!.totalAmount), style: const TextStyle(fontFamily: 'Courier', fontSize: 14, color: Colors.black54, decoration: TextDecoration.lineThrough)),
+                ],
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('DEVOLUCIÓN:', style: TextStyle(fontFamily: 'Courier', fontSize: 14, color: Colors.red)),
+                  Text('-${currencyFormat.format(_sale!.totalRefunded)}', style: const TextStyle(fontFamily: 'Courier', fontSize: 14, color: Colors.red)),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('TOTAL NETO:', style: TextStyle(fontFamily: 'Courier', fontWeight: FontWeight.bold, fontSize: 18, color: Colors.black)),
+                  Text(currencyFormat.format(_sale!.netAmount), style: const TextStyle(fontFamily: 'Courier', fontWeight: FontWeight.bold, fontSize: 18, color: Colors.black)),
+                ],
+              ),
+            ] else
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('TOTAL:',
+                      style: TextStyle(fontFamily: 'Courier', fontWeight: FontWeight.bold, fontSize: 18, color: Colors.black)),
+                  Text(currencyFormat.format(_sale!.totalAmount),
+                      style: const TextStyle(fontFamily: 'Courier', fontWeight: FontWeight.bold, fontSize: 18, color: Colors.black)),
+                ],
+              ),
             const SizedBox(height: 4),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -301,7 +328,8 @@ class _TicketDialogState extends ConsumerState<TicketDialog> {
           ],
         ),
       ),
-    );
+    ),
+  );
   }
 }
 

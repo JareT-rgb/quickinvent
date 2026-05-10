@@ -26,6 +26,7 @@ class _EditProductDialogState extends ConsumerState<EditProductDialog>
   String? _selectedCategoryId;
   List<Map<String, dynamic>> _categories = [];
   bool _isLoading = false;
+  bool _isActive = true;
   XFile? _selectedImageFile;
   String? _currentImageUrl;
   late TabController _tabController;
@@ -41,6 +42,7 @@ class _EditProductDialogState extends ConsumerState<EditProductDialog>
     _barcodeController = TextEditingController(text: widget.product.barcode ?? '');
     _selectedCategoryId = widget.product.categoryId;
     _currentImageUrl = widget.product.imageUrl;
+    _isActive = widget.product.isActive;
     _loadCategories();
   }
 
@@ -86,7 +88,7 @@ class _EditProductDialogState extends ConsumerState<EditProductDialog>
             price: double.tryParse(_priceController.text) ?? 0.0,
             stockQuantity: int.tryParse(_stockController.text) ?? 0,
             minStock: int.tryParse(_minStockController.text) ?? 0,
-            isActive: widget.product.isActive,
+            isActive: _isActive,
             barcode: _barcodeController.text.trim().isEmpty ? null : _barcodeController.text.trim(),
             categoryId: _selectedCategoryId,
             imageUrl: imageUrl,
@@ -313,8 +315,8 @@ class _EditProductDialogState extends ConsumerState<EditProductDialog>
                           contentPadding: EdgeInsets.zero,
                           title: const Text('Producto Activo', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                           subtitle: const Text('Visible en el punto de venta', style: TextStyle(fontSize: 11)),
-                          value: widget.product.isActive,
-                          onChanged: (v) {}, // This would need to be updated in a real scenario
+                          value: _isActive,
+                          onChanged: (v) => setState(() => _isActive = v),
                           activeColor: AppTheme.primary,
                         ),
                       ),

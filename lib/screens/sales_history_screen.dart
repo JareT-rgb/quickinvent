@@ -77,10 +77,18 @@ class _SalesHistoryScreenState extends ConsumerState<SalesHistoryScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                 sliver: SliverList(
                   delegate: SliverChildBuilderDelegate(
-                    (context, index) => FadeInUp(
-                      delay: Duration(milliseconds: index * 30),
-                      child: _SaleListItem(sale: filtered[index]),
-                    ),
+                    (context, index) {
+                      final sale = filtered[index];
+                      // Only animate the first 12 items to keep scroll performance smooth
+                      if (index < 12) {
+                        return FadeInUp(
+                          duration: const Duration(milliseconds: 400),
+                          delay: Duration(milliseconds: index * 40),
+                          child: _SaleListItem(sale: sale),
+                        );
+                      }
+                      return _SaleListItem(sale: sale);
+                    },
                     childCount: filtered.length,
                   ),
                 ),
@@ -106,9 +114,9 @@ class _SalesHistoryScreenState extends ConsumerState<SalesHistoryScreen> {
             statsAsync.maybeWhen(
               data: (stats) => Row(
                 children: [
-                  Expanded(child: _buildMiniStat('Ingresos Hoy', stats['todayRevenue'], '\$')),
+                  Expanded(child: _buildMiniStat('Ingresos Hoy', (stats['todayGrossRevenue'] ?? 0.0) as num, '\$')),
                   const SizedBox(width: 16),
-                  Expanded(child: _buildMiniStat('Transacciones', stats['todayCount'], '')),
+                  Expanded(child: _buildMiniStat('Transacciones', (stats['todayCount'] ?? 0) as num, '')),
                 ],
               ),
               orElse: () => const SizedBox.shrink(),
@@ -235,14 +243,35 @@ class _SaleListItem extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text('Venta #${sale.id}', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
-                    Text(DateFormat('dd MMMM, HH:mm').format(sale.createdAt), style: const TextStyle(color: AppTheme.textMuted, fontSize: 12, fontWeight: FontWeight.w600)),
+                    Row(
+                      children: [
+                        Text(DateFormat('dd MMMM, HH:mm').format(sale.createdAt), style: const TextStyle(color: AppTheme.textMuted, fontSize: 12, fontWeight: FontWeight.w600)),
+                        if (sale.hasReturns) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(color: AppTheme.error.withOpacity(0.1), borderRadius: BorderRadius.circular(4)),
+                            child: const Text('DEVOLUCIÓN', style: TextStyle(color: AppTheme.error, fontSize: 8, fontWeight: FontWeight.w900)),
+                          ),
+                        ],
+                      ],
+                    ),
                   ],
                 ),
               ),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text(fmt.format(sale.totalAmount), style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: AppTheme.primary)),
+                  Text(fmt.format(sale.totalAmount), 
+                    style: TextStyle(
+                      fontWeight: FontWeight.w900, 
+                      fontSize: 18, 
+                      color: AppTheme.primary,
+                      decoration: sale.hasReturns ? TextDecoration.lineThrough : null,
+                      decorationColor: AppTheme.textMuted,
+                    )),
+                  if (sale.hasReturns)
+                    Text(fmt.format(sale.netAmount), style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: AppTheme.error)),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(color: AppTheme.textMuted.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),

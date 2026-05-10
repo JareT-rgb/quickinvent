@@ -11,20 +11,35 @@ class CartNotifier extends Notifier<List<CartItem>> {
 
   /// Añade un producto al carrito. Si ya existe, intenta incrementar su cantidad.
   /// Retorna un mensaje de error si no hay stock suficiente, de lo contrario null.
-  String? addItem(Product product) {
-    // Si el producto no tiene stock inicial
-    if (product.stockQuantity <= 0) {
-      return 'Este producto está agotado';
-    }
+  String? addItem(Product product) => addDelta(product, 1);
 
+  /// Añade o quita una cantidad específica de un producto.
+  /// Útil para sincronización remota (ej: +5 desde el escaner).
+  String? addDelta(Product product, int delta) {
+    if (delta == 0) return null;
+    
     final itemIndex = state.indexWhere((item) => item.product.id == product.id);
 
     if (itemIndex != -1) {
-      // Si ya existe en el carrito, delegamos al incremento
-      return incrementQuantity(product.id);
+      final currentItem = state[itemIndex];
+      final newQty = currentItem.quantity + delta;
+      
+      if (newQty <= 0) {
+        removeItem(product.id);
+        return null;
+      }
+      
+      return updateQuantity(product.id, newQty);
     } else {
-      // Si es nuevo en el carrito, lo añadimos (ya validamos que hay al menos 1 arriba)
-      state = [...state, CartItem(product: product)];
+      // Si no existe y el delta es negativo, no hacemos nada
+      if (delta <= 0) return null;
+      
+      // Si el producto no tiene stock suficiente para el delta inicial
+      if (product.stockQuantity < delta) {
+        return 'Stock insuficiente para añadir $delta unidades';
+      }
+      
+      state = [...state, CartItem(product: product, quantity: delta)];
       return null;
     }
   }

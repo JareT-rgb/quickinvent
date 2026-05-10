@@ -5,6 +5,7 @@ class SaleDetailItem {
   final double priceAtSale;
   final double costPriceAtSale;
   final double subtotal;
+  final int returnedQuantity;
 
   SaleDetailItem({
     this.productId,
@@ -13,9 +14,13 @@ class SaleDetailItem {
     required this.priceAtSale,
     this.costPriceAtSale = 0.0,
     required this.subtotal,
+    this.returnedQuantity = 0,
   });
 
   factory SaleDetailItem.fromMap(Map<String, dynamic> map) {
+    final returns = map['return_items'] as List?;
+    final returnedQty = returns?.fold<int>(0, (sum, r) => sum + (r['quantity'] as int? ?? 0)) ?? 0;
+
     return SaleDetailItem(
       productId: map['product_id']?.toString() ?? map['productId']?.toString(),
       productName:
@@ -27,6 +32,7 @@ class SaleDetailItem {
           0.0,
       costPriceAtSale: (map['cost_price_at_sale'] as num?)?.toDouble() ?? 0.0,
       subtotal: (map['subtotal'] as num?)?.toDouble() ?? 0.0,
+      returnedQuantity: returnedQty,
     );
   }
 
@@ -38,6 +44,7 @@ class SaleDetailItem {
       'price_at_sale': priceAtSale,
       'cost_price_at_sale': costPriceAtSale,
       'subtotal': subtotal,
+      'returned_quantity': returnedQuantity,
     };
   }
 
@@ -47,14 +54,15 @@ class SaleDetailItem {
     int? quantity,
     double? priceAtSale,
     double? subtotal,
+    int? returnedQuantity,
   }) {
     return SaleDetailItem(
       productId: productId ?? this.productId,
       productName: productName ?? this.productName,
       quantity: quantity ?? this.quantity,
       priceAtSale: priceAtSale ?? this.priceAtSale,
-      costPriceAtSale: this.costPriceAtSale,
       subtotal: subtotal ?? this.subtotal,
+      returnedQuantity: returnedQuantity ?? this.returnedQuantity,
     );
   }
 }

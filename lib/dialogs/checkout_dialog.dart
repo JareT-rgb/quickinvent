@@ -82,9 +82,11 @@ class _CheckoutDialogState extends ConsumerState<CheckoutDialog> {
         customerId: _selectedCustomer?.id,
       );
 
-      ref.read(cartProvider.notifier).clearCart();
+      ref.invalidate(cartProvider);
       ref.invalidate(productsProvider);
       ref.invalidate(customersProvider);
+      ref.invalidate(salesProvider);
+      ref.invalidate(salesStatsProvider);
 
       if (mounted) {
         Navigator.pop(context);
@@ -370,7 +372,7 @@ class _CheckoutDialogState extends ConsumerState<CheckoutDialog> {
     final theme = Theme.of(context);
     final isSelected = _received == value;
     return InkWell(
-      onTap: () => setState(() => _amountController.text = value.toStringAsFixed(0)),
+      onTap: () => setState(() => _amountController.text = value.toStringAsFixed(2).replaceAll(RegExp(r'\.00$'), '')),
       borderRadius: BorderRadius.circular(12),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),

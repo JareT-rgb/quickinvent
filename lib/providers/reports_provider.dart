@@ -13,6 +13,9 @@ class ReportData {
   final List<MapEntry<String, int>> topProducts;
   final List<Map<String, dynamic>> cashCuts;
   final List<Map<String, dynamic>> expenses;
+  final double grossRevenue;
+  final double netRevenue;
+  final double refunds;
   final double netProfit;
   final double totalCost;
   final double averageTicket;
@@ -27,6 +30,9 @@ class ReportData {
     required this.topProducts,
     required this.cashCuts,
     required this.expenses,
+    required this.grossRevenue,
+    required this.netRevenue,
+    required this.refunds,
     required this.netProfit,
     required this.totalCost,
     required this.averageTicket,
@@ -63,7 +69,9 @@ final reportDataProvider = FutureProvider<ReportData>((ref) async {
     );
 
     // Basic stats
-    final revenue = (filteredData['revenue'] as num?)?.toDouble() ?? 0.0;
+    final grossRevenue = (filteredData['grossRevenue'] as num?)?.toDouble() ?? 0.0;
+    final netRevenue = (filteredData['netRevenue'] as num?)?.toDouble() ?? 0.0;
+    final refunds = (filteredData['refunds'] as num?)?.toDouble() ?? 0.0;
     final cost = (filteredData['cost'] as num?)?.toDouble() ?? 0.0;
     final count = (filteredData['count'] as num?)?.toInt() ?? 0;
 
@@ -86,8 +94,7 @@ final reportDataProvider = FutureProvider<ReportData>((ref) async {
     if (filter.categoryId == null) {
       categorySales = await repo.getCategorySalesDistribution();
     } else {
-      // If filtered, category sales is just 100% of the revenue for that category
-      categorySales = {'Categoría Seleccionada': revenue};
+      categorySales = {'Categoría Seleccionada': grossRevenue};
     }
 
     final topProducts = await repo.getTopProducts(limit: 5);
@@ -97,7 +104,7 @@ final reportDataProvider = FutureProvider<ReportData>((ref) async {
 
     return ReportData(
       stats: {
-        'totalRevenue': revenue,
+        'totalRevenue': grossRevenue,
         'totalCount': count,
       },
       monthly: monthly,
@@ -108,9 +115,12 @@ final reportDataProvider = FutureProvider<ReportData>((ref) async {
       topProducts: topProducts,
       cashCuts: cashCuts,
       expenses: expenses,
-      netProfit: revenue - cost,
+      grossRevenue: grossRevenue,
+      netRevenue: netRevenue,
+      refunds: refunds,
+      netProfit: netRevenue - cost,
       totalCost: cost,
-      averageTicket: count > 0 ? revenue / count : 0,
+      averageTicket: count > 0 ? grossRevenue / count : 0,
     );
   } catch (e, stack) {
     print('Error in reportDataProvider: $e');
@@ -125,6 +135,9 @@ final reportDataProvider = FutureProvider<ReportData>((ref) async {
       topProducts: [],
       cashCuts: [],
       expenses: [],
+      grossRevenue: 0.0,
+      netRevenue: 0.0,
+      refunds: 0.0,
       netProfit: 0.0,
       totalCost: 0.0,
       averageTicket: 0.0,

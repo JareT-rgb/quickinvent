@@ -10,6 +10,7 @@ class ScannerStatus {
   final String? lastProductName;
   final String? lastScanMode; // 'pos' or 'audit'
   final DateTime? lastScanTime;
+  final int quantityDelta;
 
   const ScannerStatus({
     this.isActive = false,
@@ -17,6 +18,7 @@ class ScannerStatus {
     this.lastProductName,
     this.lastScanMode,
     this.lastScanTime,
+    this.quantityDelta = 1,
   });
 
   ScannerStatus copyWith({
@@ -25,6 +27,7 @@ class ScannerStatus {
     String? lastProductName,
     String? lastScanMode,
     DateTime? lastScanTime,
+    int? quantityDelta,
   }) {
     return ScannerStatus(
       isActive: isActive ?? this.isActive,
@@ -32,6 +35,7 @@ class ScannerStatus {
       lastProductName: lastProductName ?? this.lastProductName,
       lastScanMode: lastScanMode ?? this.lastScanMode,
       lastScanTime: lastScanTime ?? this.lastScanTime,
+      quantityDelta: quantityDelta ?? this.quantityDelta,
     );
   }
 }
@@ -74,6 +78,7 @@ class ScannerStatusNotifier extends Notifier<ScannerStatus> {
         final barcode = payload.newRecord['barcode'] as String?;
         final productName = payload.newRecord['product_name'] as String?;
         final status = payload.newRecord['status'] as String?;
+        final delta = payload.newRecord['quantity_delta'] as int? ?? 1;
 
         state = ScannerStatus(
           isActive: true, // Activity confirms it's definitely active
@@ -81,6 +86,7 @@ class ScannerStatusNotifier extends Notifier<ScannerStatus> {
           lastProductName: status == 'audit_view' ? 'AUDIT_MODE' : productName,
           lastScanMode: status == 'audit_view' ? 'audit' : 'pos',
           lastScanTime: DateTime.now(),
+          quantityDelta: delta,
         );
 
         // Keep active status for 60s after a scan

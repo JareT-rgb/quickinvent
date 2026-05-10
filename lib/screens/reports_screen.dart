@@ -224,16 +224,8 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
           pw.Header(level: 0, text: 'Resumen Financiero'),
           pw.Row(
             children: [
-              _pdfMetric('Ingresos Totales', fmt.format(report.stats['totalRevenue'])),
-              _pdfMetric('Costo de Ventas', fmt.format(report.totalCost)),
-              _pdfMetric('Utilidad Neta', fmt.format(report.netProfit)),
-            ],
-          ),
-          pw.SizedBox(height: 20),
-          pw.Row(
-            children: [
-              _pdfMetric('Ticket Promedio', fmt.format(report.averageTicket)),
-              _pdfMetric('Margen (%)', '${((report.stats['totalRevenue'] > 0 ? report.netProfit / report.stats['totalRevenue'] : 0) * 100).toStringAsFixed(1)}%'),
+              _pdfMetric('Ventas Brutas', fmt.format(report.grossRevenue)),
+              _pdfMetric('Ganancia', fmt.format(report.netProfit)),
               _pdfMetric('Transacciones', report.stats['totalCount'].toString()),
             ],
           ),
@@ -247,7 +239,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
               ...report.categorySales.entries.map((e) => [
                 e.key,
                 fmt.format(e.value),
-                '${(report.stats['totalRevenue'] > 0 ? e.value / report.stats['totalRevenue'] * 100 : 0).toStringAsFixed(1)}%'
+                '${(report.grossRevenue > 0 ? e.value / report.grossRevenue * 100 : 0).toStringAsFixed(1)}%'
               ]),
             ],
           ),
@@ -308,54 +300,26 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   }
 
   Widget _buildMetricGrid(ReportData report, List products, NumberFormat fmt, bool isDark) {
-    return Column(
+    return Row(
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: SparklineCard(
-                title: 'Ventas Totales',
-                value: report.stats['totalRevenue'],
-                prefix: '\$',
-                data: report.daily.map((e) => e.value).toList(),
-                color: AppTheme.primary,
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: SparklineCard(
-                title: 'Utilidad Neta',
-                value: report.netProfit,
-                prefix: '\$',
-                data: const [5, 10, 8, 15, 12, 20], // Simulado
-                color: AppTheme.success,
-              ),
-            ),
-          ],
+        Expanded(
+          child: SparklineCard(
+            title: 'Ventas Brutas',
+            value: report.grossRevenue,
+            prefix: '\$',
+            data: report.daily.map((e) => e.value).toList(),
+            color: AppTheme.primary,
+          ),
         ),
-        const SizedBox(height: 16),
-        Row(
-          children: [
-            Expanded(
-              child: SparklineCard(
-                title: 'Ticket Promedio',
-                value: report.averageTicket,
-                prefix: '\$',
-                data: const [50, 45, 60, 55, 70, 65, 80],
-                color: AppTheme.accent,
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: SparklineCard(
-                title: 'Margen Global',
-                value: (report.stats['totalRevenue'] > 0) ? (report.netProfit / report.stats['totalRevenue'] * 100) : 0.0,
-                suffix: '%',
-                data: const [15, 18, 17, 20, 19, 22], // Simulado
-                color: Colors.orange,
-              ),
-            ),
-          ],
+        const SizedBox(width: 16),
+        Expanded(
+          child: SparklineCard(
+            title: 'Ganancia',
+            value: report.netProfit,
+            prefix: '\$',
+            data: const [5, 10, 8, 15, 12, 20], // Simulado
+            color: AppTheme.success,
+          ),
         ),
       ],
     );
@@ -363,85 +327,140 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
 
   Widget _buildFilterBar(BuildContext context, WidgetRef ref, AsyncValue<List<Category>> categoriesAsync, bool isDark) {
     final currentFilter = ref.watch(reportFilterProvider);
-    final theme = Theme.of(context);
     
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(color: AppTheme.primary.withOpacity(0.1), shape: BoxShape.circle),
-              child: const Icon(Icons.tune_rounded, color: AppTheme.primary, size: 18),
-            ),
-            const SizedBox(width: 12),
-            const Text('Filtros Dinámicos', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
-            const Spacer(),
-            if (currentFilter.range != ReportTimeRange.all || currentFilter.categoryId != null)
-              TextButton.icon(
-                onPressed: () => ref.read(reportFilterProvider.notifier).updateFilter(ReportFilter()),
-                icon: const Icon(Icons.refresh_rounded, size: 16),
-                label: const Text('Limpiar', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-              ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          physics: const BouncingScrollPhysics(),
-          child: Row(
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: AppTheme.glassDecoration(isDark: isDark).copyWith(
+        boxShadow: AppTheme.softShadow,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             children: [
-              _FilterChip(
-                label: 'Hoy',
-                icon: Icons.today_rounded,
-                isSelected: currentFilter.range == ReportTimeRange.today,
-                onTap: () => ref.read(reportFilterProvider.notifier).updateFilter(ReportFilter(range: ReportTimeRange.today, categoryId: currentFilter.categoryId)),
+              const Icon(Icons.calendar_today_rounded, color: AppTheme.primary, size: 16),
+              const SizedBox(width: 8),
+              const Text('PERIODO:', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1, color: AppTheme.textSecondary)),
+              const SizedBox(width: 12),
+              Expanded(
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      _CompactFilterChip(
+                        label: 'Hoy',
+                        isSelected: currentFilter.range == ReportTimeRange.today,
+                        onTap: () => ref.read(reportFilterProvider.notifier).updateFilter(ReportFilter(range: ReportTimeRange.today, categoryId: currentFilter.categoryId)),
+                      ),
+                      _CompactFilterChip(
+                        label: 'Semana',
+                        isSelected: currentFilter.range == ReportTimeRange.week,
+                        onTap: () => ref.read(reportFilterProvider.notifier).updateFilter(ReportFilter(range: ReportTimeRange.week, categoryId: currentFilter.categoryId)),
+                      ),
+                      _CompactFilterChip(
+                        label: 'Mes',
+                        isSelected: currentFilter.range == ReportTimeRange.month,
+                        onTap: () => ref.read(reportFilterProvider.notifier).updateFilter(ReportFilter(range: ReportTimeRange.month, categoryId: currentFilter.categoryId)),
+                      ),
+                      _CompactFilterChip(
+                        label: 'Todo',
+                        isSelected: currentFilter.range == ReportTimeRange.all,
+                        onTap: () => ref.read(reportFilterProvider.notifier).updateFilter(ReportFilter(range: ReportTimeRange.all, categoryId: currentFilter.categoryId)),
+                      ),
+                    ],
+                  ),
+                ),
               ),
-              _FilterChip(
-                label: '7 Días',
-                icon: Icons.date_range_rounded,
-                isSelected: currentFilter.range == ReportTimeRange.week,
-                onTap: () => ref.read(reportFilterProvider.notifier).updateFilter(ReportFilter(range: ReportTimeRange.week, categoryId: currentFilter.categoryId)),
-              ),
-              _FilterChip(
-                label: 'Mes',
-                icon: Icons.calendar_month_rounded,
-                isSelected: currentFilter.range == ReportTimeRange.month,
-                onTap: () => ref.read(reportFilterProvider.notifier).updateFilter(ReportFilter(range: ReportTimeRange.month, categoryId: currentFilter.categoryId)),
-              ),
-              _FilterChip(
-                label: 'Todo',
-                icon: Icons.all_inclusive_rounded,
-                isSelected: currentFilter.range == ReportTimeRange.all,
-                onTap: () => ref.read(reportFilterProvider.notifier).updateFilter(ReportFilter(range: ReportTimeRange.all, categoryId: currentFilter.categoryId)),
+              if (currentFilter.range != ReportTimeRange.all || currentFilter.categoryId != null)
+                GestureDetector(
+                  onTap: () => ref.read(reportFilterProvider.notifier).updateFilter(ReportFilter()),
+                  child: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(color: AppTheme.error.withOpacity(0.1), shape: BoxShape.circle),
+                    child: const Icon(Icons.close_rounded, size: 14, color: AppTheme.error),
+                  ),
+                ),
+            ],
+          ),
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 8),
+            child: Divider(height: 1, thickness: 0.5),
+          ),
+          Row(
+            children: [
+              const Icon(Icons.filter_list_rounded, color: AppTheme.primary, size: 16),
+              const SizedBox(width: 8),
+              const Text('FILTRAR POR:', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1, color: AppTheme.textSecondary)),
+              const SizedBox(width: 12),
+              Expanded(
+                child: categoriesAsync.maybeWhen(
+                  data: (List<Category> cats) {
+                    final allOptions = ['Todas', ...cats.map((c) => c.name)];
+                    final visibleOptions = allOptions.take(4).toList();
+                    final hiddenOptions = allOptions.length > 4 ? allOptions.sublist(4) : <String>[];
+                    final isHiddenSelected = hiddenOptions.contains(currentFilter.categoryId != null ? cats.firstWhere((c) => c.id.toString() == currentFilter.categoryId).name : '');
+
+                    return SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          ...visibleOptions.map((opt) {
+                            final catId = opt == 'Todas' ? null : cats.firstWhere((c) => c.name == opt).id.toString();
+                            final isSelected = currentFilter.categoryId == catId;
+                            return Padding(
+                              padding: const EdgeInsets.only(right: 6),
+                              child: ChoiceChip(
+                                label: Text(opt, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600)),
+                                selected: isSelected,
+                                onSelected: (v) => ref.read(reportFilterProvider.notifier).updateFilter(ReportFilter(range: currentFilter.range, categoryId: catId)),
+                                selectedColor: AppTheme.primary.withOpacity(0.15),
+                                backgroundColor: Colors.transparent,
+                                side: BorderSide(color: isSelected ? AppTheme.primary.withOpacity(0.4) : Colors.grey.withOpacity(0.1)),
+                                showCheckmark: false,
+                                visualDensity: VisualDensity.compact,
+                                padding: const EdgeInsets.symmetric(horizontal: 4),
+                              ),
+                            );
+                          }),
+                          if (hiddenOptions.isNotEmpty)
+                            PopupMenuButton<String>(
+                              onSelected: (v) {
+                                final catId = cats.firstWhere((c) => c.name == v).id.toString();
+                                ref.read(reportFilterProvider.notifier).updateFilter(ReportFilter(range: currentFilter.range, categoryId: catId));
+                              },
+                              itemBuilder: (ctx) => hiddenOptions.map((opt) => PopupMenuItem(value: opt, child: Text(opt, style: const TextStyle(fontSize: 12)))).toList(),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: isHiddenSelected ? AppTheme.primary.withOpacity(0.1) : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: isHiddenSelected ? AppTheme.primary.withOpacity(0.5) : Colors.grey.withOpacity(0.2)),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    if (isHiddenSelected)
+                                      Padding(
+                                        padding: const EdgeInsets.only(right: 4),
+                                        child: Text(cats.firstWhere((c) => c.id.toString() == currentFilter.categoryId).name, 
+                                          style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.primary)),
+                                      ),
+                                    const Icon(Icons.keyboard_arrow_down_rounded, size: 16, color: AppTheme.primary),
+                                  ],
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    );
+                  },
+                  orElse: () => const SizedBox.shrink(),
+                ),
               ),
             ],
           ),
-        ),
-        const SizedBox(height: 12),
-        categoriesAsync.maybeWhen(
-          data: (List<Category> cats) => SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            physics: const BouncingScrollPhysics(),
-            child: Row(
-              children: [
-                _FilterChip(
-                  label: 'Todas las Categorías',
-                  isSelected: currentFilter.categoryId == null,
-                  onTap: () => ref.read(reportFilterProvider.notifier).updateFilter(ReportFilter(range: currentFilter.range, categoryId: null)),
-                ),
-                ...cats.map((Category c) => _FilterChip(
-                  label: c.name,
-                  isSelected: currentFilter.categoryId == c.id.toString(),
-                  onTap: () => ref.read(reportFilterProvider.notifier).updateFilter(ReportFilter(range: currentFilter.range, categoryId: c.id.toString())),
-                )),
-              ],
-            ),
-          ),
-          orElse: () => const SizedBox.shrink(),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -969,6 +988,31 @@ class _FilterChip extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _CompactFilterChip extends StatelessWidget {
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _CompactFilterChip({required this.label, required this.isSelected, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 6),
+      child: ChoiceChip(
+        label: Text(label, style: const TextStyle(fontSize: 11)),
+        selected: isSelected,
+        onSelected: (v) => onTap(),
+        selectedColor: AppTheme.primary.withOpacity(0.2),
+        backgroundColor: Colors.transparent,
+        side: BorderSide(color: isSelected ? AppTheme.primary.withOpacity(0.5) : Colors.grey.withOpacity(0.2)),
+        showCheckmark: false,
+        visualDensity: VisualDensity.compact,
       ),
     );
   }

@@ -19,6 +19,7 @@ import '../widgets/product_image.dart';
 import '../widgets/premium_widgets.dart';
 import '../screens/barcode_print_screen.dart';
 import '../utils/safe_haptic.dart';
+import '../providers/scanner_status_provider.dart';
 
 
 class InventoryScreen extends ConsumerStatefulWidget {
@@ -27,13 +28,32 @@ class InventoryScreen extends ConsumerStatefulWidget {
   @override
   ConsumerState<InventoryScreen> createState() => _InventoryScreenState();
 }
-
 class _InventoryScreenState extends ConsumerState<InventoryScreen> {
   String _searchQuery = '';
   String _selectedCategory = 'Todas';
   bool _onlyLowStock = false;
+  bool _onlyOutOfStock = false;
+  bool _onlyInactive = false;
   bool _isGridView = true;
   final _searchController = TextEditingController();
+
+  void _resetFilters() {
+    setState(() {
+      _searchQuery = '';
+      _searchController.clear();
+      _selectedCategory = 'Todas';
+      _onlyLowStock = false;
+      _onlyOutOfStock = false;
+      _onlyInactive = false;
+    });
+  }
+
+  bool get _hasActiveFilters => 
+      _searchQuery.isNotEmpty || 
+      _selectedCategory != 'Todas' || 
+      _onlyLowStock || 
+      _onlyOutOfStock || 
+      _onlyInactive;
 
   @override
   void dispose() {
@@ -52,6 +72,18 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
         (defaultTargetPlatform == TargetPlatform.windows || 
          defaultTargetPlatform == TargetPlatform.linux || 
          defaultTargetPlatform == TargetPlatform.macOS);
+
+    // Remote Scanner Listener for Inventory Audit
+    ref.listen(scannerStatusProvider, (previous, next) {
+      if (next.lastBarcode != null && 
+          next.lastScanMode == 'audit' && 
+          (next.lastScanTime != previous?.lastScanTime)) {
+        setState(() {
+          _searchController.text = next.lastBarcode!;
+          _searchQuery = next.lastBarcode!;
+        });
+      }
+    });
 
     return Scaffold(
       backgroundColor: isDark ? AppTheme.backgroundDark : AppTheme.backgroundLight,
@@ -104,7 +136,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
             ExpandableFabItem(
               icon: Icons.qr_code_2_rounded,
               label: 'Imprimir Etiquetas',
-              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => BarcodePrintScreen(products: products))),
+              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => BarcodePrintScreen(products: products.where((p) => p.isActive).toList()))),
             ),
             ExpandableFabItem(
               icon: Icons.download_rounded,
@@ -157,7 +189,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: Text(
-                            '${products.length}',
+                            '${products.where((p) => p.isActive).length}',
                             style: const TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold, fontSize: 16),
                           ),
                         ),
@@ -190,7 +222,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: Text(
-                              '${products.length}',
+                              '${products.where((p) => p.isActive).length}',
                               style: const TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold, fontSize: 16),
                             ),
                           ),
@@ -222,7 +254,8 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                 tooltip: 'Imprimir Etiquetas',
                 onPressed: () {
                   productsAsync.whenData((products) {
-                    Navigator.push(context, MaterialPageRoute(builder: (context) => BarcodePrintScreen(products: products)));
+                    final activeProducts = products.where((p) => p.isActive).toList();
+                    Navigator.push(context, MaterialPageRoute(builder: (context) => BarcodePrintScreen(products: activeProducts)));
                   });
                 },
               ),
@@ -248,47 +281,142 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
         child: Column(
           children: [
             Container(
-              padding: const EdgeInsets.all(8),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: AppTheme.glassDecoration(isDark: isDark).copyWith(
                 boxShadow: AppTheme.softShadow,
               ),
-              child: Row(
+              child: Column(
                 children: [
-                  const SizedBox(width: 12),
-                  const Icon(Icons.search_rounded, color: AppTheme.primary, size: 22),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: TextField(
-                      controller: _searchController,
-                      onChanged: (v) => setState(() => _searchQuery = v),
-                      decoration: const InputDecoration(
-                        hintText: 'Buscar productos...',
-                        border: InputBorder.none,
-                        enabledBorder: InputBorder.none,
-                        focusedBorder: InputBorder.none,
-                        filled: false,
-                        contentPadding: EdgeInsets.zero,
+                  Row(
+                    children: [
+                      const Icon(Icons.search_rounded, color: AppTheme.primary, size: 20),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: TextField(
+                          controller: _searchController,
+                          onChanged: (v) => setState(() => _searchQuery = v),
+                          style: const TextStyle(fontSize: 14),
+                          decoration: const InputDecoration(
+                            hintText: 'Buscar productos...',
+                            isDense: true,
+                            border: InputBorder.none,
+                            contentPadding: EdgeInsets.symmetric(vertical: 8),
+                          ),
+                        ),
                       ),
+                      if (_hasActiveFilters)
+                        IconButton(
+                          onPressed: _resetFilters,
+                          tooltip: 'Limpiar filtros',
+                          icon: const Icon(Icons.filter_alt_off_rounded, size: 18, color: AppTheme.error),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                        ),
+                    ],
+                  ),
+                  const Divider(height: 12, thickness: 0.5),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        // State Filters (Compact)
+                        _buildStateFilterChip('Bajo', Icons.warning_amber_rounded, _onlyLowStock, (v) => setState(() => _onlyLowStock = v)),
+                        const SizedBox(width: 4),
+                        _buildStateFilterChip('Agotado', Icons.block_flipped, _onlyOutOfStock, (v) => setState(() => _onlyOutOfStock = v)),
+                        const SizedBox(width: 4),
+                        _buildStateFilterChip('Ocultos', Icons.visibility_off_rounded, _onlyInactive, (v) => setState(() => _onlyInactive = v)),
+                        
+                        const Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 8),
+                          child: Text('|', style: TextStyle(color: Colors.grey, fontSize: 16)),
+                        ),
+
+                        // Categories (Smart & Compact)
+                        categoriesAsync.maybeWhen(
+                          data: (List<Category> cats) {
+                            final allOptions = ['Todas', ...cats.map((c) => c.name)];
+                            final visibleOptions = allOptions.take(4).toList(); // Todas + 3
+                            final hiddenOptions = allOptions.length > 4 ? allOptions.sublist(4) : <String>[];
+                            final isHiddenSelected = hiddenOptions.contains(_selectedCategory);
+
+                            return Row(
+                              children: [
+                                ...visibleOptions.map((opt) {
+                                  final isSelected = _selectedCategory == opt;
+                                  return Padding(
+                                    padding: const EdgeInsets.only(right: 4),
+                                    child: ChoiceChip(
+                                      label: Text(opt, style: const TextStyle(fontSize: 11)),
+                                      selected: isSelected,
+                                      onSelected: (v) => setState(() => _selectedCategory = opt),
+                                      selectedColor: AppTheme.primary.withOpacity(0.2),
+                                      backgroundColor: Colors.transparent,
+                                      side: BorderSide(color: isSelected ? AppTheme.primary.withOpacity(0.5) : Colors.transparent),
+                                      showCheckmark: false,
+                                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                                      visualDensity: VisualDensity.compact,
+                                    ),
+                                  );
+                                }),
+                                if (hiddenOptions.isNotEmpty)
+                                  PopupMenuButton<String>(
+                                    tooltip: 'Más categorías',
+                                    onSelected: (v) => setState(() => _selectedCategory = v),
+                                    itemBuilder: (ctx) => hiddenOptions.map((opt) => PopupMenuItem(
+                                      value: opt,
+                                      child: Text(opt, style: const TextStyle(fontSize: 13)),
+                                    )).toList(),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: isHiddenSelected ? AppTheme.primary.withOpacity(0.2) : Colors.transparent,
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(color: isHiddenSelected ? AppTheme.primary.withOpacity(0.5) : Colors.grey.withOpacity(0.3)),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          if (isHiddenSelected)
+                                            Padding(
+                                              padding: const EdgeInsets.only(right: 4),
+                                              child: Text(_selectedCategory, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.primary)),
+                                            ),
+                                          const Icon(Icons.keyboard_arrow_down_rounded, size: 18, color: AppTheme.primary),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            );
+                          },
+                          orElse: () => const SizedBox.shrink(),
+                        ),
+                      ],
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 12),
-            categoriesAsync.maybeWhen(
-              data: (List<Category> cats) {
-                final options = ['Todas', ...cats.map((c) => c.name)];
-                return PremiumSegmentedControl(
-                  options: options.cast<String>(),
-                  selectedIndex: options.indexOf(_selectedCategory).clamp(0, options.length - 1),
-                  onSelected: (i) => setState(() => _selectedCategory = options[i]),
-                );
-              },
-              orElse: () => const SizedBox.shrink(),
-            ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildStateFilterChip(String label, IconData icon, bool isSelected, Function(bool) onSelected) {
+    return FilterChip(
+      avatar: Icon(icon, size: 16, color: isSelected ? Colors.white : AppTheme.primary),
+      label: Text(label),
+      selected: isSelected,
+      onSelected: onSelected,
+      backgroundColor: Colors.transparent,
+      selectedColor: AppTheme.primary,
+      labelStyle: TextStyle(
+        color: isSelected ? Colors.white : AppTheme.textSecondary,
+        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+        fontSize: 12,
+      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
     );
   }
 
@@ -399,14 +527,19 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
     return products.where((p) {
       final matchesSearch = p.name.toLowerCase().contains(_searchQuery.toLowerCase()) || 
                            (p.barcode?.contains(_searchQuery) ?? false);
+      
       bool matchesCategory = _selectedCategory == 'Todas';
       if (!matchesCategory && categoriesAsync.hasValue) {
         final List<Category> cats = categoriesAsync.value!;
-        final cat = cats.firstWhere((c) => c.name == _selectedCategory);
+        final cat = cats.firstWhere((c) => c.name == _selectedCategory, orElse: () => cats.first);
         matchesCategory = p.categoryId == cat.id.toString();
       }
-      bool matchesLowStock = !_onlyLowStock || (p.stockQuantity <= p.minStock);
-      return p.isActive && matchesSearch && matchesCategory && matchesLowStock;
+
+      bool matchesLowStock = !_onlyLowStock || (p.stockQuantity <= p.minStock && p.stockQuantity > 0);
+      bool matchesOutOfStock = !_onlyOutOfStock || (p.stockQuantity <= 0);
+      bool matchesStatus = _onlyInactive ? !p.isActive : p.isActive;
+
+      return matchesSearch && matchesCategory && matchesLowStock && matchesOutOfStock && matchesStatus;
     }).toList();
   }
 

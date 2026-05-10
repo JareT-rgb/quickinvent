@@ -54,7 +54,7 @@ class _PosScreenState extends ConsumerState<PosScreen> {
         productsAsync.whenData((products) async {
           try {
             final product = products.firstWhere((p) => p.barcode == next.lastBarcode);
-            final error = ref.read(cartProvider.notifier).addItem(product);
+            final error = ref.read(cartProvider.notifier).addDelta(product, next.quantityDelta);
             
             // Enrich the scan record for the mobile UI
             final userId = Supabase.instance.client.auth.currentUser?.id;

@@ -113,13 +113,32 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 children: [
                   FadeInDown(
                     child: Container(
-                      padding: const EdgeInsets.all(20),
+                      padding: const EdgeInsets.all(4), // Reducido para que el logo crezca
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(30),
-                        border: Border.all(color: Colors.white.withOpacity(0.2)),
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(color: Colors.white.withOpacity(0.2), width: 2),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.15),
+                            blurRadius: 20,
+                            offset: const Offset(0, 10),
+                          ),
+                        ],
                       ),
-                      child: const Icon(Icons.inventory_2_rounded, size: 60, color: Colors.white),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(20),
+                        child: Transform.scale(
+                          scale: 1.5, // Zoom para eliminar espacios blancos
+                          child: Image.asset(
+                            'assets/logo.png',
+                            width: 100,
+                            height: 100,
+                            fit: BoxFit.contain,
+                            errorBuilder: (_, __, ___) => const Icon(Icons.shopping_cart_rounded, size: 60, color: AppTheme.primary),
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 40),
@@ -150,20 +169,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Center(
-          child: Container(
-            width: 120,
-            height: 120,
-            margin: const EdgeInsets.only(bottom: 32),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(24),
-              boxShadow: AppTheme.softShadow,
-            ),
-            padding: const EdgeInsets.all(20),
-            child: Image.asset('assets/logo.png', fit: BoxFit.contain, errorBuilder: (_,__,___) => const Icon(Icons.shopping_cart_rounded, size: 60, color: AppTheme.primary)),
-          ),
-        ),
+        const SizedBox(height: 12),
         const Text('Bienvenido de nuevo', style: TextStyle(fontSize: 32, fontWeight: FontWeight.w900, letterSpacing: -1.5)),
         const SizedBox(height: 12),
         const Text('Ingresa tus datos para continuar operando.', style: TextStyle(color: AppTheme.textSecondary, fontSize: 15, fontWeight: FontWeight.w500)),

@@ -25,6 +25,13 @@ class Sale {
     this.customerId,
   });
 
+  bool get hasReturns => items?.any((i) => i.returnedQuantity > 0) ?? false;
+  double get totalRefunded => items?.fold<double>(0.0, (sum, i) => sum + (i.returnedQuantity * i.priceAtSale)) ?? 0.0;
+  double get netAmount {
+    final net = totalAmount - totalRefunded;
+    return net < 0 ? 0.0 : net;
+  }
+
   factory Sale.fromMap(Map<String, dynamic> data) {
     final rawItems = data['sale_items'] ?? data['sale_details'] ?? data['items'];
     List<SaleDetailItem>? parsedItems;
@@ -37,11 +44,11 @@ class Sale {
     DateTime parsedDate;
     final rawDate = data['created_at'] ?? data['date'];
     if (rawDate is String) {
-      parsedDate = DateTime.parse(rawDate);
+      parsedDate = DateTime.parse(rawDate).toLocal();
     } else if (rawDate is DateTime) {
-      parsedDate = rawDate;
+      parsedDate = rawDate.toLocal();
     } else {
-      parsedDate = DateTime.now();
+      parsedDate = DateTime.now().toLocal();
     }
 
     return Sale(

@@ -80,15 +80,27 @@ class AppSidebar extends ConsumerWidget {
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(4), // Reducido para máximo aprovechamiento
             decoration: BoxDecoration(
-              gradient: AppTheme.primaryGradient,
-              borderRadius: BorderRadius.circular(16),
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
               boxShadow: [
-                BoxShadow(color: primaryColor.withOpacity(0.3), blurRadius: 15, offset: const Offset(0, 5))
+                BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, 4))
               ],
             ),
-            child: const Icon(Icons.shopping_cart_checkout_rounded, color: Colors.white, size: 26),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Transform.scale(
+                scale: 1.6, // Zoom para eliminar espacios blancos en el sidebar
+                child: Image.asset(
+                  'assets/logo.png',
+                  width: 36,
+                  height: 36,
+                  fit: BoxFit.contain,
+                  errorBuilder: (_, __, ___) => Icon(Icons.shopping_cart_checkout_rounded, color: primaryColor, size: 28),
+                ),
+              ),
+            ),
           ),
           const SizedBox(width: 16),
           const Column(

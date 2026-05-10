@@ -23,6 +23,7 @@ class _ReturnsScreenState extends ConsumerState<ReturnsScreen> {
 
   Sale? _selectedSale;
   final Map<String, bool> _selectedProducts = {};
+  final Map<String, int> _returnQuantities = {};
   String _returnReason = 'Defectuoso';
 
   final List<String> _reasons = [
@@ -53,9 +54,14 @@ class _ReturnsScreenState extends ConsumerState<ReturnsScreen> {
     setState(() => _isLoadingSales = true);
     try {
       final sales = await ref.read(salesRepositoryProvider).fetchAllSales();
+      // Filter out sales that are already 100% returned
+      final returnableSales = sales.where((s) {
+        return s.items?.any((i) => (i.quantity - i.returnedQuantity) > 0) ?? false;
+      }).toList();
+      
       setState(() {
-        _allSales = sales;
-        _filteredSales = sales;
+        _allSales = returnableSales;
+        _filteredSales = returnableSales;
       });
     } catch (e) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -92,7 +98,9 @@ class _ReturnsScreenState extends ConsumerState<ReturnsScreen> {
       _selectedProducts.clear();
       if (sale.items != null) {
         for (final item in sale.items!) {
+          final remaining = item.quantity - item.returnedQuantity;
           _selectedProducts[item.productName] = false;
+          _returnQuantities[item.productName] = remaining > 0 ? 1 : 0;
         }
       }
     });
@@ -143,12 +151,13 @@ class _ReturnsScreenState extends ConsumerState<ReturnsScreen> {
 
     setState(() => _isProcessing = true);
     try {
-      // Build quantity map (1 per product since SaleDetailItem doesn't have separate ID)
-      final items = _selectedSale!.items!;
+      // Build quantity map (Using the quantities chosen by user)
       final returnMap = <String, int>{};
       for (final name in selectedNames) {
-        final item = items.firstWhere((i) => i.productName == name, orElse: () => items.first);
-        returnMap[name] = item.quantity;
+        final chosenQty = _returnQuantities[name] ?? 0;
+        if (chosenQty > 0) {
+          returnMap[name] = chosenQty;
+        }
       }
 
       await ref.read(salesRepositoryProvider).processReturn(
@@ -157,8 +166,12 @@ class _ReturnsScreenState extends ConsumerState<ReturnsScreen> {
         _returnReason,
       );
 
-      // Refresh products so stock updates in UI
+      // Refresh everything
       ref.invalidate(productsProvider);
+      ref.invalidate(salesProvider);
+      ref.invalidate(salesStatsProvider);
+      
+      await _loadSales(); // Reload data from DB correctly reflecting returns
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -169,37 +182,35 @@ class _ReturnsScreenState extends ConsumerState<ReturnsScreen> {
           ),
         );
 
-        // Remove the returned items from the selected sale's list
-        final remainingItems = _selectedSale!.items!
-            .where((i) => !selectedNames.contains(i.productName))
-            .toList();
-
+        // Reload sales from the repository to get the fresh DB state (with updated return counts)
+        await _loadSales();
+        
         setState(() {
-          if (remainingItems.isEmpty) {
-            // All items returned — remove sale from both lists
-            _allSales.removeWhere((s) => s.id == _selectedSale!.id);
-            _filteredSales.removeWhere((s) => s.id == _selectedSale!.id);
+          // Find the updated version of the selected sale in the newly loaded list
+          final updatedSale = _allSales.firstWhere(
+            (s) => s.id == _selectedSale!.id,
+            orElse: () => _selectedSale!, 
+          );
+          
+          // Check if there is still ANYTHING left to return in this sale
+          final hasRemaining = updatedSale.items?.any((i) => (i.quantity - i.returnedQuantity) > 0) ?? false;
+          
+          if (!hasRemaining) {
+            // If everything is returned, clear the selection
             _selectedSale = null;
             _selectedProducts.clear();
           } else {
-            // Partial return — update the sale in place
-            final updatedSale = Sale(
-              id: _selectedSale!.id,
-              items: remainingItems,
-              totalAmount: _selectedSale!.totalAmount,
-              paymentMethod: _selectedSale!.paymentMethod,
-              receivedAmount: _selectedSale!.receivedAmount,
-              change: _selectedSale!.change,
-              createdAt: _selectedSale!.createdAt,
-              itemCount: remainingItems.length,
-            );
-            // Sync local lists
-            final idx = _allSales.indexWhere((s) => s.id == _selectedSale!.id);
-            if (idx != -1) _allSales[idx] = updatedSale;
-            final fidx = _filteredSales.indexWhere((s) => s.id == _selectedSale!.id);
-            if (fidx != -1) _filteredSales[fidx] = updatedSale;
+            // If items remain, keep the sale selected with updated counts
             _selectedSale = updatedSale;
             _selectedProducts.clear();
+            // Re-initialize return quantities for remaining items
+            if (updatedSale.items != null) {
+              for (final item in updatedSale.items!) {
+                final remaining = item.quantity - item.returnedQuantity;
+                _selectedProducts[item.productName] = false;
+                _returnQuantities[item.productName] = remaining > 0 ? 1 : 0;
+              }
+            }
           }
         });
         // Do NOT call _loadSales() here — it would re-fetch from Supabase
@@ -454,11 +465,24 @@ class _ReturnsScreenState extends ConsumerState<ReturnsScreen> {
           Row(
             children: [
               Checkbox(
-                value: _selectedProducts.isNotEmpty && _selectedProducts.values.every((v) => v),
+                value: _selectedProducts.isNotEmpty && 
+                       _selectedProducts.entries.every((e) {
+                         final item = _selectedSale!.items!.firstWhere((i) => i.productName == e.key);
+                         return (item.quantity - item.returnedQuantity <= 0) || e.value;
+                       }),
                 tristate: true,
-                onChanged: (val) { updateState(() { for (final key in _selectedProducts.keys) _selectedProducts[key] = val ?? false; }); },
+                onChanged: (val) { 
+                  updateState(() { 
+                    for (final key in _selectedProducts.keys) {
+                      final item = _selectedSale!.items!.firstWhere((i) => i.productName == key);
+                      if (item.quantity - item.returnedQuantity > 0) {
+                        _selectedProducts[key] = val ?? false; 
+                      }
+                    }
+                  }); 
+                },
               ),
-              const Text('Seleccionar todos', style: TextStyle(fontWeight: FontWeight.w500)),
+              const Text('Seleccionar disponibles', style: TextStyle(fontWeight: FontWeight.w500)),
             ],
           ),
           const SizedBox(height: 4),
@@ -468,20 +492,66 @@ class _ReturnsScreenState extends ConsumerState<ReturnsScreen> {
                 : ListView(
                     children: _selectedSale!.items!.map((item) {
                       final isChecked = _selectedProducts[item.productName] ?? false;
+                      final isFullyReturned = item.quantity - item.returnedQuantity <= 0;
+                      
                       return AnimatedContainer(
                         duration: const Duration(milliseconds: 200),
                         margin: const EdgeInsets.only(bottom: 8),
                         decoration: BoxDecoration(
-                          color: isChecked ? cs.primaryContainer.withOpacity(0.3) : cs.surfaceContainerHighest.withOpacity(0.3),
+                          color: isFullyReturned 
+                              ? Colors.grey.withOpacity(0.05)
+                              : isChecked ? cs.primaryContainer.withOpacity(0.3) : cs.surfaceContainerHighest.withOpacity(0.3),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(color: isChecked ? cs.primary.withOpacity(0.5) : Colors.transparent),
                         ),
                         child: CheckboxListTile(
+                          enabled: !isFullyReturned,
                           value: isChecked,
-                          onChanged: (val) { updateState(() { _selectedProducts[item.productName] = val ?? false; }); },
-                          title: Text(item.productName, style: const TextStyle(fontWeight: FontWeight.w600)),
-                          subtitle: Text('${item.quantity} unidad(es)'),
-                          secondary: Text(_currencyFormat.format(item.subtotal), style: TextStyle(fontWeight: FontWeight.bold, color: cs.primary)),
+                          onChanged: isFullyReturned ? null : (val) { updateState(() { _selectedProducts[item.productName] = val ?? false; }); },
+                          title: Text(item.productName, 
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              decoration: isFullyReturned ? TextDecoration.lineThrough : null,
+                              color: isFullyReturned ? AppTheme.textMuted : null,
+                            )),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(isFullyReturned ? 'Totalmente devuelto' : '${item.quantity - item.returnedQuantity} disponible(s) para devolver'),
+                              if (isChecked && !isFullyReturned && (item.quantity - item.returnedQuantity) > 1)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 8),
+                                  child: Row(
+                                    children: [
+                                      _qtyBtn(Icons.remove, () {
+                                        if ((_returnQuantities[item.productName] ?? 0) > 1) {
+                                          updateState(() => _returnQuantities[item.productName] = (_returnQuantities[item.productName] ?? 0) - 1);
+                                        }
+                                      }, cs),
+                                      Padding(
+                                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                                        child: Text('${_returnQuantities[item.productName]}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                                      ),
+                                      _qtyBtn(Icons.add, () {
+                                        if ((_returnQuantities[item.productName] ?? 0) < (item.quantity - item.returnedQuantity)) {
+                                          updateState(() => _returnQuantities[item.productName] = (_returnQuantities[item.productName] ?? 0) + 1);
+                                        }
+                                      }, cs),
+                                    ],
+                                  ),
+                                ),
+                            ],
+                          ),
+                          secondary: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Text(_currencyFormat.format(item.priceAtSale * (isChecked ? (_returnQuantities[item.productName] ?? 1) : (item.quantity - item.returnedQuantity))), 
+                                style: TextStyle(fontWeight: FontWeight.bold, color: isFullyReturned ? AppTheme.textMuted : cs.primary)),
+                              if (isChecked && !isFullyReturned)
+                                Text('Reembolso', style: TextStyle(fontSize: 10, color: cs.primary.withOpacity(0.7))),
+                            ],
+                          ),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         ),
                       );
@@ -518,6 +588,21 @@ class _ReturnsScreenState extends ConsumerState<ReturnsScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _qtyBtn(IconData icon, VoidCallback onTap, ColorScheme cs) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.all(4),
+        decoration: BoxDecoration(
+          color: cs.primary.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(icon, size: 18, color: cs.primary),
       ),
     );
   }

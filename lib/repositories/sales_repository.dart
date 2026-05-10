@@ -19,7 +19,7 @@ class SalesRepository {
   Future<List<Sale>> fetchAllSales() async {
     final response = await _client
         .from('sales')
-        .select('*, sale_items(*)')
+        .select('*, sale_items(*, return_items(*))')
         .order('created_at', ascending: false);
     return (response as List)
         .map((s) => Sale.fromMap(s as Map<String, dynamic>))
@@ -90,13 +90,29 @@ class SalesRepository {
             .eq('id', int.parse(customerId));
       }
 
-      // 3. Deduct stock (simplified for online only)
+      // 3. Deduct stock (Robust logic with fallback)
       for (final item in items) {
         if (item.productId != null) {
-          await _client.rpc('deduct_stock', params: {
-            'p_id': int.tryParse(item.productId!),
-            'p_qty': item.quantity,
-          }).catchError((_) => null); // Silent error if RPC missing
+          try {
+            await _client.rpc('deduct_stock', params: {
+              'p_id': int.tryParse(item.productId!),
+              'p_qty': item.quantity,
+            });
+          } catch (e) {
+            // FALLBACK: Manual deduction if RPC is missing or fails
+            try {
+              final pid = int.tryParse(item.productId!);
+              if (pid != null) {
+                final prod = await _client.from('products').select('stock_quantity').eq('id', pid).maybeSingle();
+                if (prod != null) {
+                  final current = prod['stock_quantity'] as int;
+                  await _client.from('products').update({'stock_quantity': current - item.quantity}).eq('id', pid);
+                }
+              }
+            } catch (e2) {
+              print('Critical: Manual stock deduction failed for product ${item.productId}: $e2');
+            }
+          }
         }
       }
 
@@ -125,7 +141,7 @@ class SalesRepository {
     // 1. Fetch sale items to get their IDs and prices
     final saleItemsResponse = await _client
         .from('sale_items')
-        .select('id, product_name, quantity, price_at_sale')
+        .select('id, product_id, product_name, quantity, price_at_sale')
         .eq('sale_id', saleId);
     
     double totalRefunded = 0.0;
@@ -146,20 +162,22 @@ class SalesRepository {
           'refund_amount': refund,
         });
 
-        // Restore stock
-        final productResponse = await _client
-            .from('products')
-            .select('id, stock_quantity')
-            .eq('name', name)
-            .limit(1)
-            .maybeSingle();
-
-        if (productResponse != null) {
-          final currentStock = productResponse['stock_quantity'] as int;
-          await _client
+        // Restore stock using product_id
+        final pid = item['product_id'];
+        if (pid != null) {
+          final productResponse = await _client
               .from('products')
-              .update({'stock_quantity': currentStock + qty})
-              .eq('id', productResponse['id']);
+              .select('stock_quantity')
+              .eq('id', pid)
+              .maybeSingle();
+
+          if (productResponse != null) {
+            final currentStock = productResponse['stock_quantity'] as int;
+            await _client
+                .from('products')
+                .update({'stock_quantity': currentStock + qty})
+                .eq('id', pid);
+          }
         }
       }
     }
@@ -348,36 +366,40 @@ class SalesRepository {
 
     final allSales = await _client
         .from('sales')
-        .select('total_amount, payment_method, created_at')
+        .select('payment_method, created_at, sale_items(quantity, price_at_sale, return_items(quantity))')
         .gte('created_at', effectiveSince);
     
-    double totalRevenue = 0;
-    double todayRevenue = 0;
+    double grossRevenue = 0;
+    double todayGrossRevenue = 0;
     int todayCount = 0;
     double todayCash = 0;
 
     for (final row in allSales as List) {
-      final amount = (row['total_amount'] as num).toDouble();
-      totalRevenue += amount; // Note: this is now actually "revenue since effectiveSince"
+      double saleOriginalTotal = 0;
+      final items = row['sale_items'] as List? ?? [];
+      for (final item in items) {
+        final currentQty = (item['quantity'] as num?)?.toInt() ?? 0;
+        final returns = item['return_items'] as List? ?? [];
+        final returnedQty = returns.fold<int>(0, (sum, r) => sum + (r['quantity'] as int? ?? 0));
+        
+        final price = (item['price_at_sale'] as num?)?.toDouble() ?? 0.0;
+        saleOriginalTotal += (currentQty + returnedQty) * price;
+      }
+
+      final created = DateTime.parse(row['created_at'] as String).toLocal();
       
-      final created = DateTime.parse(row['created_at'] as String);
-      // We still check if it's today for the "today" specific fields 
-      // if effectiveSince was before today, but usually it's used to return 
-      // the stats for the requested period.
       if (created.year == now.year &&
           created.month == now.month &&
           created.day == now.day) {
-        todayRevenue += amount;
+        todayGrossRevenue += saleOriginalTotal;
         todayCount++;
-        if (row['payment_method'] == 'Efectivo') todayCash += amount;
+        if (row['payment_method'] == 'Efectivo') todayCash += saleOriginalTotal;
       } else if (sinceLastCut) {
-        // If we are looking since last cut and it was yesterday, 
-        // we still want to count these towards the "current session" cash
-        if (row['payment_method'] == 'Efectivo') todayCash += amount;
-        // We might also want to include them in the count/revenue for the session
-        todayRevenue += amount;
+        todayGrossRevenue += saleOriginalTotal;
         todayCount++;
+        if (row['payment_method'] == 'Efectivo') todayCash += saleOriginalTotal;
       }
+      grossRevenue += saleOriginalTotal;
     }
 
     final expensesResponse = await _client
@@ -388,23 +410,36 @@ class SalesRepository {
     double todayExpenses = 0;
     if (expensesResponse != null) {
       for (final row in expensesResponse as List) {
-        final created = DateTime.parse(row['created_at'] as String);
-        if (created.year == now.year &&
-            created.month == now.month &&
-            created.day == now.day) {
-          todayExpenses += (row['amount'] as num).toDouble();
-        } else if (sinceLastCut) {
+        final created = DateTime.parse(row['created_at'] as String).toLocal();
+        if ((created.year == now.year && created.month == now.month && created.day == now.day) || sinceLastCut) {
           todayExpenses += (row['amount'] as num).toDouble();
         }
       }
     }
 
+    final returnsResponse = await _client
+        .from('returns')
+        .select('total_refunded, created_at')
+        .gte('created_at', effectiveSince);
+    
+    double todayRefunds = 0;
+    if (returnsResponse != null) {
+      for (final row in returnsResponse as List) {
+        final created = DateTime.parse(row['created_at'] as String).toLocal();
+        if ((created.year == now.year && created.month == now.month && created.day == now.day) || sinceLastCut) {
+          todayRefunds += (row['total_refunded'] as num).toDouble();
+        }
+      }
+    }
+
     return {
-      'totalRevenue': totalRevenue,
-      'todayRevenue': todayRevenue,
+      'grossRevenue': grossRevenue,
+      'todayGrossRevenue': todayGrossRevenue,
+      'todayNetRevenue': todayGrossRevenue - todayRefunds,
       'todayCount': todayCount,
-      'todayCash': todayCash - todayExpenses,
+      'todayCash': todayCash - todayExpenses - todayRefunds,
       'todayExpenses': todayExpenses,
+      'todayRefunds': todayRefunds,
       'totalCount': (allSales as List).length,
     };
   }
@@ -415,20 +450,29 @@ class SalesRepository {
     String? categoryId,
   }) async {
     // We select sales and join with sale_items and their products to filter by category
-    var query = _client.from('sales').select('total_amount, payment_method, created_at, sale_items(*, products(category_id))');
+    var query = _client.from('sales').select('total_amount, payment_method, created_at, sale_items(*, return_items(quantity), products(category_id))');
     
-    if (from != null) query = query.gte('created_at', from.toIso8601String());
-    if (to != null) query = query.lte('created_at', to.toIso8601String());
+    if (from != null) query = query.gte('created_at', from.toUtc().toIso8601String());
+    if (to != null) query = query.lte('created_at', to.toUtc().toIso8601String());
 
     final sales = await query;
     
-    double revenue = 0;
+    // Fetch refunds for the same period
+    var refundQuery = _client.from('returns').select('total_refunded, created_at');
+    if (from != null) refundQuery = refundQuery.gte('created_at', from.toUtc().toIso8601String());
+    if (to != null) refundQuery = refundQuery.lte('created_at', to.toUtc().toIso8601String());
+    final refundsRes = await refundQuery;
+    double totalRefunds = 0;
+    for (final r in refundsRes as List) {
+      totalRefunds += (r['total_refunded'] as num).toDouble();
+    }
+
+    double grossRevenue = 0;
     double cost = 0;
     int count = 0;
     Map<String, double> paymentMethods = {};
     Map<int, double> hourlySales = {};
     Map<DateTime, double> dailySales = {};
-    Map<String, double> categorySales = {};
     
     for (final s in sales as List) {
       final createdAt = DateTime.parse(s['created_at']).toLocal();
@@ -446,36 +490,38 @@ class SalesRepository {
           hasTargetCategory = true;
         }
 
-        // We only add to sub-metrics if the item matches the category (if filtered)
-        // BUT, if we filter by category, usually we want to see only those items' revenue
         if (categoryId == null || itemCatId == categoryId) {
-          saleRevenue += (item['subtotal'] as num).toDouble();
-          saleCost += ((item['cost_price_at_sale'] ?? 0) as num).toDouble() * (item['quantity'] as int);
+          final currentQty = (item['quantity'] as num?)?.toInt() ?? 0;
+          final returns = item['return_items'] as List? ?? [];
+          final returnedQty = returns.fold<int>(0, (sum, r) => sum + (r['quantity'] as int? ?? 0));
+          
+          final price = (item['price_at_sale'] as num?)?.toDouble() ?? 0.0;
+          saleRevenue += (currentQty + returnedQty) * price;
+          saleCost += ((item['cost_price_at_sale'] ?? 0) as num).toDouble() * (currentQty + returnedQty);
         }
       }
 
       if (!hasTargetCategory) continue;
 
-      revenue += saleRevenue;
+      grossRevenue += saleRevenue;
       cost += saleCost;
       count++;
 
-      // Payment method
       final pm = s['payment_method'] as String? ?? 'Efectivo';
       paymentMethods[pm] = (paymentMethods[pm] ?? 0) + saleRevenue;
 
-      // Hourly
       final hour = createdAt.hour;
       hourlySales[hour] = (hourlySales[hour] ?? 0) + saleRevenue;
 
-      // Daily
       dailySales[dayKey] = (dailySales[dayKey] ?? 0) + saleRevenue;
     }
 
     return {
-      'revenue': revenue,
+      'grossRevenue': grossRevenue,
+      'netRevenue': grossRevenue - totalRefunds,
+      'refunds': totalRefunds,
       'cost': cost,
-      'profit': revenue - cost,
+      'profit': (grossRevenue - totalRefunds) - cost,
       'count': count,
       'hourly': hourlySales,
       'daily': dailySales,

@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/theme_notifier.dart';
 import '../repositories/auth_repository.dart';
+import '../theme/app_theme.dart';
 import 'login_screen.dart';
-
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -27,7 +27,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         await ref.read(authRepositoryProvider).updateUserPassword(_passwordController.text);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Contraseña actualizada con éxito.'), backgroundColor: Colors.green),
+            const SnackBar(
+              content: Text('Contraseña actualizada con éxito.'),
+              backgroundColor: AppTheme.success,
+              behavior: SnackBarBehavior.floating,
+            ),
           );
           _formKey.currentState?.reset();
           _passwordController.clear();
@@ -36,7 +40,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error al actualizar la contraseña: $e'), backgroundColor: Theme.of(context).colorScheme.error),
+            SnackBar(
+              content: Text('Error al actualizar: $e'),
+              backgroundColor: AppTheme.error,
+              behavior: SnackBarBehavior.floating,
+            ),
           );
         }
       } finally {
@@ -49,13 +57,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Confirmar'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Confirmar Salida', style: TextStyle(fontWeight: FontWeight.bold)),
         content: const Text('¿Estás seguro de que quieres cerrar sesión?'),
         actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancelar')),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancelar')),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: FilledButton.styleFrom(backgroundColor: AppTheme.error),
             child: const Text('Cerrar Sesión'),
           ),
         ],
@@ -83,123 +92,182 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final user = ref.watch(authRepositoryProvider).currentUser;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
+      backgroundColor: isDark ? AppTheme.backgroundDark : AppTheme.backgroundLight,
       appBar: AppBar(
-        title: const Text('Perfil de Usuario'),
-        automaticallyImplyLeading: false,
+        title: const Text('Perfil', style: TextStyle(fontWeight: FontWeight.bold)),
+        centerTitle: true,
+        elevation: 0,
+        backgroundColor: Colors.transparent,
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16.0),
-        children: [
-          Card(
-            elevation: 2,
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          children: [
+            // User Header
+            Center(
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Información de la Cuenta', style: Theme.of(context).textTheme.titleLarge),
-                  const SizedBox(height: 16),
-                  if (user != null)
-                    ListTile(
-                      leading: const Icon(Icons.email_outlined),
-                      title: const Text('Email'),
-                      subtitle: Text(user.email ?? 'No disponible'),
-                    ),
-                  const Divider(),
-                  ListTile(
-                    leading: const Icon(Icons.brightness_6_outlined),
-                    title: const Text('Tema de la aplicación'),
-                    subtitle: Text(_themeModeToString(ref.watch(themeProvider))),
-                    trailing: PopupMenuButton<ThemeMode>(
-                      onSelected: (mode) => ref.read(themeProvider.notifier).setThemeMode(mode),
-                      itemBuilder: (context) => [
-                        const PopupMenuItem(value: ThemeMode.light, child: Text('Claro')),
-                        const PopupMenuItem(value: ThemeMode.dark, child: Text('Oscuro')),
-                        const PopupMenuItem(value: ThemeMode.system, child: Text('Sistema')),
-                      ],
-                    ),
+                  CircleAvatar(
+                    radius: 50,
+                    backgroundColor: AppTheme.primary.withOpacity(0.1),
+                    child: const Icon(Icons.person_rounded, size: 60, color: AppTheme.primary),
                   ),
+                  const SizedBox(height: 16),
+                  Text(user?.email ?? 'Usuario', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                  const Text('Administrador de Tienda', style: TextStyle(color: AppTheme.textSecondary)),
                 ],
               ),
             ),
-          ),
-          const SizedBox(height: 24),
-          Card(
-            elevation: 2,
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Cambiar Contraseña', style: Theme.of(context).textTheme.titleLarge),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _passwordController,
-                      decoration: InputDecoration(
-                        labelText: 'Nueva Contraseña',
-                        border: const OutlineInputBorder(),
-                        suffixIcon: IconButton(
-                          icon: Icon(_isNewPasswordVisible ? Icons.visibility_off : Icons.visibility),
-                          onPressed: () => setState(() => _isNewPasswordVisible = !_isNewPasswordVisible),
-                        ),
-                      ),
-                      obscureText: !_isNewPasswordVisible,
-                      validator: (value) {
-                        if (value == null || value.length < 6) return 'La contraseña debe tener al menos 6 caracteres.';
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _confirmPasswordController,
-                      decoration: InputDecoration(
-                        labelText: 'Confirmar Nueva Contraseña',
-                        border: const OutlineInputBorder(),
-                        suffixIcon: IconButton(
-                          icon: Icon(_isConfirmPasswordVisible ? Icons.visibility_off : Icons.visibility),
-                          onPressed: () => setState(() => _isConfirmPasswordVisible = !_isConfirmPasswordVisible),
-                        ),
-                      ),
-                      obscureText: !_isConfirmPasswordVisible,
-                      validator: (value) {
-                        if (value != _passwordController.text) return 'Las contraseñas no coinciden.';
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 24),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: _isLoading ? null : _updatePassword,
-                        child: _isLoading ? const CircularProgressIndicator() : const Text('Actualizar Contraseña'),
-                      ),
-                    ),
-                  ],
+            const SizedBox(height: 32),
+            
+            // Settings Cards
+            _buildSectionCard(
+              context,
+              title: 'Ajustes de Interfaz',
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.brightness_6_rounded, color: AppTheme.primary),
+                  title: const Text('Modo Visual', style: TextStyle(fontWeight: FontWeight.w600)),
+                  subtitle: Text(_themeModeToString(ref.watch(themeProvider))),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () => _showThemePicker(context),
                 ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            
+            _buildSectionCard(
+              context,
+              title: 'Seguridad',
+              children: [
+                Form(
+                  key: _formKey,
+                  child: Column(
+                    children: [
+                      TextFormField(
+                        controller: _passwordController,
+                        obscureText: !_isNewPasswordVisible,
+                        decoration: InputDecoration(
+                          labelText: 'Nueva Contraseña',
+                          prefixIcon: const Icon(Icons.lock_outline_rounded),
+                          suffixIcon: IconButton(
+                            icon: Icon(_isNewPasswordVisible ? Icons.visibility_off : Icons.visibility),
+                            onPressed: () => setState(() => _isNewPasswordVisible = !_isNewPasswordVisible),
+                          ),
+                        ),
+                        validator: (v) => (v == null || v.length < 6) ? 'Mínimo 6 caracteres' : null,
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: _confirmPasswordController,
+                        obscureText: !_isConfirmPasswordVisible,
+                        decoration: InputDecoration(
+                          labelText: 'Confirmar Contraseña',
+                          prefixIcon: const Icon(Icons.lock_reset_rounded),
+                          suffixIcon: IconButton(
+                            icon: Icon(_isConfirmPasswordVisible ? Icons.visibility_off : Icons.visibility),
+                            onPressed: () => setState(() => _isConfirmPasswordVisible = !_isConfirmPasswordVisible),
+                          ),
+                        ),
+                        validator: (v) => v != _passwordController.text ? 'No coinciden' : null,
+                      ),
+                      const SizedBox(height: 20),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 50,
+                        child: FilledButton(
+                          onPressed: _isLoading ? null : _updatePassword,
+                          child: _isLoading 
+                            ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                            : const Text('ACTUALIZAR CONTRASEÑA', style: TextStyle(fontWeight: FontWeight.bold)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 40),
+            
+            OutlinedButton.icon(
+              onPressed: _signOut,
+              icon: const Icon(Icons.logout_rounded),
+              label: const Text('CERRAR SESIÓN', style: TextStyle(fontWeight: FontWeight.bold)),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppTheme.error,
+                side: const BorderSide(color: AppTheme.error),
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
             ),
-          ),
-          const SizedBox(height: 32),
-          OutlinedButton.icon(
-            icon: const Icon(Icons.logout),
-            label: const Text('Cerrar Sesión'),
-            onPressed: _signOut,
-            style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
-          ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSectionCard(BuildContext context, {required String title, required List<Widget> children}) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: isDark ? Colors.white.withOpacity(0.05) : Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: isDark ? Colors.white.withOpacity(0.1) : Colors.black.withOpacity(0.05)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppTheme.primary, letterSpacing: 1)),
+          const SizedBox(height: 16),
+          ...children,
         ],
       ),
     );
   }
-}
 
-String _themeModeToString(ThemeMode mode) {
-  switch (mode) {
-    case ThemeMode.light: return 'Claro';
-    case ThemeMode.dark: return 'Oscuro';
-    case ThemeMode.system: return 'Predeterminado del sistema';
+  void _showThemePicker(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Seleccionar Tema', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 20),
+            _themeTile(context, 'Claro', Icons.light_mode_rounded, ThemeMode.light),
+            _themeTile(context, 'Oscuro', Icons.dark_mode_rounded, ThemeMode.dark),
+            _themeTile(context, 'Sistema', Icons.settings_brightness_rounded, ThemeMode.system),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _themeTile(BuildContext context, String label, IconData icon, ThemeMode mode) {
+    final current = ref.watch(themeProvider);
+    return ListTile(
+      leading: Icon(icon, color: current == mode ? AppTheme.primary : null),
+      title: Text(label, style: TextStyle(fontWeight: current == mode ? FontWeight.bold : null)),
+      trailing: current == mode ? const Icon(Icons.check_circle_rounded, color: AppTheme.primary) : null,
+      onTap: () {
+        ref.read(themeProvider.notifier).setThemeMode(mode);
+        Navigator.pop(context);
+      },
+    );
+  }
+
+  String _themeModeToString(ThemeMode mode) {
+    switch (mode) {
+      case ThemeMode.light: return 'Modo Claro';
+      case ThemeMode.dark: return 'Modo Oscuro';
+      case ThemeMode.system: return 'Seguir Sistema';
+    }
   }
 }

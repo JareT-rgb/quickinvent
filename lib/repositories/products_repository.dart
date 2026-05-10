@@ -267,8 +267,27 @@ class ProductsRepository {
     final Map<String, Map<String, dynamic>> toUpsertMap = {};
     final List<Map<String, dynamic>> toInsertList = [];
 
+    // 0. Pre-fetch categories to resolve names to IDs
+    final categories = await fetchCategories();
+    final categoryMap = {for (var c in categories) c.name.toLowerCase(): c.id};
+
     for (var item in items) {
       final barcode = item['barcode']?.toString().trim();
+      
+      // Resolve category if it's a name instead of an ID
+      dynamic catValue = item['category_id'];
+      int? resolvedCategoryId;
+      
+      if (catValue != null) {
+        final catStr = catValue.toString().trim();
+        resolvedCategoryId = int.tryParse(catStr);
+        
+        // If not a number, try to match by name
+        if (resolvedCategoryId == null && catStr.isNotEmpty) {
+          resolvedCategoryId = categoryMap[catStr.toLowerCase()];
+        }
+      }
+
       final Map<String, dynamic> data = {
         'name': item['name'],
         'price': item['price'],
@@ -276,7 +295,7 @@ class ProductsRepository {
         'min_stock': item['min_stock'],
         'barcode': (barcode != null && barcode.isNotEmpty) ? barcode : null,
         'is_active': item['is_active'] ?? true,
-        'category_id': item['category_id'] != null ? int.tryParse(item['category_id'].toString()) : null,
+        'category_id': resolvedCategoryId,
         'image_url': item['image_url'],
         'cost_price': item['cost_price'] ?? 0.0,
       };
