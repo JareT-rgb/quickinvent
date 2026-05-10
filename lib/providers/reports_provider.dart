@@ -45,6 +45,7 @@ final reportFilterProvider = NotifierProvider<ReportFilterNotifier, ReportFilter
 final reportDataProvider = FutureProvider<ReportData>((ref) async {
   // Watch EVERYTHING that changes to ensure real-time
   ref.watch(salesStreamProvider);
+  ref.watch(saleItemsStreamProvider);
   ref.watch(cashCutsStreamProvider);
   ref.watch(expensesStreamProvider);
   

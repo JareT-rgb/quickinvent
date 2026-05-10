@@ -10,80 +10,167 @@ class SplashScreen extends StatefulWidget {
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> {
+class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderStateMixin {
+  late AnimationController _floatController;
+  
   @override
   void initState() {
     super.initState();
+    _floatController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 3),
+    )..repeat(reverse: true);
     _startTimer();
   }
 
+  @override
+  void dispose() {
+    _floatController.dispose();
+    super.dispose();
+  }
+
   void _startTimer() async {
-    // Duración del splash antes de pasar a la app
-    await Future.delayed(const Duration(milliseconds: 3000));
+    await Future.delayed(const Duration(milliseconds: 3500));
     widget.onFinish();
   }
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final backgroundColor = isDark ? AppTheme.backgroundDark : AppTheme.backgroundLight;
+    
     return Scaffold(
-      backgroundColor: Colors.white,
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // Animación del logo
-            ZoomIn(
-              duration: const Duration(milliseconds: 1000),
-              child: FadeIn(
-                duration: const Duration(milliseconds: 1200),
-                child: Container(
-                  width: 200,
-                  height: 200,
-                  decoration: BoxDecoration(
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 30,
-                        offset: const Offset(0, 10),
+      backgroundColor: backgroundColor,
+      body: Stack(
+        children: [
+          // Subtly animated background elements for a 'produced' feel
+          Positioned(
+            top: -100,
+            right: -100,
+            child: FadeInDown(
+              duration: const Duration(seconds: 2),
+              child: Container(
+                width: 300,
+                height: 300,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: [
+                      AppTheme.primary.withOpacity(0.05),
+                      Colors.transparent,
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          
+          Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // Logo Animation
+                ElasticIn(
+                  duration: const Duration(milliseconds: 1500),
+                  child: AnimatedBuilder(
+                    animation: _floatController,
+                    builder: (context, child) {
+                      return Transform.translate(
+                        offset: Offset(0, 10 * _floatController.value),
+                        child: child,
+                      );
+                    },
+                    child: Container(
+                      width: 280,
+                      height: 280,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppTheme.primary.withOpacity(0.08),
+                            blurRadius: 60,
+                            spreadRadius: 10,
+                          ),
+                        ],
+                      ),
+                      child: Image.asset(
+                        'assets/logo.png',
+                        fit: BoxFit.contain,
+                        errorBuilder: (context, error, stackTrace) => const Icon(
+                          Icons.inventory_2_rounded,
+                          size: 150,
+                          color: AppTheme.primary,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                
+                const SizedBox(height: 48),
+                
+                // App Name with professional tracking and weight
+                FadeInUp(
+                  duration: const Duration(milliseconds: 800),
+                  delay: const Duration(milliseconds: 600),
+                  child: Column(
+                    children: [
+                      Text(
+                        'QUICKINVENT',
+                        style: TextStyle(
+                          fontSize: 32,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 6,
+                          color: isDark ? Colors.white : AppTheme.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Container(
+                        height: 3,
+                        width: 40,
+                        decoration: BoxDecoration(
+                          color: AppTheme.primary,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'GESTIÓN PROFESIONAL',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 3,
+                          color: AppTheme.primary.withOpacity(0.8),
+                        ),
                       ),
                     ],
                   ),
-                  child: Image.asset('assets/logo.png', errorBuilder: (context, error, stackTrace) {
-                    // Fallback por si la imagen no existe aún
-                    return const Icon(Icons.inventory_2_rounded, size: 100, color: AppTheme.primary);
-                  }),
+                ),
+              ],
+            ),
+          ),
+          
+          // Loading indicator at the bottom
+          Positioned(
+            bottom: 60,
+            left: 0,
+            right: 0,
+            child: FadeIn(
+              delay: const Duration(seconds: 2),
+              child: Center(
+                child: SizedBox(
+                  width: 30,
+                  height: 30,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      AppTheme.primary.withOpacity(0.5),
+                    ),
+                  ),
                 ),
               ),
             ),
-            const SizedBox(height: 32),
-            // Nombre de la app animado
-            FadeInUp(
-              delay: const Duration(milliseconds: 500),
-              child: const Text(
-                'QUICKINVENT',
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 4,
-                  color: AppTheme.primary,
-                ),
-              ),
-            ),
-            const SizedBox(height: 8),
-            FadeInUp(
-              delay: const Duration(milliseconds: 800),
-              child: Text(
-                'ABARROTES',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 2,
-                  color: AppTheme.textSecondary.withOpacity(0.7),
-                ),
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

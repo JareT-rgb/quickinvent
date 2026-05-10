@@ -322,12 +322,34 @@ class SalesRepository {
     return sorted.take(limit).toList();
   }
 
-  Future<Map<String, dynamic>> getStats() async {
+  Future<Map<String, dynamic>> getStats({bool sinceLastCut = false}) async {
     final now = DateTime.now();
+    final startOfDay = DateTime(now.year, now.month, now.day).toUtc().toIso8601String();
+
+    String? sinceFilter;
+    if (sinceLastCut) {
+      try {
+        final lastCut = await _client
+            .from('cash_cuts')
+            .select('created_at')
+            .order('created_at', ascending: false)
+            .limit(1)
+            .maybeSingle();
+        if (lastCut != null) {
+          sinceFilter = lastCut['created_at'] as String;
+        }
+      } catch (e) {
+        print('Error fetching last cash cut: $e');
+      }
+    }
+
+    // Default to start of day if not filtering by last cut or if no cut exists
+    final effectiveSince = sinceFilter ?? startOfDay;
 
     final allSales = await _client
         .from('sales')
-        .select('total_amount, payment_method, created_at');
+        .select('total_amount, payment_method, created_at')
+        .gte('created_at', effectiveSince);
     
     double totalRevenue = 0;
     double todayRevenue = 0;
@@ -336,19 +358,32 @@ class SalesRepository {
 
     for (final row in allSales as List) {
       final amount = (row['total_amount'] as num).toDouble();
-      totalRevenue += amount;
+      totalRevenue += amount; // Note: this is now actually "revenue since effectiveSince"
+      
       final created = DateTime.parse(row['created_at'] as String);
+      // We still check if it's today for the "today" specific fields 
+      // if effectiveSince was before today, but usually it's used to return 
+      // the stats for the requested period.
       if (created.year == now.year &&
           created.month == now.month &&
           created.day == now.day) {
         todayRevenue += amount;
         todayCount++;
         if (row['payment_method'] == 'Efectivo') todayCash += amount;
+      } else if (sinceLastCut) {
+        // If we are looking since last cut and it was yesterday, 
+        // we still want to count these towards the "current session" cash
+        if (row['payment_method'] == 'Efectivo') todayCash += amount;
+        // We might also want to include them in the count/revenue for the session
+        todayRevenue += amount;
+        todayCount++;
       }
     }
+
     final expensesResponse = await _client
         .from('expenses')
-        .select('amount, created_at');
+        .select('amount, created_at')
+        .gte('created_at', effectiveSince);
     
     double todayExpenses = 0;
     if (expensesResponse != null) {
@@ -357,6 +392,8 @@ class SalesRepository {
         if (created.year == now.year &&
             created.month == now.month &&
             created.day == now.day) {
+          todayExpenses += (row['amount'] as num).toDouble();
+        } else if (sinceLastCut) {
           todayExpenses += (row['amount'] as num).toDouble();
         }
       }
@@ -368,7 +405,7 @@ class SalesRepository {
       'todayCount': todayCount,
       'todayCash': todayCash - todayExpenses,
       'todayExpenses': todayExpenses,
-      'totalCount': allSales.length,
+      'totalCount': (allSales as List).length,
     };
   }
 
@@ -448,7 +485,7 @@ class SalesRepository {
 
   Future<List<MapEntry<int, double>>> getHourlySales() async {
     final now = DateTime.now();
-    final startOfDay = DateTime(now.year, now.month, now.day).toIso8601String();
+    final startOfDay = DateTime(now.year, now.month, now.day).toUtc().toIso8601String();
     
     final response = await _client
         .from('sales')
@@ -566,13 +603,21 @@ final expensesStreamProvider = StreamProvider<List<Map<String, dynamic>>>((ref) 
   return ref.read(salesRepositoryProvider).getExpensesStream();
 });
 
+final saleItemsStreamProvider = StreamProvider<List<Map<String, dynamic>>>((ref) {
+  return Supabase.instance.client
+      .from('sale_items')
+      .stream(primaryKey: ['id']);
+});
+
 final salesProvider = FutureProvider<List<Sale>>((ref) async {
   ref.watch(salesStreamProvider);
+  ref.watch(saleItemsStreamProvider); // Important for detail changes
   return ref.read(salesRepositoryProvider).fetchAllSales();
 });
 
 final salesStatsProvider = FutureProvider<Map<String, dynamic>>((ref) async {
   ref.watch(salesStreamProvider);
+  ref.watch(expensesStreamProvider); // Stats include expenses
   return ref.read(salesRepositoryProvider).getStats();
 });
 

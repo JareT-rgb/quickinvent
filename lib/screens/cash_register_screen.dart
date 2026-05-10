@@ -42,7 +42,7 @@ class _CashRegisterScreenState extends ConsumerState<CashRegisterScreen> {
 
   Future<void> _loadTodayCashSales() async {
     try {
-      final stats = await ref.read(salesRepositoryProvider).getStats();
+      final stats = await ref.read(salesRepositoryProvider).getStats(sinceLastCut: true);
       setState(() {
         _expectedCash = (stats['todayCash'] as num).toDouble();
         _isLoading = false;
@@ -356,6 +356,7 @@ class _CashRegisterScreenState extends ConsumerState<CashRegisterScreen> {
           _isSaving = false;
           _counts.updateAll((k, v) => 0);
           _manualInputController.clear();
+          _startingCashController.text = '0';
         });
         _loadTodayCashSales();
       }
