@@ -19,7 +19,7 @@ class ScannerScreen extends ConsumerStatefulWidget {
   ConsumerState<ScannerScreen> createState() => _ScannerScreenState();
 }
 
-class _ScannerScreenState extends ConsumerState<ScannerScreen> {
+class _ScannerScreenState extends ConsumerState<ScannerScreen> with SingleTickerProviderStateMixin {
   final MobileScannerController _controller = MobileScannerController(
     detectionSpeed: DetectionSpeed.noDuplicates,
     formats: [BarcodeFormat.all],
@@ -392,6 +392,12 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
               ),
               const Spacer(),
               _ConnectionIndicator(isConnected: _isConnected),
+              _CircleButton(
+                icon: Icons.flash_on_rounded, 
+                onTap: () => _controller.toggleTorch(),
+                isGlass: true,
+              ),
+              const SizedBox(width: 8),
               _CircleButton(
                 icon: Icons.flip_camera_ios, 
                 onTap: () => _controller.switchCamera(),
