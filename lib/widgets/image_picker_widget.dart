@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:file_selector/file_selector.dart';
 
 class ImagePickerWidget extends StatefulWidget {
   final String? initialImageUrl;
@@ -39,6 +40,14 @@ class _ImagePickerWidgetState extends State<ImagePickerWidget> {
   }
 
   Future<void> _pickImage(ImageSource source) async {
+    // On Windows/Desktop, use file_selector for gallery as it's more stable
+    final bool isDesktop = !kIsWeb && (Platform.isWindows || Platform.isMacOS || Platform.isLinux);
+    
+    if (isDesktop && source == ImageSource.gallery) {
+      await _pickImageDesktop();
+      return;
+    }
+
     setState(() => _isLoading = true);
     try {
       final XFile? pickedFile = await _picker.pickImage(
@@ -66,7 +75,30 @@ class _ImagePickerWidgetState extends State<ImagePickerWidget> {
         );
       }
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _pickImageDesktop() async {
+    setState(() => _isLoading = true);
+    try {
+      const XTypeGroup typeGroup = XTypeGroup(
+        label: 'Imágenes',
+        extensions: ['jpg', 'jpeg', 'png', 'webp'],
+      );
+      final XFile? file = await openFile(acceptedTypeGroups: [typeGroup]);
+      
+      if (file != null) {
+        setState(() {
+          _selectedImage = file;
+          _imageUrl = null;
+        });
+        widget.onImageChanged(file, null);
+      }
+    } catch (e) {
+      debugPrint('Error picking desktop image: $e');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -104,23 +136,24 @@ class _ImagePickerWidgetState extends State<ImagePickerWidget> {
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 20),
-              ListTile(
-                leading: Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
+              if (!(!kIsWeb && Platform.isWindows)) // Disable camera on Windows
+                ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.camera_alt, color: Colors.blue),
                   ),
-                  child: const Icon(Icons.camera_alt, color: Colors.blue),
+                  title: const Text('Cámara'),
+                  subtitle: const Text('Tomar una foto'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _pickImage(ImageSource.camera);
+                  },
                 ),
-                title: const Text('Cámara'),
-                subtitle: const Text('Tomar una foto'),
-                onTap: () {
-                  Navigator.pop(context);
-                  _pickImage(ImageSource.camera);
-                },
-              ),
-              const SizedBox(height: 8),
+              if (!(!kIsWeb && Platform.isWindows)) const SizedBox(height: 8),
               ListTile(
                 leading: Container(
                   padding: const EdgeInsets.all(10),
