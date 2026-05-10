@@ -52,45 +52,66 @@ class ScannerStatusNotifier extends Notifier<ScannerStatus> {
   }
 
   void _setupListener() {
-    final userId = Supabase.instance.client.auth.currentUser?.id;
+    final client = Supabase.instance.client;
+    final userId = client.auth.currentUser?.id;
     if (userId == null) return;
 
-    _channel = Supabase.instance.client
-        .channel('scanner_status_global')
-        .onPostgresChanges(
-          event: PostgresChangeEvent.insert,
-          schema: 'public',
-          table: 'barcode_scans',
-          callback: (payload) {
-            final recordUserId = payload.newRecord['user_id'] as String?;
-            
-            if (recordUserId != userId) return;
+    // Use a unique channel for this user's scanner bridge
+    final channelName = 'scanner_bridge:$userId';
+    _channel = client.channel(channelName);
 
-            final barcode = payload.newRecord['barcode'] as String?;
-            final productName = payload.newRecord['product_name'] as String?;
+    // 1. Listen for Scans with a server-side filter for performance and reliability
+    _channel!.onPostgresChanges(
+      event: PostgresChangeEvent.insert,
+      schema: 'public',
+      table: 'barcode_scans',
+      filter: PostgresChangeFilter(
+        type: PostgresChangeFilterType.eq,
+        column: 'user_id',
+        value: userId,
+      ),
+      callback: (payload) {
+        final barcode = payload.newRecord['barcode'] as String?;
+        final productName = payload.newRecord['product_name'] as String?;
+        final status = payload.newRecord['status'] as String?;
 
-            state = ScannerStatus(
-              isActive: true,
-              lastBarcode: barcode,
-              lastProductName: payload.newRecord['status'] == 'audit_view' ? 'AUDIT_MODE' : productName,
-              lastScanMode: payload.newRecord['status'] == 'audit_view' ? 'audit' : 'pos',
-              lastScanTime: DateTime.now(),
-            );
-
-            _inactivityTimer?.cancel();
-            _inactivityTimer = Timer(const Duration(seconds: 30), () {
-              state = state.copyWith(isActive: false);
-            });
-          },
+        state = ScannerStatus(
+          isActive: true, // Activity confirms it's definitely active
+          lastBarcode: barcode,
+          lastProductName: status == 'audit_view' ? 'AUDIT_MODE' : productName,
+          lastScanMode: status == 'audit_view' ? 'audit' : 'pos',
+          lastScanTime: DateTime.now(),
         );
 
-    _channel?.subscribe((status, [error]) {
+        // Keep active status for 60s after a scan
+        _inactivityTimer?.cancel();
+        _inactivityTimer = Timer(const Duration(seconds: 60), () {
+          // Check if presence still says someone is there before setting false
+          final presence = _channel?.presenceState();
+          if (presence == null || presence.isEmpty) {
+            state = state.copyWith(isActive: false);
+          }
+        });
+      },
+    );
+
+    // 2. Use Presence to know when the scanner app is actually open
+    _channel!.onPresenceSync((_) {
+      final presenceState = _channel!.presenceState();
+      // If there's more than one member in the channel, it means another device is linked
+      // (The PC itself might be one, or we just count all members)
+      final hasOtherDevices = presenceState.length > 1;
+      
+      if (state.isActive != hasOtherDevices) {
+        state = state.copyWith(isActive: hasOtherDevices);
+      }
+    }).subscribe((status, [error]) {
       if (status == RealtimeSubscribeStatus.subscribed) {
-        // We don't set isActive to true here because 'subscribed' only means 
-        // the PC is listening, not that a phone is actively scanning.
-        debugPrint('Scanner bridge: Subscribed and listening...');
-      } else if (status == RealtimeSubscribeStatus.closed || status == RealtimeSubscribeStatus.channelError) {
-        state = state.copyWith(isActive: false);
+        debugPrint('Scanner bridge: Subscribed to $channelName');
+        // Track the PC itself so the phone can see we are listening
+        _channel!.track({'device': 'terminal', 'at': DateTime.now().toIso8601String()});
+      } else if (error != null) {
+        debugPrint('Scanner bridge subscription error: $error');
       }
     });
   }

@@ -32,11 +32,36 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
   RealtimeChannel? _feedbackSubscription;
   final AudioPlayer _audioPlayer = AudioPlayer();
   int _currentScanQty = 1;
+  RealtimeChannel? _presenceChannel;
+  bool _isConnected = false;
 
   @override
   void initState() {
     super.initState();
     _setupFeedbackListener();
+    _setupPresence();
+  }
+
+  void _setupPresence() {
+    final client = Supabase.instance.client;
+    final userId = client.auth.currentUser?.id;
+    if (userId == null) return;
+
+    final channelName = 'scanner_bridge:$userId';
+    _presenceChannel = client.channel(channelName);
+
+    _presenceChannel!.subscribe((status, [error]) {
+      if (status == RealtimeSubscribeStatus.subscribed) {
+        setState(() => _isConnected = true);
+        _presenceChannel!.track({
+          'device': 'mobile_scanner',
+          'at': DateTime.now().toIso8601String(),
+          'mode': _auditMode ? 'audit' : 'pos',
+        });
+      } else {
+        setState(() => _isConnected = false);
+      }
+    });
   }
 
   void _setupFeedbackListener() {
@@ -176,6 +201,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
   void dispose() {
     _controller.dispose();
     _feedbackSubscription?.unsubscribe();
+    _presenceChannel?.unsubscribe();
     _audioPlayer.dispose();
     super.dispose();
   }
@@ -299,8 +325,27 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
                 Switch.adaptive(
                   value: _auditMode,
                   activeColor: AppTheme.primary,
-                  onChanged: (v) => setState(() => _auditMode = v),
+                  onChanged: (v) {
+                    setState(() => _auditMode = v);
+                    // Update presence with new mode
+                    _presenceChannel?.track({
+                      'device': 'mobile_scanner',
+                      'at': DateTime.now().toIso8601String(),
+                      'mode': v ? 'audit' : 'pos',
+                    });
+                  },
                 ),
+              ],
+            ),
+          ),
+          Container(
+            margin: const EdgeInsets.only(right: 8),
+            width: 12, height: 12,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: _isConnected ? AppTheme.primary : AppTheme.error,
+              boxShadow: [
+                if (_isConnected) BoxShadow(color: AppTheme.primary.withOpacity(0.5), blurRadius: 8),
               ],
             ),
           ),
@@ -362,13 +407,24 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
                 Expanded(child: _buildQuantitySelector()),
                 const SizedBox(width: 8),
                 _QuickQtyButton(
-                  label: 'Eliminar', 
+                  label: 'Borrar', 
                   color: AppTheme.error, 
                   onTap: () {
                     _updateRemoteQty(-_currentScanQty);
                     setState(() => _lastProduct = null);
                   },
                 ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _buildQuickAction('+5', 5),
+                const SizedBox(width: 12),
+                _buildQuickAction('+10', 10),
+                const SizedBox(width: 12),
+                _buildQuickAction('+20', 20),
               ],
             ),
           ],
@@ -449,13 +505,14 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
 
   Widget _buildQuantitySelector() {
     return Container(
+      height: 56,
       decoration: BoxDecoration(
         color: AppTheme.primary.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(15),
+        borderRadius: BorderRadius.circular(18),
         border: Border.all(color: AppTheme.primary.withOpacity(0.1)),
       ),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           _QtyControl(
             icon: Icons.remove_rounded,
@@ -466,11 +523,21 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
               }
             },
           ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: Text(
-              '$_currentScanQty',
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: AppTheme.primary),
+          Expanded(
+            child: InkWell(
+              onTap: _showManualQuantityDialog,
+              borderRadius: BorderRadius.circular(10),
+              child: Center(
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 200),
+                  transitionBuilder: (child, animation) => ScaleTransition(scale: animation, child: child),
+                  child: Text(
+                    '$_currentScanQty',
+                    key: ValueKey(_currentScanQty),
+                    style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: AppTheme.primary),
+                  ),
+                ),
+              ),
             ),
           ),
           _QtyControl(
@@ -480,6 +547,64 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
               _updateRemoteQty(1);
             },
             isPrimary: true,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuickAction(String label, int delta) {
+    return InkWell(
+      onTap: () {
+        setState(() => _currentScanQty += delta);
+        _updateRemoteQty(delta);
+      },
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: AppTheme.primary.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppTheme.primary.withOpacity(0.2)),
+        ),
+        child: Text(
+          label,
+          style: const TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold, fontSize: 12),
+        ),
+      ),
+    );
+  }
+
+  void _showManualQuantityDialog() {
+    final controller = TextEditingController(text: _currentScanQty.toString());
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Ingresar Cantidad'),
+        content: TextField(
+          controller: controller,
+          keyboardType: TextInputType.number,
+          autofocus: true,
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          decoration: const InputDecoration(
+            hintText: '0',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('CANCELAR')),
+          FilledButton(
+            onPressed: () {
+              final val = int.tryParse(controller.text);
+              if (val != null && val > 0) {
+                final diff = val - _currentScanQty;
+                setState(() => _currentScanQty = val);
+                _updateRemoteQty(diff);
+                Navigator.pop(context);
+              }
+            },
+            child: const Text('ACEPTAR'),
           ),
         ],
       ),
