@@ -99,7 +99,7 @@ class ScannerStatusNotifier extends Notifier<ScannerStatus> {
         final barcode = payload.newRecord['barcode'] as String?;
         final productName = payload.newRecord['product_name'] as String?;
         final status = payload.newRecord['status'] as String?;
-        final delta = payload.newRecord['qty'] as int? ?? 1;
+        final delta = payload.newRecord['quantity'] as int? ?? 1;
 
         state = ScannerStatus(
           isActive: true, // Activity confirms it's definitely active

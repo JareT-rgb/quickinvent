@@ -181,16 +181,14 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> with SingleTicker
         });
         
         if (!_auditMode && userId != null) {
-          // En modo POS, enviamos tantos registros como cantidad se haya seleccionado
-          // ya que la tabla barcode_scans no tiene columna de cantidad
-          for (int i = 0; i < _currentScanQty; i++) {
-            await Supabase.instance.client.from('barcode_scans').insert({
-              'barcode': _detectedCode,
-              'user_id': userId,
-              'processed': false,
-              'status': 'pending',
-            });
-          }
+          // Enviamos un solo registro con la cantidad correcta
+          await Supabase.instance.client.from('barcode_scans').insert({
+            'barcode': _detectedCode,
+            'user_id': userId,
+            'quantity': _currentScanQty,
+            'processed': false,
+            'status': 'pending',
+          });
         }
         _provideFeedback('success');
       } else {
@@ -248,11 +246,8 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> with SingleTicker
           // Product Info Card (Bottom)
           if (_lastProduct != null)
             Positioned(
-              bottom: 40, left: 16, right: 16,
-              child: FadeInUp(
-                duration: const Duration(milliseconds: 500),
-                child: _buildProductCard(),
-              ),
+              bottom: 20, left: 16, right: 16,
+              child: _buildProductCard(),
             ),
           
           if (_isProcessing && _lastProduct == null)
@@ -277,7 +272,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> with SingleTicker
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const SizedBox(height: 320),
+          const SizedBox(height: 240),
           GestureDetector(
             onTap: _processDetectedCode,
             child: _buildScanPill(),
@@ -429,120 +424,140 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> with SingleTicker
     final isError = status == 'not_found' || status == 'out_of_stock';
     final product = _lastProduct!['full_product'] as Product?;
     
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: AppTheme.glassDecoration(isDark: false).copyWith(
-        borderRadius: BorderRadius.circular(32),
-        color: Colors.white.withOpacity(0.95),
-        boxShadow: AppTheme.deepShadow,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
+    return FadeInUp(
+      duration: const Duration(milliseconds: 300),
+      child: Stack(
+        clipBehavior: Clip.none,
         children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: (isError ? AppTheme.error : AppTheme.primary).withOpacity(0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  isError ? Icons.warning_rounded : Icons.check_circle_rounded, 
-                  color: isError ? AppTheme.error : AppTheme.primary,
-                  size: 28,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: AppTheme.glassDecoration(isDark: false).copyWith(
+              borderRadius: BorderRadius.circular(28),
+              color: Colors.white.withOpacity(0.98),
+              boxShadow: AppTheme.deepShadow,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
                   children: [
-                    Text(
-                      _lastProduct!['name'] ?? 'Código: ${_lastProduct!['barcode']}', 
-                      style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: AppTheme.textPrimary, letterSpacing: -0.5),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: (isError ? AppTheme.error : AppTheme.primary).withOpacity(0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        isError ? Icons.warning_rounded : Icons.check_circle_rounded, 
+                        color: isError ? AppTheme.error : AppTheme.primary,
+                        size: 24,
+                      ),
                     ),
-                    const SizedBox(height: 4),
-                    if (!isError)
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(color: AppTheme.primary.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
-                        child: Text(
-                          'Stock: ${_lastProduct!['stock']} • \$${_lastProduct!['price']}', 
-                          style: const TextStyle(color: AppTheme.primary, fontSize: 12, fontWeight: FontWeight.w800),
-                        ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _lastProduct!['name'] ?? 'Código: ${_lastProduct!['barcode']}', 
+                            style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 17, color: AppTheme.textPrimary, letterSpacing: -0.5),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 4),
+                          if (!isError)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(color: AppTheme.primary.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+                              child: Text(
+                                'Stock: ${_lastProduct!['stock']} • \$${_lastProduct!['price']}', 
+                                style: const TextStyle(color: AppTheme.primary, fontSize: 11, fontWeight: FontWeight.w800),
+                              ),
+                            ),
+                          if (isError)
+                            Text(
+                              status == 'not_found' ? 'No registrado' : 'Sin existencias', 
+                              style: const TextStyle(color: AppTheme.error, fontSize: 12, fontWeight: FontWeight.w700),
+                            ),
+                        ],
                       ),
-                    if (isError)
-                      Text(
-                        status == 'not_found' ? 'Producto no registrado' : 'Sin existencias disponibles', 
-                        style: const TextStyle(color: AppTheme.error, fontSize: 13, fontWeight: FontWeight.w700),
-                      ),
+                    ),
+                    const SizedBox(width: 30), // Space for close button
                   ],
                 ),
-              ),
-              if (_auditMode && !isError)
-                _CircleButton(
-                  icon: Icons.close_rounded, 
-                  onTap: () => setState(() {
-                    _lastProduct = null;
-                    _detectedCode = null;
-                  }),
-                  isSmall: true,
-                ),
-            ],
-          ),
-          if (!isError && !_auditMode) ...[
-            const SizedBox(height: 24),
-            Row(
-              children: [
-                Expanded(child: _buildQuantitySelector()),
-                const SizedBox(width: 12),
-                _ActionButton(
-                  icon: Icons.delete_outline_rounded,
-                  label: 'BORRAR',
-                  color: AppTheme.error,
-                  onTap: () {
-                    _updateRemoteQty(-999);
-                    setState(() {
-                      _lastProduct = null;
-                      _detectedCode = null;
-                    });
-                  },
-                ),
+                if (!isError && !_auditMode) ...[
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(child: _buildQuantitySelector()),
+                      const SizedBox(width: 10),
+                      _ActionButton(
+                        icon: Icons.delete_outline_rounded,
+                        label: 'BORRAR',
+                        color: AppTheme.error,
+                        onTap: () {
+                          _updateRemoteQty(-999);
+                          setState(() {
+                            _lastProduct = null;
+                            _detectedCode = null;
+                          });
+                        },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        _buildQuickAction('+5', 5),
+                        const SizedBox(width: 8),
+                        _buildQuickAction('+10', 10),
+                        const SizedBox(width: 8),
+                        _buildQuickAction('+20', 20),
+                        const SizedBox(width: 8),
+                        _buildQuickAction('+50', 50),
+                      ],
+                    ),
+                  ),
+                ],
+                if (_auditMode && !isError && product != null) ...[
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () => _openEditDialog(product),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.primary,
+                        padding: const EdgeInsets.symmetric(vertical: 18),
+                      ),
+                      icon: const Icon(Icons.edit_rounded, size: 20),
+                      label: const Text('EDITAR PRODUCTO', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14)),
+                    ),
+                  ),
+                ],
               ],
             ),
-            const SizedBox(height: 16),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  _buildQuickAction('+5', 5),
-                  const SizedBox(width: 10),
-                  _buildQuickAction('+10', 10),
-                  const SizedBox(width: 10),
-                  _buildQuickAction('+20', 20),
-                  const SizedBox(width: 10),
-                  _buildQuickAction('+50', 50),
-                ],
-              ),
-            ),
-          ],
-          if (_auditMode && !isError && product != null) ...[
-            const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: () => _openEditDialog(product),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.primary,
-                  padding: const EdgeInsets.symmetric(vertical: 18),
+          ),
+          // Botón Cerrar (X)
+          Positioned(
+            top: 10,
+            right: 10,
+            child: GestureDetector(
+              onTap: () => setState(() {
+                _lastProduct = null;
+                _detectedCode = null;
+              }),
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.05),
+                  shape: BoxShape.circle,
                 ),
-                icon: const Icon(Icons.edit_rounded, size: 20),
-                label: const Text('EDITAR PRODUCTO', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14)),
+                child: const Icon(Icons.close_rounded, size: 20, color: Colors.black54),
               ),
             ),
-          ],
+          ),
         ],
       ),
     );
@@ -578,15 +593,14 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> with SingleTicker
     if (userId == null || _lastProduct == null) return;
     
     SafeHaptic.selectionClick();
-    // Enviamos múltiples registros si delta > 1 para compensar la falta de columna 'quantity'
-    for (int i = 0; i < delta; i++) {
-      await Supabase.instance.client.from('barcode_scans').insert({
-        'barcode': _lastProduct!['barcode'],
-        'user_id': userId,
-        'processed': false,
-        'status': 'pending', // Esencial para que el POS lo procese
-      });
-    }
+    // Enviamos el registro con la cantidad seleccionada
+    await Supabase.instance.client.from('barcode_scans').insert({
+      'barcode': _lastProduct!['barcode'],
+      'user_id': userId,
+      'quantity': delta,
+      'processed': false,
+      'status': 'pending', // Esencial para que el POS lo procese
+    });
   }
 
   Widget _buildScannerOverlay() {
