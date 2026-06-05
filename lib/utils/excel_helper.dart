@@ -20,7 +20,7 @@ class ExcelHelper {
 
         print('Excel generado en Isolate, procediendo a guardar...');
 
-        if (!kIsWeb && Platform.isWindows) {
+        if (!kIsWeb && (Platform.isWindows || Platform.isMacOS || Platform.isLinux)) {
           try {
             final FileSaveLocation? result = await getSaveLocation(
               suggestedName: fileName,
@@ -104,7 +104,7 @@ class ExcelHelper {
       final data = Uint8List.fromList(bytes);
       final fileName = 'Ventas_QuickInvent_${DateTime.now().millisecondsSinceEpoch}.xlsx';
 
-      if (!kIsWeb && Platform.isWindows) {
+      if (!kIsWeb && (Platform.isWindows || Platform.isMacOS || Platform.isLinux)) {
         try {
           final FileSaveLocation? result = await getSaveLocation(
             suggestedName: fileName,
