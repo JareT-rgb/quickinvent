@@ -78,6 +78,12 @@ dependencies:
   qr_flutter: ^4.1.0
   audioplayers: ^6.6.0
   video_player: ^2.11.1
+  google_generative_ai: ^0.4.6
+  flutter_dotenv: ^5.2.1
+  flutter_markdown: ^0.7.7+1
+  http: ^1.6.0
+  flutter_tts: ^4.2.5
+  speech_to_text: ^7.4.0
 
 dev_dependencies:
   flutter_test:
@@ -102,6 +108,7 @@ flutter:
   assets:
     - assets/logo.png
     - assets/logo_splash.png
+    - .env
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

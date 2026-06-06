@@ -97,12 +97,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           Positioned(
             top: -100,
             right: -100,
-            child: CircleAvatar(radius: 200, backgroundColor: Colors.white.withOpacity(0.05)),
+            child: CircleAvatar(radius: 200, backgroundColor: Colors.white.withValues(alpha: 0.05)),
           ),
           Positioned(
             bottom: -150,
             left: -150,
-            child: CircleAvatar(radius: 300, backgroundColor: Colors.white.withOpacity(0.03)),
+            child: CircleAvatar(radius: 300, backgroundColor: Colors.white.withValues(alpha: 0.03)),
           ),
           Center(
             child: Padding(
@@ -117,10 +117,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(24),
-                        border: Border.all(color: Colors.white.withOpacity(0.2), width: 2),
+                        border: Border.all(color: Colors.white.withValues(alpha: 0.2), width: 2),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.15),
+                            color: Colors.black.withValues(alpha: 0.15),
                             blurRadius: 20,
                             offset: const Offset(0, 10),
                           ),
@@ -135,7 +135,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             width: 100,
                             height: 100,
                             fit: BoxFit.contain,
-                            errorBuilder: (_, __, ___) => const Icon(Icons.shopping_cart_rounded, size: 60, color: AppTheme.primary),
+                            errorBuilder: (_, _, _) => const Icon(Icons.shopping_cart_rounded, size: 60, color: AppTheme.primary),
                           ),
                         ),
                       ),
@@ -152,7 +152,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     delay: const Duration(milliseconds: 400),
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      decoration: BoxDecoration(color: Colors.white.withOpacity(0.15), borderRadius: BorderRadius.circular(10)),
+                      decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(10)),
                       child: const Text('QUICKINVENT V2.0', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 12, letterSpacing: 3)),
                     ),
                   ),
@@ -207,7 +207,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     backgroundColor: AppTheme.primary,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
                     elevation: 8,
-                    shadowColor: AppTheme.primary.withOpacity(0.4),
+                    shadowColor: AppTheme.primary.withValues(alpha: 0.4),
                   ),
                   child: _isLoading
                       ? const CircularProgressIndicator(color: Colors.white)

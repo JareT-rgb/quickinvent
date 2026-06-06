@@ -1,5 +1,7 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../repositories/sales_repository.dart';
+import '../providers/products_provider.dart';
 import '../models/report_filter.dart';
 export '../models/report_filter.dart';
 
@@ -123,8 +125,8 @@ final reportDataProvider = FutureProvider<ReportData>((ref) async {
       averageTicket: count > 0 ? grossRevenue / count : 0,
     );
   } catch (e, stack) {
-    print('Error in reportDataProvider: $e');
-    print(stack);
+    debugPrint('Error in reportDataProvider: $e');
+    debugPrint(stack.toString());
     return ReportData(
       stats: {'totalRevenue': 0.0, 'totalCount': 0},
       monthly: [],
@@ -145,6 +147,8 @@ final reportDataProvider = FutureProvider<ReportData>((ref) async {
   }
 });
 
-final deadStockProvider = FutureProvider.family<List<Map<String, dynamic>>, List<String>>((ref, productNames) async {
+final deadStockProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async {
+  final products = await ref.watch(productsProvider.future);
+  final productNames = products.map((p) => p.name).toList();
   return ref.read(salesRepositoryProvider).getDeadStock(productNames);
 });

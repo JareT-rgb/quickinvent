@@ -82,13 +82,13 @@ class ProductImage extends StatelessWidget {
       width: w,
       height: h,
       decoration: BoxDecoration(
-        color: isError ? AppTheme.error.withOpacity(0.05) : AppTheme.primary.withOpacity(0.08),
+        color: isError ? AppTheme.error.withValues(alpha: 0.05) : AppTheme.primary.withValues(alpha: 0.08),
         borderRadius: radius,
       ),
       child: Icon(
         isError ? Icons.broken_image_outlined : placeholderIcon,
         size: iconSize.clamp(12.0, 48.0).toDouble(),
-        color: (isError ? AppTheme.error : AppTheme.primary).withOpacity(0.4),
+        color: (isError ? AppTheme.error : AppTheme.primary).withValues(alpha: 0.4),
       ),
     );
   }

@@ -54,24 +54,24 @@ class SkeletonLoader extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: AppTheme.radiusMedium,
-        border: Border.all(color: AppTheme.divider.withOpacity(0.3)),
+        border: Border.all(color: AppTheme.divider.withValues(alpha: 0.3)),
       ),
-      child: Row(
+      child: const Row(
         children: [
-          const SkeletonLoader(width: 60, height: 60),
-          const SizedBox(width: 16),
+          SkeletonLoader(width: 60, height: 60),
+          SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 SkeletonLoader(width: 150, height: 16),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 SkeletonLoader(width: 100, height: 12),
               ],
             ),
           ),
-          const SizedBox(width: 12),
-          const SkeletonLoader(width: 60, height: 20),
+          SizedBox(width: 12),
+          SkeletonLoader(width: 60, height: 20),
         ],
       ),
     );
@@ -81,17 +81,17 @@ class SkeletonLoader extends StatelessWidget {
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(borderRadius: AppTheme.radiusMedium),
-      child: Column(
+      child: const Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Expanded(child: SkeletonLoader(width: double.infinity, height: double.infinity)),
+          Expanded(child: SkeletonLoader(width: double.infinity, height: double.infinity)),
           Padding(
-            padding: const EdgeInsets.all(10),
+            padding: EdgeInsets.all(10),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 SkeletonLoader(width: 80, height: 12),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 SkeletonLoader(width: 40, height: 14),
               ],
             ),

@@ -322,11 +322,11 @@ class _ReturnsScreenState extends ConsumerState<ReturnsScreen> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(Icons.touch_app_outlined, size: 72,
-                              color: cs.onSurfaceVariant.withOpacity(0.3)),
+                              color: cs.onSurfaceVariant.withValues(alpha: 0.3)),
                             const SizedBox(height: 16),
                             Text('Selecciona una venta de la lista',
                               style: theme.textTheme.titleMedium?.copyWith(
-                                color: cs.onSurfaceVariant.withOpacity(0.6),
+                                color: cs.onSurfaceVariant.withValues(alpha: 0.6),
                               )),
                           ],
                         ),
@@ -335,7 +335,7 @@ class _ReturnsScreenState extends ConsumerState<ReturnsScreen> {
                         elevation: 0,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(20),
-                          side: BorderSide(color: cs.outlineVariant.withOpacity(0.5)),
+                          side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.5)),
                         ),
                         child: _buildReturnDetailContent(),
                       ),
@@ -360,7 +360,7 @@ class _ReturnsScreenState extends ConsumerState<ReturnsScreen> {
               )
             : null,
         filled: true,
-        fillColor: cs.surfaceContainerHighest.withOpacity(0.5),
+        fillColor: cs.surfaceContainerHighest.withValues(alpha: 0.5),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
         contentPadding: const EdgeInsets.symmetric(vertical: 12),
       ),
@@ -374,7 +374,7 @@ class _ReturnsScreenState extends ConsumerState<ReturnsScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.receipt_long_outlined, size: 56, color: cs.onSurfaceVariant.withOpacity(0.4)),
+            Icon(Icons.receipt_long_outlined, size: 56, color: cs.onSurfaceVariant.withValues(alpha: 0.4)),
             const SizedBox(height: 12),
             Text('No se encontraron ventas', style: TextStyle(color: cs.onSurfaceVariant)),
           ],
@@ -392,10 +392,10 @@ class _ReturnsScreenState extends ConsumerState<ReturnsScreen> {
           return Card(
             margin: const EdgeInsets.only(bottom: 8),
             elevation: isSelected ? 3 : 0,
-            color: isSelected ? cs.primaryContainer.withOpacity(0.5) : cs.surface,
+            color: isSelected ? cs.primaryContainer.withValues(alpha: 0.5) : cs.surface,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(14),
-              side: BorderSide(color: isSelected ? cs.primary : cs.outlineVariant.withOpacity(0.5), width: isSelected ? 2 : 1),
+              side: BorderSide(color: isSelected ? cs.primary : cs.outlineVariant.withValues(alpha: 0.5), width: isSelected ? 2 : 1),
             ),
             child: ListTile(
               contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -438,7 +438,7 @@ class _ReturnsScreenState extends ConsumerState<ReturnsScreen> {
               child: Container(
                 margin: const EdgeInsets.only(bottom: 12),
                 width: 40, height: 4,
-                decoration: BoxDecoration(color: cs.onSurfaceVariant.withOpacity(0.3), borderRadius: BorderRadius.circular(2)),
+                decoration: BoxDecoration(color: cs.onSurfaceVariant.withValues(alpha: 0.3), borderRadius: BorderRadius.circular(2)),
               ),
             ),
           ],
@@ -499,10 +499,10 @@ class _ReturnsScreenState extends ConsumerState<ReturnsScreen> {
                         margin: const EdgeInsets.only(bottom: 8),
                         decoration: BoxDecoration(
                           color: isFullyReturned 
-                              ? Colors.grey.withOpacity(0.05)
-                              : isChecked ? cs.primaryContainer.withOpacity(0.3) : cs.surfaceContainerHighest.withOpacity(0.3),
+                              ? Colors.grey.withValues(alpha: 0.05)
+                              : isChecked ? cs.primaryContainer.withValues(alpha: 0.3) : cs.surfaceContainerHighest.withValues(alpha: 0.3),
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: isChecked ? cs.primary.withOpacity(0.5) : Colors.transparent),
+                          border: Border.all(color: isChecked ? cs.primary.withValues(alpha: 0.5) : Colors.transparent),
                         ),
                         child: CheckboxListTile(
                           enabled: !isFullyReturned,
@@ -549,7 +549,7 @@ class _ReturnsScreenState extends ConsumerState<ReturnsScreen> {
                               Text(_currencyFormat.format(item.priceAtSale * (isChecked ? (_returnQuantities[item.productName] ?? 1) : (item.quantity - item.returnedQuantity))), 
                                 style: TextStyle(fontWeight: FontWeight.bold, color: isFullyReturned ? AppTheme.textMuted : cs.primary)),
                               if (isChecked && !isFullyReturned)
-                                Text('Reembolso', style: TextStyle(fontSize: 10, color: cs.primary.withOpacity(0.7))),
+                                Text('Reembolso', style: TextStyle(fontSize: 10, color: cs.primary.withValues(alpha: 0.7))),
                             ],
                           ),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -565,7 +565,7 @@ class _ReturnsScreenState extends ConsumerState<ReturnsScreen> {
               labelText: 'Razón de devolución',
               prefixIcon: const Icon(Icons.help_outline),
               filled: true,
-              fillColor: cs.surfaceContainerHighest.withOpacity(0.4),
+              fillColor: cs.surfaceContainerHighest.withValues(alpha: 0.4),
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
             ),
             items: _reasons.map((r) => DropdownMenuItem(value: r, child: Text(r))).toList(),
@@ -599,7 +599,7 @@ class _ReturnsScreenState extends ConsumerState<ReturnsScreen> {
       child: Container(
         padding: const EdgeInsets.all(4),
         decoration: BoxDecoration(
-          color: cs.primary.withOpacity(0.1),
+          color: cs.primary.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Icon(icon, size: 18, color: cs.primary),

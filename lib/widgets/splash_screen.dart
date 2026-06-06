@@ -56,7 +56,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                   shape: BoxShape.circle,
                   gradient: RadialGradient(
                     colors: [
-                      AppTheme.primary.withOpacity(0.05),
+                      AppTheme.primary.withValues(alpha: 0.05),
                       Colors.transparent,
                     ],
                   ),
@@ -86,10 +86,10 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(50),
-                        border: Border.all(color: AppTheme.primary.withOpacity(0.1), width: 6),
+                        border: Border.all(color: AppTheme.primary.withValues(alpha: 0.1), width: 6),
                         boxShadow: [
                           BoxShadow(
-                            color: AppTheme.primary.withOpacity(0.15),
+                            color: AppTheme.primary.withValues(alpha: 0.15),
                             blurRadius: 60,
                             spreadRadius: 10,
                           ),
@@ -144,7 +144,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
                           letterSpacing: 3,
-                          color: AppTheme.primary.withOpacity(0.8),
+                          color: AppTheme.primary.withValues(alpha: 0.8),
                         ),
                       ),
                     ],
@@ -168,7 +168,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                   child: CircularProgressIndicator(
                     strokeWidth: 2,
                     valueColor: AlwaysStoppedAnimation<Color>(
-                      AppTheme.primary.withOpacity(0.5),
+                      AppTheme.primary.withValues(alpha: 0.5),
                     ),
                   ),
                 ),

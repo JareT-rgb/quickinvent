@@ -11,7 +11,8 @@ import 'package:printing/printing.dart';
 import 'package:animate_do/animate_do.dart';
 import '../repositories/sales_repository.dart';
 import '../providers/reports_provider.dart';
-import '../models/report_filter.dart';
+import '../services/gemini_service.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import 'dead_stock_report_screen.dart';
 import '../providers/products_provider.dart';
 import '../providers/categories_provider.dart';
@@ -86,12 +87,12 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                         _buildSectionHeader('Análisis de Stock Crítico', Icons.inventory_2_rounded),
                         FadeInUp(
                           duration: const Duration(milliseconds: 300),
-                          child: DeadStockReport(productNames: products.map((p) => p.name).toList())
+                          child: DeadStockReport(products: products)
                         ),
                         const SizedBox(height: 40),
 
                         _buildSectionHeader('Predicciones Inteligentes (IA)', Icons.psychology_rounded),
-                        _buildAIPredictions(report, isDark),
+                        _AIInsightsCard(report: report, isDark: isDark),
                         const SizedBox(height: 80),
                       ]),
                     ),
@@ -115,10 +116,10 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
           children: [
             Expanded(
               child: FadeInLeft(
-                child: Column(
+                child: const Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       'Análisis de Negocio', 
                       style: TextStyle(fontSize: 32, fontWeight: FontWeight.w900, letterSpacing: -1.5),
                     ),
@@ -154,7 +155,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
       icon: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
+          color: color.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(16),
         ),
         child: Icon(icon, color: color, size: 20),
@@ -167,12 +168,13 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     return PopupMenuButton<String>(
       icon: Container(
         padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(color: AppTheme.primary.withOpacity(0.1), borderRadius: BorderRadius.circular(14)),
+        decoration: BoxDecoration(color: AppTheme.primary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(14)),
         child: const Icon(Icons.ios_share_rounded, color: AppTheme.primary, size: 22),
       ),
       onSelected: (value) async {
-        if (value == 'inventory') await ExcelHelper.exportProducts(products.cast());
-        else if (value == 'sales') {
+        if (value == 'inventory') {
+          await ExcelHelper.exportProducts(products.cast());
+        } else if (value == 'sales') {
           final allSales = await ref.read(salesRepositoryProvider).fetchAllSales();
           await ExcelHelper.exportSales(allSales);
         } else if (value == 'pdf') {
@@ -207,7 +209,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
                 pw.Text('QUICKINVENT PREMIUM', style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold, color: PdfColors.teal700)),
-                pw.Text('Reporte Ejecutivo de Negocio', style: pw.TextStyle(fontSize: 14, color: PdfColors.grey700)),
+                pw.Text('Reporte Ejecutivo de Negocio', style: const pw.TextStyle(fontSize: 14, color: PdfColors.grey700)),
               ],
             ),
             pw.Column(
@@ -376,7 +378,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                   onTap: () => ref.read(reportFilterProvider.notifier).updateFilter(ReportFilter()),
                   child: Container(
                     padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(color: AppTheme.error.withOpacity(0.1), shape: BoxShape.circle),
+                    decoration: BoxDecoration(color: AppTheme.error.withValues(alpha: 0.1), shape: BoxShape.circle),
                     child: const Icon(Icons.close_rounded, size: 14, color: AppTheme.error),
                   ),
                 ),
@@ -413,9 +415,9 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                                 label: Text(opt, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600)),
                                 selected: isSelected,
                                 onSelected: (v) => ref.read(reportFilterProvider.notifier).updateFilter(ReportFilter(range: currentFilter.range, categoryId: catId)),
-                                selectedColor: AppTheme.primary.withOpacity(0.15),
+                                selectedColor: AppTheme.primary.withValues(alpha: 0.15),
                                 backgroundColor: Colors.transparent,
-                                side: BorderSide(color: isSelected ? AppTheme.primary.withOpacity(0.4) : Colors.grey.withOpacity(0.1)),
+                                side: BorderSide(color: isSelected ? AppTheme.primary.withValues(alpha: 0.4) : Colors.grey.withValues(alpha: 0.1)),
                                 showCheckmark: false,
                                 visualDensity: VisualDensity.compact,
                                 padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -432,9 +434,9 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                               child: Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                                 decoration: BoxDecoration(
-                                  color: isHiddenSelected ? AppTheme.primary.withOpacity(0.1) : Colors.transparent,
+                                  color: isHiddenSelected ? AppTheme.primary.withValues(alpha: 0.1) : Colors.transparent,
                                   borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(color: isHiddenSelected ? AppTheme.primary.withOpacity(0.5) : Colors.grey.withOpacity(0.2)),
+                                  border: Border.all(color: isHiddenSelected ? AppTheme.primary.withValues(alpha: 0.5) : Colors.grey.withValues(alpha: 0.2)),
                                 ),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
@@ -464,43 +466,6 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     );
   }
 
-  Widget _buildMetricCard(String title, num value, IconData icon, Color color, int index, {String prefix = '', String suffix = ''}) {
-    return FadeInUp(
-      duration: const Duration(milliseconds: 250),
-      delay: Duration(milliseconds: index * 50),
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: AppTheme.radiusMedium,
-          boxShadow: AppTheme.softShadow,
-          border: Border.all(color: AppTheme.divider.withOpacity(0.3)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Icon(icon, color: color, size: 20),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppTheme.textSecondary)),
-                const SizedBox(height: 4),
-                FittedBox(
-                  child: AnimatedCounter(
-                    value: value,
-                    prefix: prefix,
-                    suffix: suffix,
-                    style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, letterSpacing: -1),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
   Widget _buildInteractiveCharts(ReportData report, NumberFormat fmt, bool isDark) {
     final theme = Theme.of(context);
@@ -512,7 +477,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
           color: theme.cardColor,
           borderRadius: AppTheme.radiusLarge,
           boxShadow: AppTheme.softShadow,
-          border: Border.all(color: theme.dividerColor.withOpacity(0.1)),
+          border: Border.all(color: theme.dividerColor.withValues(alpha: 0.1)),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -652,7 +617,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                   backDrawRodData: BackgroundBarChartRodData(
                     show: true,
                     toY: (dailyList.isEmpty ? 10.0 : dailyList.fold(0.0, (max, e) => e.value > max ? e.value : max)) * 1.2,
-                    color: AppTheme.primary.withOpacity(0.05),
+                    color: AppTheme.primary.withValues(alpha: 0.05),
                   ),
                 ),
               ],
@@ -690,7 +655,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
             show: true,
             drawVerticalLine: false,
             horizontalInterval: (dailyList.isEmpty ? 10.0 : dailyList.fold(0.0, (max, entry) => entry.value > max ? entry.value : max)) / 4,
-            getDrawingHorizontalLine: (value) => FlLine(color: theme.dividerColor.withOpacity(0.1), strokeWidth: 1),
+            getDrawingHorizontalLine: (value) => FlLine(color: theme.dividerColor.withValues(alpha: 0.1), strokeWidth: 1),
           ),
           borderData: FlBorderData(show: false),
           barTouchData: BarTouchData(
@@ -731,7 +696,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
             color: theme.cardColor,
             borderRadius: AppTheme.radiusMedium,
             boxShadow: AppTheme.softShadow,
-            border: Border.all(color: theme.dividerColor.withOpacity(0.1)),
+            border: Border.all(color: theme.dividerColor.withValues(alpha: 0.1)),
           ),
           child: Row(
             children: List.generate(24, (i) {
@@ -743,7 +708,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                 child: GestureDetector(
                   onTap: () => setState(() => _selectedHour = isSelected ? -1 : i),
                   child: Tooltip(
-                    message: '${i}:00h - ${fmt.format(val)}',
+                    message: '$i:00h - ${fmt.format(val)}',
                     child: Column(
                       children: [
                         Expanded(
@@ -756,7 +721,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                                   : AppTheme.primary.withValues(alpha: intensity.clamp(0.05, 1.0)),
                               borderRadius: BorderRadius.circular(6),
                               boxShadow: isSelected 
-                                  ? [BoxShadow(color: AppTheme.accent.withOpacity(0.4), blurRadius: 8)] 
+                                  ? [BoxShadow(color: AppTheme.accent.withValues(alpha: 0.4), blurRadius: 8)] 
                                   : null,
                             ),
                           ),
@@ -780,9 +745,9 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 decoration: BoxDecoration(
-                  color: AppTheme.accent.withOpacity(0.1),
+                  color: AppTheme.accent.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppTheme.accent.withOpacity(0.3)),
+                  border: Border.all(color: AppTheme.accent.withValues(alpha: 0.3)),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -790,7 +755,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                     const Icon(Icons.info_outline_rounded, size: 14, color: AppTheme.accent),
                     const SizedBox(width: 8),
                     Text(
-                      'A las ${_selectedHour}:00h las ventas fueron de ${fmt.format(report.hourly[_selectedHour].value)}',
+                      'A las $_selectedHour:00h las ventas fueron de ${fmt.format(report.hourly[_selectedHour].value)}',
                       style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.accent),
                     ),
                   ],
@@ -807,12 +772,12 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     return FadeInUp(
       duration: const Duration(milliseconds: 300),
       child: Container(
-        decoration: BoxDecoration(color: theme.cardColor, borderRadius: AppTheme.radiusMedium, boxShadow: AppTheme.softShadow, border: Border.all(color: theme.dividerColor.withOpacity(0.1))),
+        decoration: BoxDecoration(color: theme.cardColor, borderRadius: AppTheme.radiusMedium, boxShadow: AppTheme.softShadow, border: Border.all(color: theme.dividerColor.withValues(alpha: 0.1))),
         child: ListView.separated(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           itemCount: report.cashCuts.length.clamp(0, 5),
-          separatorBuilder: (_, __) => const Divider(indent: 20, endIndent: 20, height: 1),
+          separatorBuilder: (_, _) => const Divider(indent: 20, endIndent: 20, height: 1),
           itemBuilder: (context, index) {
             final cut = report.cashCuts[index];
             final diff = (cut['difference'] as num).toDouble();
@@ -820,7 +785,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
             return ListTile(
               contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
               leading: Icon(isBalanced ? Icons.check_circle_rounded : Icons.warning_rounded, color: isBalanced ? AppTheme.success : AppTheme.error),
-              title: Text('Corte de Caja', style: const TextStyle(fontWeight: FontWeight.w800)),
+              title: const Text('Corte de Caja', style: TextStyle(fontWeight: FontWeight.w800)),
               subtitle: Text(DateFormat('dd/MM HH:mm').format(DateTime.parse(cut['created_at'])), style: const TextStyle(fontSize: 12)),
               trailing: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -844,7 +809,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     
     return Container(
       padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(color: theme.cardColor, borderRadius: AppTheme.radiusMedium, boxShadow: AppTheme.softShadow, border: Border.all(color: theme.dividerColor.withOpacity(0.1))),
+      decoration: BoxDecoration(color: theme.cardColor, borderRadius: AppTheme.radiusMedium, boxShadow: AppTheme.softShadow, border: Border.all(color: theme.dividerColor.withValues(alpha: 0.1))),
       child: Column(
         children: topProducts.map((p) => Padding(
           padding: const EdgeInsets.only(bottom: 16),
@@ -863,7 +828,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                 borderRadius: BorderRadius.circular(4),
                 child: LinearProgressIndicator(
                   value: 0.8 - (topProducts.indexOf(p) * 0.2),
-                  backgroundColor: AppTheme.primary.withOpacity(0.1),
+                  backgroundColor: AppTheme.primary.withValues(alpha: 0.1),
                   color: AppTheme.primary,
                   minHeight: 8,
                 ),
@@ -871,42 +836,6 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
             ],
           ),
         )).toList(),
-      ),
-    );
-  }
-
-  Widget _buildAIPredictions(ReportData report, bool isDark) {
-    final theme = Theme.of(context);
-    final avgDaily = report.stats['totalRevenue'] / (report.stats['totalCount'] > 0 ? 30 : 1);
-    final estimatedNextMonth = avgDaily * 30 * 1.05; 
-
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [AppTheme.primary, AppTheme.primary.withOpacity(0.8)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: AppTheme.radiusMedium,
-        boxShadow: AppTheme.softShadow,
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.auto_awesome_rounded, color: Colors.white, size: 40),
-          const SizedBox(width: 20),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('Venta Estimada (Próximo Mes)', style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.bold)),
-                Text(NumberFormat.currency(locale: 'es_MX', symbol: '\$').format(estimatedNextMonth), style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w900)),
-                const SizedBox(height: 4),
-                const Text('Basado en tu tendencia actual y crecimiento del 5%.', style: TextStyle(color: Colors.white60, fontSize: 10)),
-              ],
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -934,64 +863,6 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   }
 }
 
-class _FilterChip extends StatelessWidget {
-  final String label;
-  final bool isSelected;
-  final VoidCallback onTap;
-  final IconData? icon;
-
-  const _FilterChip({
-    required this.label,
-    required this.isSelected,
-    required this.onTap,
-    this.icon,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
-      margin: const EdgeInsets.only(right: 8),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(14),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: BoxDecoration(
-              color: isSelected ? AppTheme.primary : theme.cardColor.withOpacity(0.5),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color: isSelected ? AppTheme.primary : theme.dividerColor.withOpacity(0.1),
-                width: 1.5,
-              ),
-              boxShadow: isSelected ? [BoxShadow(color: AppTheme.primary.withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 4))] : null,
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (icon != null) ...[
-                  Icon(icon, size: 16, color: isSelected ? Colors.white : AppTheme.primary),
-                  const SizedBox(width: 8),
-                ],
-                Text(
-                  label,
-                  style: TextStyle(
-                    color: isSelected ? Colors.white : theme.textTheme.bodyMedium?.color,
-                    fontSize: 13,
-                    fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
 
 class _CompactFilterChip extends StatelessWidget {
   final String label;
@@ -1008,11 +879,152 @@ class _CompactFilterChip extends StatelessWidget {
         label: Text(label, style: const TextStyle(fontSize: 11)),
         selected: isSelected,
         onSelected: (v) => onTap(),
-        selectedColor: AppTheme.primary.withOpacity(0.2),
+        selectedColor: AppTheme.primary.withValues(alpha: 0.2),
         backgroundColor: Colors.transparent,
-        side: BorderSide(color: isSelected ? AppTheme.primary.withOpacity(0.5) : Colors.grey.withOpacity(0.2)),
+        side: BorderSide(color: isSelected ? AppTheme.primary.withValues(alpha: 0.5) : Colors.grey.withValues(alpha: 0.2)),
         showCheckmark: false,
         visualDensity: VisualDensity.compact,
+      ),
+    );
+  }
+}
+
+class _AIInsightsCard extends ConsumerStatefulWidget {
+  final ReportData report;
+  final bool isDark;
+
+  const _AIInsightsCard({required this.report, required this.isDark});
+
+  @override
+  ConsumerState<_AIInsightsCard> createState() => _AIInsightsCardState();
+}
+
+class _AIInsightsCardState extends ConsumerState<_AIInsightsCard> {
+  String? _insights;
+  bool _isLoading = false;
+
+  Future<void> _fetchInsights() async {
+    setState(() => _isLoading = true);
+    final gemini = ref.read(geminiServiceProvider);
+    
+    final sortedHourly = List<MapEntry<int, double>>.from(widget.report.hourly)..sort((a, b) => b.value.compareTo(a.value));
+    final peakHoursStr = sortedHourly.take(3).map((e) => '${e.key}:00 (\$${e.value.toStringAsFixed(0)})').join(', ');
+    
+    final contextData = '''
+Ventas Totales: \$${widget.report.grossRevenue.toStringAsFixed(2)}
+Operaciones: ${widget.report.stats['totalCount']?.toInt() ?? 0}
+Ticket Promedio: \$${widget.report.averageTicket.toStringAsFixed(2)}
+Top 3 Horas Pico: $peakHoursStr
+''';
+
+    final result = await gemini.getInsights(contextData);
+    
+    if (mounted) {
+      setState(() {
+        _insights = result;
+        _isLoading = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_insights == null && !_isLoading) {
+      return Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [AppTheme.primary, AppTheme.primary.withValues(alpha: 0.8)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: AppTheme.radiusMedium,
+          boxShadow: AppTheme.softShadow,
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.auto_awesome_rounded, color: Colors.white, size: 40),
+            const SizedBox(width: 20),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Generar Análisis Inteligente', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 4),
+                  const Text('Obtén recomendaciones personalizadas basadas en tus ventas.', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                  const SizedBox(height: 12),
+                  ElevatedButton.icon(
+                    onPressed: _fetchInsights,
+                    icon: const Icon(Icons.psychology_rounded, size: 18),
+                    label: const Text('Analizar ahora'),
+                    style: ElevatedButton.styleFrom(
+                      foregroundColor: AppTheme.primary,
+                      backgroundColor: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_isLoading) {
+      return Container(
+        padding: const EdgeInsets.all(32),
+        decoration: BoxDecoration(
+          color: widget.isDark ? AppTheme.surfaceDark : Colors.white,
+          borderRadius: AppTheme.radiusMedium,
+          border: Border.all(color: AppTheme.primary.withValues(alpha: 0.2)),
+        ),
+        child: const Center(
+          child: Column(
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text('Analizando datos con Gemini AI...', style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold)),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: widget.isDark ? AppTheme.surfaceDark : Colors.white,
+        borderRadius: AppTheme.radiusMedium,
+        border: Border.all(color: AppTheme.primary.withValues(alpha: 0.3), width: 1.5),
+        boxShadow: AppTheme.softShadow,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.auto_awesome_rounded, color: AppTheme.primary),
+              const SizedBox(width: 8),
+              const Text('Recomendaciones de Gemini AI', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppTheme.primary)),
+              const Spacer(),
+              IconButton(
+                icon: const Icon(Icons.refresh_rounded, size: 20),
+                color: AppTheme.textSecondary,
+                onPressed: _fetchInsights,
+                tooltip: 'Actualizar análisis',
+              ),
+            ],
+          ),
+          const Divider(),
+          const SizedBox(height: 8),
+          MarkdownBody(
+            data: _insights ?? '',
+            styleSheet: MarkdownStyleSheet(
+              p: TextStyle(color: widget.isDark ? Colors.white70 : AppTheme.textPrimary, fontSize: 14),
+              listBullet: const TextStyle(color: AppTheme.primary),
+            ),
+          ),
+        ],
       ),
     );
   }

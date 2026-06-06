@@ -39,8 +39,11 @@ class _SalesHistoryScreenState extends ConsumerState<SalesHistoryScreen> {
     );
     if (picked != null) {
       setState(() {
-        if (isStart) _startDate = picked;
-        else _endDate = picked;
+        if (isStart) {
+          _startDate = picked;
+        } else {
+          _endDate = picked;
+        }
       });
     }
   }
@@ -134,7 +137,7 @@ class _SalesHistoryScreenState extends ConsumerState<SalesHistoryScreen> {
         color: Colors.white,
         borderRadius: AppTheme.radiusMedium,
         boxShadow: AppTheme.softShadow,
-        border: Border.all(color: AppTheme.divider.withOpacity(0.3)),
+        border: Border.all(color: AppTheme.divider.withValues(alpha: 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -187,7 +190,7 @@ class _SalesHistoryScreenState extends ConsumerState<SalesHistoryScreen> {
     return Padding(
       padding: const EdgeInsets.all(24),
       child: Shimmer.fromColors(
-        baseColor: Colors.grey.withOpacity(0.1),
+        baseColor: Colors.grey.withValues(alpha: 0.1),
         highlightColor: Colors.white,
         child: Column(
           children: List.generate(5, (i) => Container(height: 80, margin: const EdgeInsets.only(bottom: 16), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)))),
@@ -201,7 +204,7 @@ class _SalesHistoryScreenState extends ConsumerState<SalesHistoryScreen> {
       child: Column(
         children: [
           const SizedBox(height: 60),
-          Icon(Icons.history_rounded, size: 80, color: AppTheme.textMuted.withOpacity(0.2)),
+          Icon(Icons.history_rounded, size: 80, color: AppTheme.textMuted.withValues(alpha: 0.2)),
           const SizedBox(height: 20),
           const Text('No se encontraron ventas', style: TextStyle(fontWeight: FontWeight.w900, color: AppTheme.textSecondary)),
         ],
@@ -223,7 +226,7 @@ class _SaleListItem extends StatelessWidget {
         color: Colors.white,
         borderRadius: AppTheme.radiusMedium,
         boxShadow: AppTheme.softShadow,
-        border: Border.all(color: AppTheme.divider.withOpacity(0.3)),
+        border: Border.all(color: AppTheme.divider.withValues(alpha: 0.3)),
       ),
       child: InkWell(
         onTap: () => showDialog(context: context, builder: (context) => TicketDialog(sale: sale)),
@@ -234,7 +237,7 @@ class _SaleListItem extends StatelessWidget {
             children: [
               Container(
                 padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(color: AppTheme.primary.withOpacity(0.05), borderRadius: BorderRadius.circular(14)),
+                decoration: BoxDecoration(color: AppTheme.primary.withValues(alpha: 0.05), borderRadius: BorderRadius.circular(14)),
                 child: const Icon(Icons.receipt_long_rounded, color: AppTheme.primary),
               ),
               const SizedBox(width: 16),
@@ -250,7 +253,7 @@ class _SaleListItem extends StatelessWidget {
                           const SizedBox(width: 8),
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(color: AppTheme.error.withOpacity(0.1), borderRadius: BorderRadius.circular(4)),
+                            decoration: BoxDecoration(color: AppTheme.error.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(4)),
                             child: const Text('DEVOLUCIÓN', style: TextStyle(color: AppTheme.error, fontSize: 8, fontWeight: FontWeight.w900)),
                           ),
                         ],
@@ -274,7 +277,7 @@ class _SaleListItem extends StatelessWidget {
                     Text(fmt.format(sale.netAmount), style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: AppTheme.error)),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(color: AppTheme.textMuted.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+                    decoration: BoxDecoration(color: AppTheme.textMuted.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
                     child: Text(sale.paymentMethod.toUpperCase(), style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: AppTheme.textSecondary)),
                   ),
                 ],
@@ -299,7 +302,7 @@ class _DateChip extends StatelessWidget {
     return ActionChip(
       onPressed: onTap,
       label: Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: AppTheme.primary)),
-      backgroundColor: AppTheme.primary.withOpacity(0.05),
+      backgroundColor: AppTheme.primary.withValues(alpha: 0.05),
       side: BorderSide.none,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
     );

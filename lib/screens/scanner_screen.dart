@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -13,7 +12,8 @@ import '../utils/safe_haptic.dart';
 
 
 class ScannerScreen extends ConsumerStatefulWidget {
-  const ScannerScreen({super.key});
+  final bool returnCodeMode;
+  const ScannerScreen({super.key, this.returnCodeMode = false});
 
   @override
   ConsumerState<ScannerScreen> createState() => _ScannerScreenState();
@@ -33,7 +33,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> with SingleTicker
   final AudioPlayer _audioPlayer = AudioPlayer();
   int _currentScanQty = 1;
   RealtimeChannel? _presenceChannel;
-  bool _isConnected = false;
+
   late AnimationController _laserController;
 
   @override
@@ -57,14 +57,13 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> with SingleTicker
 
     _presenceChannel!.subscribe((status, [error]) {
       if (status == RealtimeSubscribeStatus.subscribed) {
-        setState(() => _isConnected = true);
         _presenceChannel!.track({
           'device': 'mobile_scanner',
           'at': DateTime.now().toIso8601String(),
           'mode': _auditMode ? 'audit' : 'pos',
         });
       } else {
-        setState(() => _isConnected = false);
+        // Handle disconnection if necessary
       }
     });
   }
@@ -137,6 +136,12 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> with SingleTicker
     if (barcodes.isNotEmpty) {
       final code = barcodes.first.rawValue;
       if (code != null && code.isNotEmpty && code != _detectedCode) {
+        if (widget.returnCodeMode) {
+          SafeHaptic.selectionClick();
+          Navigator.pop(context, code);
+          return;
+        }
+
         setState(() {
           _detectedCode = code;
         });
@@ -256,7 +261,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> with SingleTicker
                 borderRadius: BorderRadius.circular(20),
                 child: Container(
                   padding: const EdgeInsets.all(32),
-                  decoration: BoxDecoration(color: Colors.black54),
+                  decoration: const BoxDecoration(color: Colors.black54),
                   child: const CircularProgressIndicator(color: AppTheme.primary, strokeWidth: 5),
                 ),
               ),
@@ -302,11 +307,11 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> with SingleTicker
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
       decoration: BoxDecoration(
         gradient: hasCode ? AppTheme.primaryGradient : null,
-        color: hasCode ? null : Colors.black.withOpacity(0.4),
+        color: hasCode ? null : Colors.black.withValues(alpha: 0.4),
         borderRadius: BorderRadius.circular(30),
         boxShadow: [
           if (hasCode)
-            BoxShadow(color: AppTheme.primary.withOpacity(0.3), blurRadius: 15, spreadRadius: 1),
+            BoxShadow(color: AppTheme.primary.withValues(alpha: 0.3), blurRadius: 15, spreadRadius: 1),
         ],
         border: Border.all(color: Colors.white10, width: 1),
       ),
@@ -380,7 +385,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> with SingleTicker
                           'mode': val ? 'audit' : 'pos',
                         });
                       },
-                      activeColor: AppTheme.primary,
+                      activeThumbColor: AppTheme.primary,
                     ),
                   ),
                 ],
@@ -433,7 +438,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> with SingleTicker
             padding: const EdgeInsets.all(20),
             decoration: AppTheme.glassDecoration(isDark: false).copyWith(
               borderRadius: BorderRadius.circular(28),
-              color: Colors.white.withOpacity(0.98),
+              color: Colors.white.withValues(alpha: 0.98),
               boxShadow: AppTheme.deepShadow,
             ),
             child: Column(
@@ -444,7 +449,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> with SingleTicker
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: (isError ? AppTheme.error : AppTheme.primary).withOpacity(0.1),
+                        color: (isError ? AppTheme.error : AppTheme.primary).withValues(alpha: 0.1),
                         shape: BoxShape.circle,
                       ),
                       child: Icon(
@@ -468,7 +473,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> with SingleTicker
                           if (!isError)
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                              decoration: BoxDecoration(color: AppTheme.primary.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+                              decoration: BoxDecoration(color: AppTheme.primary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
                               child: Text(
                                 'Stock: ${_lastProduct!['stock']} • \$${_lastProduct!['price']}', 
                                 style: const TextStyle(color: AppTheme.primary, fontSize: 11, fontWeight: FontWeight.w800),
@@ -551,7 +556,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> with SingleTicker
               child: Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.05),
+                  color: Colors.black.withValues(alpha: 0.05),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(Icons.close_rounded, size: 20, color: Colors.black54),
@@ -613,7 +618,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> with SingleTicker
               decoration: ShapeDecoration(
                 shape: QrScannerOverlayShape(
                   borderColor: Colors.transparent,
-                  overlayColor: Colors.black.withOpacity(0.6),
+                  overlayColor: Colors.black.withValues(alpha: 0.6),
                   borderRadius: 30,
                   borderLength: 0,
                   borderWidth: 0,
@@ -622,7 +627,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> with SingleTicker
               ),
             ),
             Center(
-              child: Container(
+              child: SizedBox(
                 width: MediaQuery.of(context).size.width * 0.75,
                 height: MediaQuery.of(context).size.width * 0.75,
                 child: CustomPaint(
@@ -643,9 +648,9 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> with SingleTicker
     return Container(
       height: 56,
       decoration: BoxDecoration(
-        color: AppTheme.primary.withOpacity(0.05),
+        color: AppTheme.primary.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppTheme.primary.withOpacity(0.1)),
+        border: Border.all(color: AppTheme.primary.withValues(alpha: 0.1)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -699,9 +704,9 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> with SingleTicker
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: AppTheme.primary.withOpacity(0.1),
+          color: AppTheme.primary.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppTheme.primary.withOpacity(0.2)),
+          border: Border.all(color: AppTheme.primary.withValues(alpha: 0.2)),
         ),
         child: Text(
           label,
@@ -786,12 +791,18 @@ class _CircleButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: EdgeInsets.all(isSmall ? 8 : 12),
         decoration: isGlass 
-            ? AppTheme.glassDecoration(isDark: true).copyWith(shape: BoxShape.circle)
+            ? BoxDecoration(
+                color: isDark ? const Color(0xFF0F172A).withValues(alpha: 0.7) : Colors.white.withValues(alpha: 0.7),
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+              )
             : const BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
         child: Icon(icon, color: Colors.white, size: isSmall ? 18 : 22),
       ),
@@ -799,26 +810,6 @@ class _CircleButton extends StatelessWidget {
   }
 }
 
-class _QuickQtyButton extends StatelessWidget {
-  final String label;
-  final VoidCallback onTap;
-  final Color color;
-  const _QuickQtyButton({required this.label, required this.onTap, this.color = AppTheme.primary});
-
-  @override
-  Widget build(BuildContext context) {
-    return OutlinedButton(
-      onPressed: onTap,
-      style: OutlinedButton.styleFrom(
-        foregroundColor: color,
-        side: BorderSide(color: color.withOpacity(0.5)),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-      ),
-      child: Text(label, style: const TextStyle(fontWeight: FontWeight.w900)),
-    );
-  }
-}
 
 class QrScannerOverlayShape extends ShapeBorder {
   final Color borderColor;
@@ -828,7 +819,7 @@ class QrScannerOverlayShape extends ShapeBorder {
   final double borderLength;
   final double cutOutSize;
 
-  QrScannerOverlayShape({
+  const QrScannerOverlayShape({
     this.borderColor = Colors.red,
     this.borderWidth = 3.0,
     this.overlayColor = const Color.fromRGBO(0, 0, 0, 80),
@@ -849,13 +840,13 @@ class QrScannerOverlayShape extends ShapeBorder {
 
   @override
   Path getOuterPath(Rect rect, {TextDirection? textDirection}) {
-    Path _getLeftTopPath(Rect rect) {
+    Path getLeftTopPath(Rect rect) {
       return Path()
         ..moveTo(rect.left, rect.bottom)
         ..lineTo(rect.left, rect.top)
         ..lineTo(rect.right, rect.top);
     }
-    return _getLeftTopPath(rect)..lineTo(rect.right, rect.bottom)..lineTo(rect.left, rect.bottom)..lineTo(rect.left, rect.top);
+    return getLeftTopPath(rect)..lineTo(rect.right, rect.bottom)..lineTo(rect.left, rect.bottom)..lineTo(rect.left, rect.top);
   }
 
   @override
@@ -863,25 +854,25 @@ class QrScannerOverlayShape extends ShapeBorder {
     final width = rect.width;
     final height = rect.height;
     final borderOffset = borderWidth / 2;
-    final _borderLength = borderLength > cutOutSize / 2 + borderOffset ? cutOutSize / 2 + borderOffset : borderLength;
-    final _cutOutSize = cutOutSize < width ? cutOutSize : width;
+    final actualBorderLength = borderLength > cutOutSize / 2 + borderOffset ? cutOutSize / 2 + borderOffset : borderLength;
+    final actualCutOutSize = cutOutSize < width ? cutOutSize : width;
 
     final backgroundPaint = Paint()..color = overlayColor..style = PaintingStyle.fill;
     final borderPaint = Paint()..color = borderColor..style = PaintingStyle.stroke..strokeWidth = borderWidth;
     final boxPaint = Paint()..color = borderColor..style = PaintingStyle.fill..blendMode = BlendMode.dstOut;
 
     final cutOutRect = Rect.fromLTWH(
-      rect.left + width / 2 - _cutOutSize / 2 + borderOffset,
-      rect.top + height / 2 - _cutOutSize / 2 + borderOffset,
-      _cutOutSize - borderOffset * 2,
-      _cutOutSize - borderOffset * 2,
+      rect.left + width / 2 - actualCutOutSize / 2 + borderOffset,
+      rect.top + height / 2 - actualCutOutSize / 2 + borderOffset,
+      actualCutOutSize - borderOffset * 2,
+      actualCutOutSize - borderOffset * 2,
     );
 
     canvas..saveLayer(rect, backgroundPaint)..drawRect(rect, backgroundPaint)
-      ..drawRRect(RRect.fromLTRBAndCorners(cutOutRect.right - _borderLength, cutOutRect.top, cutOutRect.right, cutOutRect.top + _borderLength, topRight: Radius.circular(borderRadius)), borderPaint)
-      ..drawRRect(RRect.fromLTRBAndCorners(cutOutRect.left, cutOutRect.top, cutOutRect.left + _borderLength, cutOutRect.top + _borderLength, topLeft: Radius.circular(borderRadius)), borderPaint)
-      ..drawRRect(RRect.fromLTRBAndCorners(cutOutRect.right - _borderLength, cutOutRect.bottom - _borderLength, cutOutRect.right, cutOutRect.bottom, bottomRight: Radius.circular(borderRadius)), borderPaint)
-      ..drawRRect(RRect.fromLTRBAndCorners(cutOutRect.left, cutOutRect.bottom - _borderLength, cutOutRect.left + _borderLength, cutOutRect.bottom, bottomLeft: Radius.circular(borderRadius)), borderPaint)
+      ..drawRRect(RRect.fromLTRBAndCorners(cutOutRect.right - actualBorderLength, cutOutRect.top, cutOutRect.right, cutOutRect.top + actualBorderLength, topRight: Radius.circular(borderRadius)), borderPaint)
+      ..drawRRect(RRect.fromLTRBAndCorners(cutOutRect.left, cutOutRect.top, cutOutRect.left + actualBorderLength, cutOutRect.top + actualBorderLength, topLeft: Radius.circular(borderRadius)), borderPaint)
+      ..drawRRect(RRect.fromLTRBAndCorners(cutOutRect.right - actualBorderLength, cutOutRect.bottom - actualBorderLength, cutOutRect.right, cutOutRect.bottom, bottomRight: Radius.circular(borderRadius)), borderPaint)
+      ..drawRRect(RRect.fromLTRBAndCorners(cutOutRect.left, cutOutRect.bottom - actualBorderLength, cutOutRect.left + actualBorderLength, cutOutRect.bottom, bottomLeft: Radius.circular(borderRadius)), borderPaint)
       ..drawRRect(RRect.fromRectAndRadius(cutOutRect, Radius.circular(borderRadius)), boxPaint)..restore();
   }
 
@@ -912,9 +903,9 @@ class _ActionButton extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
+          color: color.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: color.withOpacity(0.2)),
+          border: Border.all(color: color.withValues(alpha: 0.2)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -929,46 +920,6 @@ class _ActionButton extends StatelessWidget {
   }
 }
 
-class _ConnectionIndicator extends StatelessWidget {
-  final bool isConnected;
-  const _ConnectionIndicator({required this.isConnected});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(right: 12),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: (isConnected ? AppTheme.primary : AppTheme.error).withOpacity(0.1),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 8, height: 8,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: isConnected ? AppTheme.primary : AppTheme.error,
-              boxShadow: [
-                if (isConnected) BoxShadow(color: AppTheme.primary.withOpacity(0.4), blurRadius: 4),
-              ],
-            ),
-          ),
-          const SizedBox(width: 6),
-          Text(
-            isConnected ? 'CONECTADO' : 'SIN RED',
-            style: TextStyle(
-              color: isConnected ? AppTheme.primary : AppTheme.error,
-              fontSize: 9,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 class ScannerVisorPainter extends CustomPainter {
   final Color color;
@@ -1010,7 +961,7 @@ class ScannerVisorPainter extends CustomPainter {
 
     // Glow effect
     final glowPaint = Paint()
-      ..color = color.withOpacity(0.3)
+      ..color = color.withValues(alpha: 0.3)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 10
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10);
@@ -1019,7 +970,7 @@ class ScannerVisorPainter extends CustomPainter {
     // Laser Line
     final laserPaint = Paint()
       ..shader = LinearGradient(
-        colors: [color.withOpacity(0), color, color.withOpacity(0)],
+        colors: [color.withValues(alpha: 0), color, color.withValues(alpha: 0)],
       ).createShader(Rect.fromLTWH(0, size.height * laserPosition - 0.5, size.width, 1))
       ..strokeWidth = 1;
     
@@ -1031,7 +982,7 @@ class ScannerVisorPainter extends CustomPainter {
 
     // Laser Glow
     final laserGlowPaint = Paint()
-      ..color = color.withOpacity(0.15)
+      ..color = color.withValues(alpha: 0.15)
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
     canvas.drawRect(
       Rect.fromLTWH(0, size.height * laserPosition - 5, size.width, 10),

@@ -7,7 +7,9 @@ list(APPEND FLUTTER_PLUGIN_LIST
   audioplayers_windows
   file_saver
   file_selector_windows
+  flutter_tts
   printing
+  speech_to_text_windows
   sqlite3_flutter_libs
   url_launcher_windows
 )

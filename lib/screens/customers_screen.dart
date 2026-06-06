@@ -42,7 +42,7 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
               loading: () => ListView.builder(
                 padding: const EdgeInsets.all(16),
                 itemCount: 5,
-                itemBuilder: (_, __) => SkeletonLoader.productCard(), // Using product card skeleton as it's similar
+                itemBuilder: (_, _) => SkeletonLoader.productCard(), // Using product card skeleton as it's similar
               ),
               error: (e, s) => Center(child: Text('Error: $e')),
               data: (customers) {
@@ -332,7 +332,7 @@ class _CustomerCard extends ConsumerWidget {
       margin: const EdgeInsets.only(bottom: 12),
       child: ListTile(
         leading: CircleAvatar(
-          backgroundColor: AppTheme.primary.withOpacity(0.1),
+          backgroundColor: AppTheme.primary.withValues(alpha: 0.1),
           child: Text(customer.name[0].toUpperCase(), style: const TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold)),
         ),
         title: Text(customer.name, style: const TextStyle(fontWeight: FontWeight.bold)),

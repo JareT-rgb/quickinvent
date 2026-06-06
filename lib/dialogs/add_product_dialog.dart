@@ -6,6 +6,8 @@ import '../widgets/app_dialog.dart';
 import 'edit_product_dialog.dart';
 import '../repositories/products_repository.dart';
 import '../theme/app_theme.dart';
+import '../providers/scanner_status_provider.dart';
+import '../screens/scanner_screen.dart';
 
 class AddProductDialog extends ConsumerStatefulWidget {
   final String? initialCategoryId;
@@ -144,6 +146,15 @@ class _AddProductDialogState extends ConsumerState<AddProductDialog>
     final size = MediaQuery.of(context).size;
     final isDesktop = size.width > 900;
 
+    // Listen to remote scanner scans to automatically fill the barcode field
+    ref.listen(scannerStatusProvider, (previous, next) {
+      if (next.lastBarcode != null && (next.lastScanTime != previous?.lastScanTime)) {
+        setState(() {
+          _barcodeController.text = next.lastBarcode!;
+        });
+      }
+    });
+
     return AppDialog(
       headerIcon: Icons.add_box_outlined,
       title: 'Agregar al Inventario',
@@ -199,7 +210,7 @@ class _AddProductDialogState extends ConsumerState<AddProductDialog>
                                 ),
                                 const SizedBox(height: 16),
                                 DropdownButtonFormField<String>(
-                                  value: _selectedCategoryId,
+                                  initialValue: _selectedCategoryId,
                                   decoration: appInputDecoration(context, label: 'Categoría', icon: Icons.category_outlined),
                                   items: _categories.map((c) => DropdownMenuItem(value: c['id'] as String, child: Text(c['name'] as String))).toList(),
                                   onChanged: (v) => setState(() => _selectedCategoryId = v),
@@ -218,7 +229,26 @@ class _AddProductDialogState extends ConsumerState<AddProductDialog>
                               decoration: appInputDecoration(context, label: 'Código de Barras', icon: Icons.qr_code_scanner, hint: 'Escanear o escribir'),
                             ),
                           ),
-                          const SizedBox(width: 12),
+                          const SizedBox(width: 8),
+                          _ActionButton(
+                            icon: Icons.qr_code_scanner_rounded,
+                            onPressed: () async {
+                              // Abrimos el ScannerScreen en modo retorno
+                              final result = await Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const ScannerScreen(returnCodeMode: true),
+                                ),
+                              );
+                              if (result != null && result is String) {
+                                setState(() {
+                                  _barcodeController.text = result;
+                                });
+                              }
+                            },
+                            tooltip: 'Escanear con cámara',
+                          ),
+                          const SizedBox(width: 8),
                           _ActionButton(
                             icon: Icons.auto_fix_high_rounded,
                             onPressed: () => setState(() => _barcodeController.text = DateTime.now().millisecondsSinceEpoch.toString()),
@@ -306,7 +336,7 @@ class _AddProductDialogState extends ConsumerState<AddProductDialog>
                 ),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
-                  value: _selectedCategoryId,
+                  initialValue: _selectedCategoryId,
                   decoration: appInputDecoration(context, label: 'Categoría', icon: Icons.category_outlined),
                   items: _categories.map((c) => DropdownMenuItem(value: c['id'] as String, child: Text(c['name'] as String))).toList(),
                   onChanged: (v) => setState(() => _selectedCategoryId = v),
@@ -375,10 +405,10 @@ class _AddProductDialogState extends ConsumerState<AddProductDialog>
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppTheme.primary.withOpacity(0.1)),
+        border: Border.all(color: AppTheme.primary.withValues(alpha: 0.1)),
         boxShadow: [
           BoxShadow(
-            color: AppTheme.primary.withOpacity(0.03),
+            color: AppTheme.primary.withValues(alpha: 0.03),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
@@ -392,7 +422,7 @@ class _AddProductDialogState extends ConsumerState<AddProductDialog>
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: AppTheme.primary.withOpacity(0.1),
+                  color: AppTheme.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(icon, size: 18, color: AppTheme.primary),
@@ -416,12 +446,12 @@ class _AddProductDialogState extends ConsumerState<AddProductDialog>
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [AppTheme.primary.withOpacity(0.08), AppTheme.primary.withOpacity(0.02)],
+          colors: [AppTheme.primary.withValues(alpha: 0.08), AppTheme.primary.withValues(alpha: 0.02)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppTheme.primary.withOpacity(0.1)),
+        border: Border.all(color: AppTheme.primary.withValues(alpha: 0.1)),
       ),
       child: Row(
         children: [
@@ -430,7 +460,7 @@ class _AddProductDialogState extends ConsumerState<AddProductDialog>
           Expanded(
             child: Text(
               tip,
-              style: TextStyle(fontSize: 13, color: AppTheme.primary.withOpacity(0.8), height: 1.5, fontWeight: FontWeight.w500),
+              style: TextStyle(fontSize: 13, color: AppTheme.primary.withValues(alpha: 0.8), height: 1.5, fontWeight: FontWeight.w500),
             ),
           ),
         ],
@@ -449,7 +479,7 @@ class _ActionButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: AppTheme.primary.withOpacity(0.1),
+      color: AppTheme.primary.withValues(alpha: 0.1),
       borderRadius: BorderRadius.circular(12),
       child: InkWell(
         onTap: onPressed,

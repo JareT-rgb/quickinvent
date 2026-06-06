@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:printing/printing.dart';
-import 'package:animate_do/animate_do.dart';
 import 'package:lottie/lottie.dart';
 import '../models/sale_detail_item.dart';
 import '../models/cart_item.dart';
-import '../theme/app_theme.dart';
 import '../utils/receipt_generator.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/app_settings_provider.dart';

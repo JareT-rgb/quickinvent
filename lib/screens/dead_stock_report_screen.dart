@@ -1,17 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../repositories/sales_repository.dart';
 import '../providers/reports_provider.dart';
+import '../providers/categories_provider.dart';
+import '../models/product.dart';
 import '../theme/app_theme.dart';
 
 class DeadStockReport extends ConsumerWidget {
-  final List<String> productNames;
+  final List<Product> products;
 
-  const DeadStockReport({super.key, required this.productNames});
+  const DeadStockReport({super.key, required this.products});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final deadStockAsync = ref.watch(deadStockProvider(productNames));
+    final deadStockAsync = ref.watch(deadStockProvider);
+    final categoriesAsync = ref.watch(categoriesProvider);
 
     return deadStockAsync.when(
       loading: () => const Card(
@@ -27,6 +29,7 @@ class DeadStockReport extends ConsumerWidget {
         ),
       ),
       data: (deadStock) {
+        final categories = categoriesAsync.value ?? [];
         return Card(
           child: Padding(
             padding: const EdgeInsets.all(16.0),
@@ -57,7 +60,21 @@ class DeadStockReport extends ConsumerWidget {
                           child: Text(h, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: AppTheme.textSecondary)),
                         )).toList(),
                       ),
-                      ...deadStock.map((item) => _buildDeadRow(item['name'] as String, 'Sin categoría', '${item['days']}d')),
+                      ...deadStock.map((item) {
+                        final name = item['name'] as String;
+                        final days = '${item['days']}d';
+                        
+                        String catName = 'Sin categoría';
+                        try {
+                          final product = products.firstWhere((p) => p.name == name);
+                          if (product.categoryId != null) {
+                            final cat = categories.firstWhere((c) => c.id.toString() == product.categoryId.toString());
+                            catName = cat.name;
+                          }
+                        } catch (_) {}
+
+                        return _buildDeadRow(name, catName, days);
+                      }),
                     ],
                   ),
               ],
@@ -77,7 +94,7 @@ class DeadStockReport extends ConsumerWidget {
           padding: const EdgeInsets.symmetric(vertical: 8),
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(color: AppTheme.error.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+            decoration: BoxDecoration(color: AppTheme.error.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
             child: Text(days, textAlign: TextAlign.center, style: const TextStyle(color: AppTheme.error, fontWeight: FontWeight.bold, fontSize: 12)),
           ),
         ),

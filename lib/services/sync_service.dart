@@ -1,8 +1,8 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart'; // Para Value y Constant
 import '../database/local_db.dart';
-import '../repositories/sales_repository.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 final syncServiceProvider = Provider((ref) => SyncService(ref));
@@ -40,7 +40,7 @@ class SyncService {
         return;
       }
 
-      print('🔄 Sincronizando ${unsyncedSales.length} ventas pendientes...');
+      debugPrint('🔄 Sincronizando ${unsyncedSales.length} ventas pendientes...');
 
       for (final sale in unsyncedSales) {
         try {
@@ -88,11 +88,11 @@ class SyncService {
             )
           );
         } catch (e) {
-          print('❌ Error en venta #${sale.id}: $e');
+          debugPrint('❌ Error en venta #${sale.id}: $e');
         }
       }
     } catch (e) {
-      print('❌ Error sincronización: $e');
+      debugPrint('❌ Error sincronización: $e');
     } finally {
       _isSyncing = false;
     }

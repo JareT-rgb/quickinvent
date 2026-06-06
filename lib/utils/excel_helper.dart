@@ -1,54 +1,29 @@
-import 'dart:typed_data';
-import 'dart:io';
 import 'package:flutter/foundation.dart' hide Category;
 import 'package:excel/excel.dart';
 import 'package:file_saver/file_saver.dart';
-import 'package:file_picker/file_picker.dart' as fp;
-import 'package:file_selector/file_selector.dart';
 import '../models/product.dart';
 import '../models/sale.dart';
 
 class ExcelHelper {
   static Future<bool> exportProducts(List<Product> products) async {
     try {
-      // Usamos compute para generar los bytes en un hilo separado y no trabar la UI
-      final bytes = await compute(_generateProductExcel, products);
+      final bytes = _generateProductExcel(products);
       
       if (bytes != null) {
         final data = Uint8List.fromList(bytes);
-        final fileName = 'Inventario_QuickInvent_${DateTime.now().millisecondsSinceEpoch}.xlsx';
+        final fileName = 'Inventario_QuickInvent_${DateTime.now().millisecondsSinceEpoch}';
 
-        print('Excel generado en Isolate, procediendo a guardar...');
-
-        if (!kIsWeb && (Platform.isWindows || Platform.isMacOS || Platform.isLinux)) {
-          try {
-            final FileSaveLocation? result = await getSaveLocation(
-              suggestedName: fileName,
-              acceptedTypeGroups: [
-                const XTypeGroup(label: 'Excel', extensions: ['xlsx']),
-              ],
-            );
-
-            if (result != null) {
-              final file = File(result.path);
-              await file.writeAsBytes(data);
-              return true;
-            }
-            return false;
-          } catch (e) {
-            print('Error using FileSelector on Windows: $e');
-          }
-        }
-
-        await FileSaver.instance.saveFile(
+        await FileSaver.instance.saveAs(
           name: fileName,
           bytes: data,
+          fileExtension: 'xlsx',
+          mimeType: MimeType.microsoftExcel,
         );
         return true;
       }
       return false;
     } catch (e) {
-      print('Error exporting products: $e');
+      debugPrint('Error exporting products: $e');
       return false;
     }
   }
@@ -102,30 +77,13 @@ class ExcelHelper {
     final bytes = excel.save();
     if (bytes != null) {
       final data = Uint8List.fromList(bytes);
-      final fileName = 'Ventas_QuickInvent_${DateTime.now().millisecondsSinceEpoch}.xlsx';
+      final fileName = 'Ventas_QuickInvent_${DateTime.now().millisecondsSinceEpoch}';
 
-      if (!kIsWeb && (Platform.isWindows || Platform.isMacOS || Platform.isLinux)) {
-        try {
-          final FileSaveLocation? result = await getSaveLocation(
-            suggestedName: fileName,
-            acceptedTypeGroups: [
-              const XTypeGroup(label: 'Excel', extensions: ['xlsx']),
-            ],
-          );
-
-          if (result != null) {
-            final file = File(result.path);
-            await file.writeAsBytes(data);
-          }
-          return;
-        } catch (e) {
-          print('Error using FileSelector for sales: $e');
-        }
-      }
-
-      await FileSaver.instance.saveFile(
+      await FileSaver.instance.saveAs(
         name: fileName,
         bytes: data,
+        fileExtension: 'xlsx',
+        mimeType: MimeType.microsoftExcel,
       );
     }
   }

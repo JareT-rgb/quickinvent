@@ -1,10 +1,9 @@
 import 'dart:math';
-import 'package:flutter/material.dart' show DateTimeRange;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/sale.dart';
 import '../models/sale_detail_item.dart';
-
+import 'package:flutter/foundation.dart';
 
 class SalesRepository {
   final SupabaseClient _client;
@@ -55,7 +54,7 @@ class SalesRepository {
         'change': change,
         'item_count': items.fold<int>(0, (sum, i) => sum + i.quantity),
         if (user != null) 'user_id': user.id,
-        if (customerId != null) 'customer_id': int.tryParse(customerId ?? ''),
+        if (customerId != null) 'customer_id': int.tryParse(customerId),
       };
 
       final saleResponse = await _client.from('sales').insert(saleData).select().single();
@@ -110,7 +109,7 @@ class SalesRepository {
                 }
               }
             } catch (e2) {
-              print('Critical: Manual stock deduction failed for product ${item.productId}: $e2');
+              debugPrint('Critical: Manual stock deduction failed for product ${item.productId}: $e2');
             }
           }
         }
@@ -118,7 +117,7 @@ class SalesRepository {
 
       return Sale.fromMap(saleResponse);
     } catch (e) {
-      print('Error al crear venta en Supabase: $e');
+      debugPrint('Error al crear venta en Supabase: $e');
       rethrow;
     }
   }
@@ -226,7 +225,7 @@ class SalesRepository {
           .order('created_at', ascending: false);
       return List<Map<String, dynamic>>.from(response as List);
     } catch (e) {
-      print('Error fetching cash cuts: $e');
+      debugPrint('Error fetching cash cuts: $e');
       return [];
     }
   }
@@ -357,7 +356,7 @@ class SalesRepository {
           sinceFilter = lastCut['created_at'] as String;
         }
       } catch (e) {
-        print('Error fetching last cash cut: $e');
+        debugPrint('Error fetching last cash cut: $e');
       }
     }
 
@@ -408,30 +407,26 @@ class SalesRepository {
         .gte('created_at', effectiveSince);
     
     double todayExpenses = 0;
-    if (expensesResponse != null) {
-      for (final row in expensesResponse as List) {
-        final created = DateTime.parse(row['created_at'] as String).toLocal();
-        if ((created.year == now.year && created.month == now.month && created.day == now.day) || sinceLastCut) {
-          todayExpenses += (row['amount'] as num).toDouble();
-        }
+    for (final row in expensesResponse as List) {
+      final created = DateTime.parse(row['created_at'] as String).toLocal();
+      if ((created.year == now.year && created.month == now.month && created.day == now.day) || sinceLastCut) {
+        todayExpenses += (row['amount'] as num).toDouble();
       }
     }
-
+  
     final returnsResponse = await _client
         .from('returns')
         .select('total_refunded, created_at')
         .gte('created_at', effectiveSince);
     
     double todayRefunds = 0;
-    if (returnsResponse != null) {
-      for (final row in returnsResponse as List) {
-        final created = DateTime.parse(row['created_at'] as String).toLocal();
-        if ((created.year == now.year && created.month == now.month && created.day == now.day) || sinceLastCut) {
-          todayRefunds += (row['total_refunded'] as num).toDouble();
-        }
+    for (final row in returnsResponse as List) {
+      final created = DateTime.parse(row['created_at'] as String).toLocal();
+      if ((created.year == now.year && created.month == now.month && created.day == now.day) || sinceLastCut) {
+        todayRefunds += (row['total_refunded'] as num).toDouble();
       }
     }
-
+  
     return {
       'grossRevenue': grossRevenue,
       'todayGrossRevenue': todayGrossRevenue,

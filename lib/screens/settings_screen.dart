@@ -38,7 +38,7 @@ class SettingsScreen extends ConsumerWidget {
                   trailing: Switch(
                     value: isDark,
                     onChanged: (v) => ref.read(themeProvider.notifier).setThemeMode(v ? ThemeMode.dark : ThemeMode.light),
-                    activeColor: AppTheme.primary,
+                    activeThumbColor: AppTheme.primary,
                   ),
                 ),
                 const SizedBox(height: 24),
@@ -308,14 +308,14 @@ class SettingsScreen extends ConsumerWidget {
       decoration: BoxDecoration(
         color: cs.surfaceContainerLow,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: cs.outlineVariant.withOpacity(0.3)),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.3)),
       ),
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
         leading: Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: cs.primaryContainer.withOpacity(0.4),
+            color: cs.primaryContainer.withValues(alpha: 0.4),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Icon(icon, color: cs.primary, size: 22),

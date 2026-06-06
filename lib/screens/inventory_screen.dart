@@ -1,7 +1,5 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' hide Category;
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:animate_do/animate_do.dart';
 import '../providers/products_provider.dart';
@@ -146,7 +144,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                   const SnackBar(content: Text('Generando archivo Excel...'), duration: Duration(seconds: 2)),
                 );
                 final success = await ExcelHelper.exportProducts(products);
-                if (mounted) {
+                if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text(success ? 'Inventario exportado con éxito' : 'Error al exportar inventario'),
@@ -185,7 +183,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                         data: (products) => Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                           decoration: BoxDecoration(
-                            color: AppTheme.primary.withOpacity(0.1),
+                            color: AppTheme.primary.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: Text(
@@ -197,7 +195,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                       ),
                     ],
                   ),
-                  Text(
+                  const Text(
                     'Control total de tu inventario premium', 
                     style: TextStyle(color: AppTheme.textSecondary, fontSize: 14, fontWeight: FontWeight.w500),
                   ),
@@ -218,7 +216,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                           data: (products) => Container(
                             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                             decoration: BoxDecoration(
-                              color: AppTheme.primary.withOpacity(0.1),
+                              color: AppTheme.primary.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: Text(
@@ -230,7 +228,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                         ),
                       ],
                     ),
-                    Text(
+                    const Text(
                       'Control total de tu inventario premium', 
                       style: TextStyle(color: AppTheme.textSecondary, fontSize: 14, fontWeight: FontWeight.w500),
                     ),
@@ -349,9 +347,9 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                                       label: Text(opt, style: const TextStyle(fontSize: 11)),
                                       selected: isSelected,
                                       onSelected: (v) => setState(() => _selectedCategory = opt),
-                                      selectedColor: AppTheme.primary.withOpacity(0.2),
+                                      selectedColor: AppTheme.primary.withValues(alpha: 0.2),
                                       backgroundColor: Colors.transparent,
-                                      side: BorderSide(color: isSelected ? AppTheme.primary.withOpacity(0.5) : Colors.transparent),
+                                      side: BorderSide(color: isSelected ? AppTheme.primary.withValues(alpha: 0.5) : Colors.transparent),
                                       showCheckmark: false,
                                       padding: const EdgeInsets.symmetric(horizontal: 4),
                                       visualDensity: VisualDensity.compact,
@@ -369,9 +367,9 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                                     child: Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                       decoration: BoxDecoration(
-                                        color: isHiddenSelected ? AppTheme.primary.withOpacity(0.2) : Colors.transparent,
+                                        color: isHiddenSelected ? AppTheme.primary.withValues(alpha: 0.2) : Colors.transparent,
                                         borderRadius: BorderRadius.circular(8),
-                                        border: Border.all(color: isHiddenSelected ? AppTheme.primary.withOpacity(0.5) : Colors.grey.withOpacity(0.3)),
+                                        border: Border.all(color: isHiddenSelected ? AppTheme.primary.withValues(alpha: 0.5) : Colors.grey.withValues(alpha: 0.3)),
                                       ),
                                       child: Row(
                                         mainAxisSize: MainAxisSize.min,
@@ -420,32 +418,6 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
     );
   }
 
-  Widget _buildCategoryDropdown(AsyncValue<List<Category>> categoriesAsync) {
-    return categoriesAsync.maybeWhen(
-      data: (List<Category> cats) {
-        final options = ['Todas', ...cats.map((c) => (c as Category).name)];
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          decoration: BoxDecoration(
-            color: AppTheme.primary.withOpacity(0.05),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: DropdownButtonHideUnderline(
-            child: DropdownButton<String>(
-              value: _selectedCategory,
-              icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 20, color: AppTheme.primary),
-              items: options.map((o) => DropdownMenuItem<String>(
-                value: o, 
-                child: Text(o, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800))
-              )).toList(),
-              onChanged: (v) => setState(() => _selectedCategory = v ?? 'Todas'),
-            ),
-          ),
-        );
-      },
-      orElse: () => const SizedBox.shrink(),
-    );
-  }
 
   Widget _buildResponsiveProductContent(AsyncValue<List<Product>> productsAsync, AsyncValue<List<Category>> categoriesAsync, bool isDesktop) {
     return productsAsync.when(
@@ -535,7 +507,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
         matchesCategory = p.categoryId == cat.id.toString();
       }
 
-      bool matchesLowStock = !_onlyLowStock || (p.stockQuantity <= p.minStock && p.stockQuantity > 0);
+      bool matchesLowStock = !_onlyLowStock || (p.stockQuantity > 0 && p.stockQuantity <= p.minStock);
       bool matchesOutOfStock = !_onlyOutOfStock || (p.stockQuantity <= 0);
       bool matchesStatus = _onlyInactive ? !p.isActive : p.isActive;
 
@@ -543,25 +515,9 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
     }).toList();
   }
 
-  Widget _buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.inventory_2_outlined, size: 80, color: AppTheme.textMuted.withOpacity(0.2)),
-          const SizedBox(height: 20),
-          const Text('Sin resultados', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: AppTheme.textSecondary)),
-          TextButton(
-            onPressed: () => setState(() { _searchQuery = ''; _searchController.clear(); _selectedCategory = 'Todas'; }),
-            child: const Text('Limpiar filtros'),
-          ),
-        ],
-      ),
-    );
-  }
 
   Widget _buildLowStockBanner(AsyncValue<List<Product>> productsAsync) {
-    final lowStock = productsAsync.value?.where((p) => p.stockQuantity <= p.minStock).toList() ?? [];
+    final lowStock = productsAsync.value?.where((p) => p.isActive && p.stockQuantity > 0 && p.stockQuantity <= p.minStock).toList() ?? [];
     if (lowStock.isEmpty || _onlyLowStock) return const SizedBox.shrink();
 
     return FadeIn(
@@ -569,9 +525,9 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
         margin: const EdgeInsets.fromLTRB(24, 0, 24, 12),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: AppTheme.error.withOpacity(0.05),
+          color: AppTheme.error.withValues(alpha: 0.05),
           borderRadius: AppTheme.radiusMedium,
-          border: Border.all(color: AppTheme.error.withOpacity(0.1), width: 1.5),
+          border: Border.all(color: AppTheme.error.withValues(alpha: 0.1), width: 1.5),
         ),
         child: Row(
           children: [
@@ -607,7 +563,7 @@ class _HeaderIconButton extends StatelessWidget {
       icon: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
+          color: color.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(16),
         ),
         child: Icon(icon, color: color, size: 20),
@@ -644,13 +600,13 @@ class _ProductGridCardState extends State<_ProductGridCard> {
       onExit: (_) => setState(() => _isHovered = false),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 250),
-        transform: (isDesktop || !_isHovered) ? Matrix4.identity() : (Matrix4.identity()..translate(0, -10, 0)),
+        transform: (isDesktop || !_isHovered) ? Matrix4.identity() : (Matrix4.identity()..multiply(Matrix4.translationValues(0.0, -10.0, 0.0))),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: AppTheme.radiusMedium,
           boxShadow: _isHovered ? AppTheme.deepShadow : AppTheme.softShadow,
           border: Border.all(
-            color: _isHovered ? AppTheme.primary.withOpacity(0.4) : AppTheme.divider.withOpacity(0.3),
+            color: _isHovered ? AppTheme.primary.withValues(alpha: 0.4) : AppTheme.divider.withValues(alpha: 0.3),
             width: _isHovered ? 2 : 1,
           ),
         ),
@@ -726,7 +682,7 @@ class _ProductGridCardState extends State<_ProductGridCard> {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
-                            color: (isLowStock ? AppTheme.error : AppTheme.primary).withOpacity(0.1),
+                            color: (isLowStock ? AppTheme.error : AppTheme.primary).withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
@@ -762,7 +718,7 @@ class _ProductListTile extends StatelessWidget {
         color: Colors.white,
         borderRadius: AppTheme.radiusMedium,
         boxShadow: AppTheme.softShadow,
-        border: Border.all(color: isLowStock ? AppTheme.error.withOpacity(0.2) : AppTheme.divider.withOpacity(0.3)),
+        border: Border.all(color: isLowStock ? AppTheme.error.withValues(alpha: 0.2) : AppTheme.divider.withValues(alpha: 0.3)),
       ),
       child: ListTile(
         onTap: onTap,

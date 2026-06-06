@@ -14,6 +14,7 @@ import '../widgets/app_sidebar.dart';
 import '../repositories/auth_repository.dart';
 import '../theme/app_theme.dart';
 import '../providers/scanner_status_provider.dart';
+import '../widgets/chatbot_panel.dart';
 import 'package:flutter/foundation.dart';
 
 class AppShell extends ConsumerStatefulWidget {
@@ -99,9 +100,9 @@ class _AppShellState extends ConsumerState<AppShell> {
           decoration: BoxDecoration(
             color: cs.surface,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: cs.primary.withOpacity(0.2)),
+            border: Border.all(color: cs.primary.withValues(alpha: 0.2)),
             boxShadow: [
-              BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 10, offset: const Offset(0, 4))
+              BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 10, offset: const Offset(0, 4))
             ],
           ),
           child: Row(
@@ -170,7 +171,7 @@ class _AppShellState extends ConsumerState<AppShell> {
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: cs.onSurfaceVariant.withOpacity(0.3),
+                    color: cs.onSurfaceVariant.withValues(alpha: 0.3),
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -201,7 +202,7 @@ class _AppShellState extends ConsumerState<AppShell> {
                       decoration: BoxDecoration(
                         color: isSelected
                             ? cs.primaryContainer
-                            : cs.surfaceContainerHighest.withOpacity(0.5),
+                            : cs.surfaceContainerHighest.withValues(alpha: 0.5),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Icon(
@@ -233,7 +234,7 @@ class _AppShellState extends ConsumerState<AppShell> {
                               ),
                             ),
                           )
-                        : Icon(Icons.chevron_right, color: cs.onSurfaceVariant.withOpacity(0.5)),
+                        : Icon(Icons.chevron_right, color: cs.onSurfaceVariant.withValues(alpha: 0.5)),
                     onTap: () {
                       Navigator.pop(context);
                       _onNavigate(item.route);
@@ -246,7 +247,7 @@ class _AppShellState extends ConsumerState<AppShell> {
                   leading: Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: Colors.red.withOpacity(0.1),
+                      color: Colors.red.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: const Icon(Icons.logout, color: Colors.redAccent, size: 22),
@@ -324,7 +325,13 @@ class _AppShellState extends ConsumerState<AppShell> {
                       child: _screens[_currentRoute] ?? const PosScreen(),
                     ),
                   ),
-                  floatingActionButton: null,
+                  floatingActionButtonLocation: FloatingActionButtonLocation.startFloat,
+                  floatingActionButton: FloatingActionButton(
+                    heroTag: 'chatbot_fab',
+                    backgroundColor: AppTheme.primary,
+                    onPressed: () => ChatbotPanel.show(context),
+                    child: const Icon(Icons.auto_awesome_rounded, color: Colors.white),
+                  ),
                 ),
               ),
             ],
@@ -345,7 +352,7 @@ class _AppShellState extends ConsumerState<AppShell> {
         color: cs.surface,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.08),
+            color: Colors.black.withValues(alpha: 0.08),
             blurRadius: 12,
             offset: const Offset(0, -3),
           ),

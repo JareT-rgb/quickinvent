@@ -170,7 +170,7 @@ class _EditProductDialogState extends ConsumerState<EditProductDialog>
             onPressed: _isLoading ? null : _deleteProduct,
             icon: const Icon(Icons.delete_outline_rounded, color: AppTheme.error),
             style: IconButton.styleFrom(
-              backgroundColor: AppTheme.error.withOpacity(0.1),
+              backgroundColor: AppTheme.error.withValues(alpha: 0.1),
               padding: const EdgeInsets.all(12),
             ),
           ),
@@ -235,7 +235,7 @@ class _EditProductDialogState extends ConsumerState<EditProductDialog>
                                 ),
                                 const SizedBox(height: 16),
                                 DropdownButtonFormField<String>(
-                                  value: _selectedCategoryId,
+                                  initialValue: _selectedCategoryId,
                                   decoration: appInputDecoration(context, label: 'Categoría', icon: Icons.category_outlined),
                                   items: _categories.map((c) => DropdownMenuItem(value: c['id'] as String, child: Text(c['name'] as String))).toList(),
                                   onChanged: (v) => setState(() => _selectedCategoryId = v),
@@ -308,7 +308,7 @@ class _EditProductDialogState extends ConsumerState<EditProductDialog>
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                         decoration: BoxDecoration(
-                          color: AppTheme.primary.withOpacity(0.05),
+                          color: AppTheme.primary.withValues(alpha: 0.05),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: SwitchListTile(
@@ -317,7 +317,7 @@ class _EditProductDialogState extends ConsumerState<EditProductDialog>
                           subtitle: const Text('Visible en el punto de venta', style: TextStyle(fontSize: 11)),
                           value: _isActive,
                           onChanged: (v) => setState(() => _isActive = v),
-                          activeColor: AppTheme.primary,
+                          activeThumbColor: AppTheme.primary,
                         ),
                       ),
                     ],
@@ -361,7 +361,7 @@ class _EditProductDialogState extends ConsumerState<EditProductDialog>
                 ),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
-                  value: _selectedCategoryId,
+                  initialValue: _selectedCategoryId,
                   decoration: appInputDecoration(context, label: 'Categoría', icon: Icons.category_outlined),
                   items: _categories.map((c) => DropdownMenuItem(value: c['id'] as String, child: Text(c['name'] as String))).toList(),
                   onChanged: (v) => setState(() => _selectedCategoryId = v),
@@ -430,10 +430,10 @@ class _EditProductDialogState extends ConsumerState<EditProductDialog>
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppTheme.primary.withOpacity(0.1)),
+        border: Border.all(color: AppTheme.primary.withValues(alpha: 0.1)),
         boxShadow: [
           BoxShadow(
-            color: AppTheme.primary.withOpacity(0.03),
+            color: AppTheme.primary.withValues(alpha: 0.03),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
@@ -447,7 +447,7 @@ class _EditProductDialogState extends ConsumerState<EditProductDialog>
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: AppTheme.primary.withOpacity(0.1),
+                  color: AppTheme.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(icon, size: 18, color: AppTheme.primary),
@@ -471,12 +471,12 @@ class _EditProductDialogState extends ConsumerState<EditProductDialog>
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [AppTheme.primary.withOpacity(0.08), AppTheme.primary.withOpacity(0.02)],
+          colors: [AppTheme.primary.withValues(alpha: 0.08), AppTheme.primary.withValues(alpha: 0.02)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppTheme.primary.withOpacity(0.1)),
+        border: Border.all(color: AppTheme.primary.withValues(alpha: 0.1)),
       ),
       child: Row(
         children: [
@@ -485,7 +485,7 @@ class _EditProductDialogState extends ConsumerState<EditProductDialog>
           Expanded(
             child: Text(
               tip,
-              style: TextStyle(fontSize: 13, color: AppTheme.primary.withOpacity(0.8), height: 1.5, fontWeight: FontWeight.w500),
+              style: TextStyle(fontSize: 13, color: AppTheme.primary.withValues(alpha: 0.8), height: 1.5, fontWeight: FontWeight.w500),
             ),
           ),
         ],
@@ -503,7 +503,7 @@ class _ActionButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: AppTheme.primary.withOpacity(0.1),
+      color: AppTheme.primary.withValues(alpha: 0.1),
       borderRadius: BorderRadius.circular(12),
       child: InkWell(
         onTap: onPressed,

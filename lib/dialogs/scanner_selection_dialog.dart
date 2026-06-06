@@ -10,7 +10,6 @@ class ScannerSelectionDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
 
     return Dialog(
       backgroundColor: Colors.transparent,
@@ -32,7 +31,7 @@ class ScannerSelectionDialog extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: AppTheme.primary.withOpacity(0.1),
+                    color: AppTheme.primary.withValues(alpha: 0.1),
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(Icons.qr_code_scanner_rounded, color: AppTheme.primary, size: 32),
@@ -43,7 +42,7 @@ class ScannerSelectionDialog extends StatelessWidget {
                   style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, letterSpacing: -1),
                 ),
                 const SizedBox(height: 8),
-                Text(
+                const Text(
                   '¿Cómo prefieres escanear tus productos?',
                   style: TextStyle(color: AppTheme.textSecondary, fontSize: 14, fontWeight: FontWeight.w500),
                   textAlign: TextAlign.center,
@@ -127,7 +126,8 @@ class ScannerSelectionDialog extends StatelessWidget {
                       data: 'https://quickinvent.app/scanner',
                       version: QrVersions.auto,
                       size: 180.0,
-                      foregroundColor: Colors.black87,
+                      dataModuleStyle: const QrDataModuleStyle(color: Colors.black87, dataModuleShape: QrDataModuleShape.square),
+                      eyeStyle: const QrEyeStyle(color: Colors.black87, eyeShape: QrEyeShape.square),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -185,14 +185,14 @@ class _ScannerOption extends StatelessWidget {
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: color.withOpacity(0.2), width: 2),
+          border: Border.all(color: color.withValues(alpha: 0.2), width: 2),
         ),
         child: Row(
           children: [
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
+                color: color.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(14),
               ),
               child: Icon(icon, color: color, size: 24),
@@ -204,11 +204,11 @@ class _ScannerOption extends StatelessWidget {
                 children: [
                   Text(title, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
                   const SizedBox(height: 4),
-                  Text(subtitle, style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+                  Text(subtitle, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
                 ],
               ),
             ),
-            Icon(Icons.chevron_right_rounded, color: color.withOpacity(0.5)),
+            Icon(Icons.chevron_right_rounded, color: color.withValues(alpha: 0.5)),
           ],
         ),
       ),
