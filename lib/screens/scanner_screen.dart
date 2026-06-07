@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:animate_do/animate_do.dart';
-import 'package:audioplayers/audioplayers.dart';
+
 import '../theme/app_theme.dart';
 import '../models/product.dart';
 import '../repositories/products_repository.dart';
@@ -30,7 +30,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> with SingleTicker
   String? _detectedCode;
   Map<String, dynamic>? _lastProduct;
   RealtimeChannel? _feedbackSubscription;
-  final AudioPlayer _audioPlayer = AudioPlayer();
+
   int _currentScanQty = 1;
   RealtimeChannel? _presenceChannel;
 
@@ -163,7 +163,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> with SingleTicker
       // Play beep sound (don't await so it doesn't block processing)
       // On web, this might throw UnimplementedError if not handled carefully
       try {
-        _audioPlayer.play(UrlSource('https://www.soundjay.com/buttons/button-09a.mp3')).catchError((_) => null);
+
       } catch (_) {
         // Silently ignore if audio fails
       }
@@ -224,7 +224,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> with SingleTicker
     _controller.dispose();
     _feedbackSubscription?.unsubscribe();
     _presenceChannel?.unsubscribe();
-    _audioPlayer.dispose();
+
     super.dispose();
   }
 

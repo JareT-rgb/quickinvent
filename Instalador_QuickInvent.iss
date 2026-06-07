@@ -24,8 +24,8 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 
 [Files]
 ; IMPORTANTE: Verifica que esta ruta sea la correcta en tu PC
-Source: "c:\Users\DELL\OneDrive\Escritorio\quickinvent\build\windows\x64\runner\Release\quickinvent.exe"; DestDir: "{app}"; Flags: ignoreversion
-Source: "c:\Users\DELL\OneDrive\Escritorio\quickinvent\build\windows\x64\runner\Release\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "c:\Users\DELL\OneDrive\Escritorio\Proyectosje\quickinvent\build\windows\x64\runner\Release\quickinvent.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "c:\Users\DELL\OneDrive\Escritorio\Proyectosje\quickinvent\build\windows\x64\runner\Release\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 ; NOTA: La línea anterior copia el EXE y todas las carpetas (data, flutter_assets, etc.)
 
 [Icons]
