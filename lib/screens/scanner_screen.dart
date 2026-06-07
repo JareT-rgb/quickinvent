@@ -256,11 +256,20 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> with SingleTicker
 
   @override
   Widget build(BuildContext context) {
+    final scanWidth = MediaQuery.of(context).size.width * 0.85;
+    final scanHeight = scanWidth * 0.45;
+    final scanWindow = Rect.fromCenter(
+      center: MediaQuery.of(context).size.center(Offset.zero),
+      width: scanWidth,
+      height: scanHeight,
+    );
+
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
         children: [
           MobileScanner(
+            scanWindow: scanWindow,
             controller: _controller,
             onDetect: _handleBarcode,
           ),

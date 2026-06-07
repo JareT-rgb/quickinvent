@@ -276,11 +276,20 @@ class _MiniPosScannerScreenState extends ConsumerState<MiniPosScannerScreen> wit
     final totalItems = cart.fold<int>(0, (sum, item) => sum + item.quantity);
     final totalAmount = cart.fold<double>(0, (sum, item) => sum + item.subtotal);
 
+    final scanWidth = MediaQuery.of(context).size.width * 0.85;
+    final scanHeight = scanWidth * 0.45;
+    final scanWindow = Rect.fromCenter(
+      center: MediaQuery.of(context).size.center(const Offset(0, -80)),
+      width: scanWidth,
+      height: scanHeight,
+    );
+
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
         children: [
           MobileScanner(
+            scanWindow: scanWindow,
             controller: _controller,
             onDetect: _handleBarcode,
           ),
