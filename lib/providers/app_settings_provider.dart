@@ -14,6 +14,11 @@ class AppSettings {
   final String transferBank;
   final String transferAccount;
 
+  // Scanner Info
+  final bool useVolumeKeyToScan;
+  final int? triggerKeyId;
+  final String? triggerKeyName;
+
   AppSettings({
     this.businessName = 'QuickInvent',
     this.businessAddress = 'Dirección no configurada',
@@ -23,6 +28,9 @@ class AppSettings {
     this.transferName = '',
     this.transferBank = '',
     this.transferAccount = '',
+    this.useVolumeKeyToScan = true,
+    this.triggerKeyId,
+    this.triggerKeyName,
   });
 
   Map<String, dynamic> toMap() {
@@ -35,6 +43,9 @@ class AppSettings {
       'transferName': transferName,
       'transferBank': transferBank,
       'transferAccount': transferAccount,
+      'useVolumeKeyToScan': useVolumeKeyToScan,
+      'triggerKeyId': triggerKeyId,
+      'triggerKeyName': triggerKeyName,
     };
   }
 
@@ -48,6 +59,9 @@ class AppSettings {
       transferName: map['transferName'] ?? '',
       transferBank: map['transferBank'] ?? '',
       transferAccount: map['transferAccount'] ?? '',
+      useVolumeKeyToScan: map['useVolumeKeyToScan'] ?? true,
+      triggerKeyId: map['triggerKeyId'],
+      triggerKeyName: map['triggerKeyName'],
     );
   }
 
@@ -60,6 +74,9 @@ class AppSettings {
     String? transferName,
     String? transferBank,
     String? transferAccount,
+    bool? useVolumeKeyToScan,
+    int? triggerKeyId,
+    String? triggerKeyName,
   }) {
     return AppSettings(
       businessName: businessName ?? this.businessName,
@@ -70,6 +87,9 @@ class AppSettings {
       transferName: transferName ?? this.transferName,
       transferBank: transferBank ?? this.transferBank,
       transferAccount: transferAccount ?? this.transferAccount,
+      useVolumeKeyToScan: useVolumeKeyToScan ?? this.useVolumeKeyToScan,
+      triggerKeyId: triggerKeyId ?? this.triggerKeyId,
+      triggerKeyName: triggerKeyName ?? this.triggerKeyName,
     );
   }
 }

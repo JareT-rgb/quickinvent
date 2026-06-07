@@ -9,11 +9,13 @@ import '../models/product.dart';
 import '../repositories/products_repository.dart';
 import '../dialogs/edit_product_dialog.dart';
 import '../utils/safe_haptic.dart';
+import '../widgets/scanner_overlay.dart';
 
 
 class ScannerScreen extends ConsumerStatefulWidget {
   final bool returnCodeMode;
-  const ScannerScreen({super.key, this.returnCodeMode = false});
+  final VoidCallback? onClose;
+  const ScannerScreen({super.key, this.returnCodeMode = false, this.onClose});
 
   @override
   ConsumerState<ScannerScreen> createState() => _ScannerScreenState();
@@ -136,12 +138,6 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> with SingleTicker
     if (barcodes.isNotEmpty) {
       final code = barcodes.first.rawValue;
       if (code != null && code.isNotEmpty && code != _detectedCode) {
-        if (widget.returnCodeMode) {
-          SafeHaptic.selectionClick();
-          Navigator.pop(context, code);
-          return;
-        }
-
         setState(() {
           _detectedCode = code;
         });
@@ -153,10 +149,19 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> with SingleTicker
   Future<void> _processDetectedCode() async {
     if (_detectedCode == null || _isProcessing) return;
 
+    if (widget.returnCodeMode) {
+      Navigator.pop(context, _detectedCode);
+      return;
+    }
+
+    final isSameProduct = _lastProduct != null && _lastProduct!['barcode'] == _detectedCode;
+
     setState(() {
       _isProcessing = true;
-      _lastProduct = null;
-      _currentScanQty = 1;
+      if (!isSameProduct) {
+        _lastProduct = null;
+        _currentScanQty = 1;
+      }
     });
 
     try {
@@ -173,6 +178,28 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> with SingleTicker
       final userId = Supabase.instance.client.auth.currentUser?.id;
 
       if (product != null) {
+        if (isSameProduct) {
+          if (_currentScanQty + 1 > product.stockQuantity) {
+            _provideFeedback('out_of_stock');
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Stock máximo alcanzado (${product.stockQuantity})'),
+                  backgroundColor: AppTheme.error,
+                  duration: const Duration(seconds: 1),
+                ),
+              );
+              setState(() {
+                _isProcessing = false;
+              });
+            }
+            return;
+          }
+          setState(() {
+            _currentScanQty++;
+          });
+        }
+
         setState(() {
           _lastProduct = {
             'id': product.id,
@@ -186,11 +213,11 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> with SingleTicker
         });
         
         if (!_auditMode && userId != null) {
-          // Enviamos un solo registro con la cantidad correcta
+          // Enviamos el incremento de +1
           await Supabase.instance.client.from('barcode_scans').insert({
             'barcode': _detectedCode,
             'user_id': userId,
-            'quantity': _currentScanQty,
+            'quantity': 1,
             'processed': false,
             'status': 'pending',
           });
@@ -221,10 +248,9 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> with SingleTicker
   @override
   void dispose() {
     _laserController.dispose();
-    _controller.dispose();
-    _feedbackSubscription?.unsubscribe();
     _presenceChannel?.unsubscribe();
-
+    _feedbackSubscription?.unsubscribe();
+    _controller.dispose();
     super.dispose();
   }
 
@@ -241,9 +267,6 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> with SingleTicker
           
           // Scanner Overlay with Laser
           _buildScannerOverlay(),
-
-          // Manual Scan Trigger Button
-          _buildManualScanButton(),
 
           // Top Toolbar
           _buildTopToolbar(),
@@ -266,37 +289,44 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> with SingleTicker
                 ),
               ),
             ),
+            
+          // Manual Scan Trigger Button (Highest Z-index)
+          _buildManualScanButton(),
         ],
       ),
     );
   }
 
   Widget _buildManualScanButton() {
-    return Align(
-      alignment: Alignment.center,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const SizedBox(height: 240),
-          GestureDetector(
-            onTap: _processDetectedCode,
-            child: _buildScanPill(),
-          ),
-          if (_detectedCode != null)
-            Padding(
-              padding: const EdgeInsets.only(top: 16),
-              child: FadeIn(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                  decoration: BoxDecoration(color: Colors.black45, borderRadius: BorderRadius.circular(20)),
-                  child: Text(
-                    'Detectado: $_detectedCode',
-                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11),
+    return AnimatedPositioned(
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOutCubic,
+      bottom: _lastProduct != null ? 550 : 160, // Move extremely high up to avoid modal
+      left: 0, right: 0,
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            GestureDetector(
+              onTap: _processDetectedCode,
+              child: _buildScanPill(),
+            ),
+            if (_detectedCode != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 16),
+                child: FadeIn(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                    decoration: BoxDecoration(color: Colors.black45, borderRadius: BorderRadius.circular(20)),
+                    child: Text(
+                      'Detectado: $_detectedCode',
+                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11),
+                    ),
                   ),
                 ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -325,7 +355,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> with SingleTicker
           ),
           const SizedBox(width: 10),
           Text(
-            hasCode ? 'TOMAR CÓDIGO' : 'BUSCANDO CÓDIGO...',
+            hasCode ? (widget.returnCodeMode ? 'ACEPTAR' : 'TOMAR CÓDIGO') : 'BUSCANDO CÓDIGO...',
             style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 13, letterSpacing: 0.5),
           ),
         ],
@@ -342,9 +372,12 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> with SingleTicker
             // Exit Button (Left)
             _CircleButton(
               icon: Icons.close_rounded, 
-              onTap: () async {
-                await _controller.stop();
-                if (mounted) Navigator.pop(context);
+              onTap: () {
+                if (widget.onClose != null) {
+                  widget.onClose!();
+                } else {
+                  Navigator.pop(context);
+                }
               },
               isGlass: true,
             ),
@@ -612,6 +645,9 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> with SingleTicker
     return AnimatedBuilder(
       animation: _laserController,
       builder: (context, child) {
+        final scanWidth = MediaQuery.of(context).size.width * 0.85;
+        final scanHeight = scanWidth * 0.45;
+
         return Stack(
           children: [
             Container(
@@ -622,14 +658,15 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> with SingleTicker
                   borderRadius: 30,
                   borderLength: 0,
                   borderWidth: 0,
-                  cutOutSize: MediaQuery.of(context).size.width * 0.75,
+                  cutOutWidth: scanWidth,
+                  cutOutHeight: scanHeight,
                 ),
               ),
             ),
             Center(
               child: SizedBox(
-                width: MediaQuery.of(context).size.width * 0.75,
-                height: MediaQuery.of(context).size.width * 0.75,
+                width: scanWidth,
+                height: scanHeight,
                 child: CustomPaint(
                   painter: ScannerVisorPainter(
                     color: AppTheme.primary,
@@ -684,8 +721,20 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> with SingleTicker
           _QtyControl(
             icon: Icons.add_rounded,
             onTap: () {
-              setState(() => _currentScanQty++);
-              _updateRemoteQty(1);
+              final maxStock = (_lastProduct?['stock'] as num?)?.toInt() ?? 0;
+              if (_currentScanQty < maxStock) {
+                setState(() => _currentScanQty++);
+                _updateRemoteQty(1);
+              } else {
+                SafeHaptic.heavyImpact();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Stock máximo alcanzado ($maxStock)'),
+                    backgroundColor: AppTheme.error,
+                    duration: const Duration(seconds: 1),
+                  ),
+                );
+              }
             },
             isPrimary: true,
           ),
@@ -697,8 +746,24 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> with SingleTicker
   Widget _buildQuickAction(String label, int delta) {
     return InkWell(
       onTap: () {
-        setState(() => _currentScanQty += delta);
-        _updateRemoteQty(delta);
+        final maxStock = (_lastProduct?['stock'] as num?)?.toInt() ?? 0;
+        final availableToAdd = maxStock - _currentScanQty;
+        
+        if (availableToAdd <= 0) {
+          SafeHaptic.heavyImpact();
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Stock máximo alcanzado ($maxStock)'),
+              backgroundColor: AppTheme.error,
+              duration: const Duration(seconds: 1),
+            ),
+          );
+          return;
+        }
+
+        final actualDelta = delta > availableToAdd ? availableToAdd : delta;
+        setState(() => _currentScanQty += actualDelta);
+        _updateRemoteQty(actualDelta);
       },
       borderRadius: BorderRadius.circular(12),
       child: Container(
@@ -738,10 +803,26 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> with SingleTicker
           FilledButton(
             onPressed: () {
               final newQty = int.tryParse(controller.text) ?? 1;
+              final maxStock = (_lastProduct?['stock'] as num?)?.toInt() ?? 0;
+              
               if (newQty > 0) {
+                if (newQty > maxStock) {
+                  SafeHaptic.heavyImpact();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Stock máximo es $maxStock unidades'),
+                      backgroundColor: AppTheme.error,
+                      duration: const Duration(seconds: 2),
+                    ),
+                  );
+                  return; // Don't close dialog, let them fix it
+                }
+                
                 final delta = newQty - _currentScanQty;
-                setState(() => _currentScanQty = newQty);
-                if (delta != 0) _updateRemoteQty(delta);
+                if (delta != 0) {
+                  setState(() => _currentScanQty = newQty);
+                  _updateRemoteQty(delta);
+                }
               }
               Navigator.pop(context);
             },
@@ -810,78 +891,6 @@ class _CircleButton extends StatelessWidget {
   }
 }
 
-
-class QrScannerOverlayShape extends ShapeBorder {
-  final Color borderColor;
-  final double borderWidth;
-  final Color overlayColor;
-  final double borderRadius;
-  final double borderLength;
-  final double cutOutSize;
-
-  const QrScannerOverlayShape({
-    this.borderColor = Colors.red,
-    this.borderWidth = 3.0,
-    this.overlayColor = const Color.fromRGBO(0, 0, 0, 80),
-    this.borderRadius = 0,
-    this.borderLength = 40,
-    this.cutOutSize = 250,
-  });
-
-  @override
-  EdgeInsetsGeometry get dimensions => const EdgeInsets.all(10);
-
-  @override
-  Path getInnerPath(Rect rect, {TextDirection? textDirection}) {
-    return Path()
-      ..fillType = PathFillType.evenOdd
-      ..addPath(getOuterPath(rect), Offset.zero);
-  }
-
-  @override
-  Path getOuterPath(Rect rect, {TextDirection? textDirection}) {
-    Path getLeftTopPath(Rect rect) {
-      return Path()
-        ..moveTo(rect.left, rect.bottom)
-        ..lineTo(rect.left, rect.top)
-        ..lineTo(rect.right, rect.top);
-    }
-    return getLeftTopPath(rect)..lineTo(rect.right, rect.bottom)..lineTo(rect.left, rect.bottom)..lineTo(rect.left, rect.top);
-  }
-
-  @override
-  void paint(Canvas canvas, Rect rect, {TextDirection? textDirection}) {
-    final width = rect.width;
-    final height = rect.height;
-    final borderOffset = borderWidth / 2;
-    final actualBorderLength = borderLength > cutOutSize / 2 + borderOffset ? cutOutSize / 2 + borderOffset : borderLength;
-    final actualCutOutSize = cutOutSize < width ? cutOutSize : width;
-
-    final backgroundPaint = Paint()..color = overlayColor..style = PaintingStyle.fill;
-    final borderPaint = Paint()..color = borderColor..style = PaintingStyle.stroke..strokeWidth = borderWidth;
-    final boxPaint = Paint()..color = borderColor..style = PaintingStyle.fill..blendMode = BlendMode.dstOut;
-
-    final cutOutRect = Rect.fromLTWH(
-      rect.left + width / 2 - actualCutOutSize / 2 + borderOffset,
-      rect.top + height / 2 - actualCutOutSize / 2 + borderOffset,
-      actualCutOutSize - borderOffset * 2,
-      actualCutOutSize - borderOffset * 2,
-    );
-
-    canvas..saveLayer(rect, backgroundPaint)..drawRect(rect, backgroundPaint)
-      ..drawRRect(RRect.fromLTRBAndCorners(cutOutRect.right - actualBorderLength, cutOutRect.top, cutOutRect.right, cutOutRect.top + actualBorderLength, topRight: Radius.circular(borderRadius)), borderPaint)
-      ..drawRRect(RRect.fromLTRBAndCorners(cutOutRect.left, cutOutRect.top, cutOutRect.left + actualBorderLength, cutOutRect.top + actualBorderLength, topLeft: Radius.circular(borderRadius)), borderPaint)
-      ..drawRRect(RRect.fromLTRBAndCorners(cutOutRect.right - actualBorderLength, cutOutRect.bottom - actualBorderLength, cutOutRect.right, cutOutRect.bottom, bottomRight: Radius.circular(borderRadius)), borderPaint)
-      ..drawRRect(RRect.fromLTRBAndCorners(cutOutRect.left, cutOutRect.bottom - actualBorderLength, cutOutRect.left + actualBorderLength, cutOutRect.bottom, bottomLeft: Radius.circular(borderRadius)), borderPaint)
-      ..drawRRect(RRect.fromRectAndRadius(cutOutRect, Radius.circular(borderRadius)), boxPaint)..restore();
-  }
-
-  @override
-  ShapeBorder scale(double t) {
-    return QrScannerOverlayShape(borderColor: borderColor, borderWidth: borderWidth, overlayColor: overlayColor);
-  }
-}
-
 class _ActionButton extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -918,79 +927,4 @@ class _ActionButton extends StatelessWidget {
       ),
     );
   }
-}
-
-
-class ScannerVisorPainter extends CustomPainter {
-  final Color color;
-  final double laserPosition;
-
-  ScannerVisorPainter({required this.color, required this.laserPosition});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 4;
-
-    final cornerSize = 40.0;
-    final path = Path();
-
-    // Top Left
-    path.moveTo(0, cornerSize);
-    path.lineTo(0, 0);
-    path.lineTo(cornerSize, 0);
-
-    // Top Right
-    path.moveTo(size.width - cornerSize, 0);
-    path.lineTo(size.width, 0);
-    path.lineTo(size.width, cornerSize);
-
-    // Bottom Right
-    path.moveTo(size.width, size.height - cornerSize);
-    path.lineTo(size.width, size.height);
-    path.lineTo(size.width - cornerSize, size.height);
-
-    // Bottom Left
-    path.moveTo(cornerSize, size.height);
-    path.lineTo(0, size.height);
-    path.lineTo(0, size.height - cornerSize);
-
-    canvas.drawPath(path, paint);
-
-    // Glow effect
-    final glowPaint = Paint()
-      ..color = color.withValues(alpha: 0.3)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 10
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10);
-    canvas.drawPath(path, glowPaint);
-
-    // Laser Line
-    final laserPaint = Paint()
-      ..shader = LinearGradient(
-        colors: [color.withValues(alpha: 0), color, color.withValues(alpha: 0)],
-      ).createShader(Rect.fromLTWH(0, size.height * laserPosition - 0.5, size.width, 1))
-      ..strokeWidth = 1;
-    
-    canvas.drawLine(
-      Offset(0, size.height * laserPosition),
-      Offset(size.width, size.height * laserPosition),
-      laserPaint,
-    );
-
-    // Laser Glow
-    final laserGlowPaint = Paint()
-      ..color = color.withValues(alpha: 0.15)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
-    canvas.drawRect(
-      Rect.fromLTWH(0, size.height * laserPosition - 5, size.width, 10),
-      laserGlowPaint,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant ScannerVisorPainter oldDelegate) => 
-      oldDelegate.laserPosition != laserPosition || oldDelegate.color != color;
 }

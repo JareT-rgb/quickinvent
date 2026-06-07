@@ -10,7 +10,6 @@ import '../repositories/products_repository.dart';
 import '../dialogs/add_product_dialog.dart';
 import '../dialogs/edit_product_dialog.dart';
 import '../dialogs/bulk_import_dialog.dart';
-import '../dialogs/quick_import_dialog.dart';
 import '../utils/excel_helper.dart';
 import '../theme/app_theme.dart';
 import '../widgets/product_image.dart';
@@ -127,11 +126,6 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
               onTap: () => showDialog(context: context, builder: (context) => const BulkImportDialog()),
             ),
             ExpandableFabItem(
-              icon: Icons.auto_fix_high_rounded,
-              label: 'Carga Rápida (Abarrotes)',
-              onTap: () => showDialog(context: context, builder: (context) => const QuickImportDialog()),
-            ),
-            ExpandableFabItem(
               icon: Icons.qr_code_2_rounded,
               label: 'Imprimir Etiquetas',
               onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => BarcodePrintScreen(products: products.where((p) => p.isActive).toList()))),
@@ -207,9 +201,15 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                   children: [
                     Row(
                       children: [
-                        const Text(
-                          'Gestión de Stock', 
-                          style: TextStyle(fontSize: 32, fontWeight: FontWeight.w900, letterSpacing: -1.5),
+                        const Flexible(
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              'Gestión de Stock', 
+                              style: TextStyle(fontSize: 32, fontWeight: FontWeight.w900, letterSpacing: -1.5),
+                            ),
+                          ),
                         ),
                         const SizedBox(width: 12),
                         productsAsync.maybeWhen(

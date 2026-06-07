@@ -42,6 +42,25 @@ class SettingsScreen extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: 24),
+                _buildSectionHeader('Opciones del Escáner'),
+                _buildSettingCard(
+                  context,
+                  title: 'Escaneo con Botón Manual',
+                  subtitle: settings.useVolumeKeyToScan 
+                      ? 'Mostrar botón en pantalla para escanear' 
+                      : 'Escaneo automático al detectar código',
+                  icon: Icons.barcode_reader,
+                  trailing: Switch(
+                    value: settings.useVolumeKeyToScan,
+                    onChanged: (v) {
+                      ref.read(appSettingsProvider.notifier).updateSettings(
+                        settings.copyWith(useVolumeKeyToScan: v),
+                      );
+                    },
+                    activeThumbColor: AppTheme.primary,
+                  ),
+                ),
+                const SizedBox(height: 24),
                 _buildSectionHeader('Negocio y Catálogos'),
                 _buildSettingCard(
                   context,
@@ -134,6 +153,8 @@ class SettingsScreen extends ConsumerWidget {
       ),
     );
   }
+
+
 
   void _showPaymentInfoDialog(BuildContext context, WidgetRef ref, AppSettings settings) {
     final nameCtrl = TextEditingController(text: settings.transferName);

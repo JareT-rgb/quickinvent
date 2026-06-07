@@ -386,6 +386,24 @@ class _AddProductDialogState extends ConsumerState<AddProductDialog>
                     ),
                     const SizedBox(width: 8),
                     _ActionButton(
+                      icon: Icons.qr_code_scanner_rounded,
+                      onPressed: () async {
+                        final result = await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const ScannerScreen(returnCodeMode: true),
+                          ),
+                        );
+                        if (result != null && result is String) {
+                          setState(() {
+                            _barcodeController.text = result;
+                          });
+                        }
+                      },
+                      tooltip: 'Escanear código',
+                    ),
+                    const SizedBox(width: 8),
+                    _ActionButton(
                       icon: Icons.auto_fix_high_rounded,
                       onPressed: () => setState(() => _barcodeController.text = DateTime.now().millisecondsSinceEpoch.toString()),
                     ),

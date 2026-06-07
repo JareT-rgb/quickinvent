@@ -119,13 +119,19 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                 child: const Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Análisis de Negocio', 
-                      style: TextStyle(fontSize: 32, fontWeight: FontWeight.w900, letterSpacing: -1.5),
+                    FittedBox(
+                      fit: BoxFit.scaleDown, alignment: Alignment.centerLeft,
+                      child: Text(
+                        'Análisis de Negocio', 
+                        style: TextStyle(fontSize: 32, fontWeight: FontWeight.w900, letterSpacing: -1.5),
+                      ),
                     ),
-                    Text(
-                      'Monitoreo en tiempo real de tu rendimiento', 
-                      style: TextStyle(color: AppTheme.textSecondary, fontSize: 14, fontWeight: FontWeight.w500),
+                    FittedBox(
+                      fit: BoxFit.scaleDown, alignment: Alignment.centerLeft,
+                      child: Text(
+                        'Monitoreo en tiempo real de tu rendimiento', 
+                        style: TextStyle(color: AppTheme.textSecondary, fontSize: 14, fontWeight: FontWeight.w500),
+                      ),
                     ),
                   ],
                 ),
@@ -819,7 +825,8 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(p.name, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
+                  Expanded(child: Text(p.name, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                  const SizedBox(width: 8),
                   Text('${p.stockQuantity} vendidos', style: const TextStyle(color: AppTheme.primary, fontWeight: FontWeight.w900, fontSize: 12)),
                 ],
               ),
@@ -1005,8 +1012,12 @@ Top 3 Horas Pico: $peakHoursStr
             children: [
               const Icon(Icons.auto_awesome_rounded, color: AppTheme.primary),
               const SizedBox(width: 8),
-              const Text('Recomendaciones de Gemini AI', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppTheme.primary)),
-              const Spacer(),
+              const Expanded(
+                child: Text(
+                  'Recomendaciones de Gemini AI', 
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppTheme.primary),
+                ),
+              ),
               IconButton(
                 icon: const Icon(Icons.refresh_rounded, size: 20),
                 color: AppTheme.textSecondary,

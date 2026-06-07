@@ -6,6 +6,7 @@ import '../widgets/app_dialog.dart';
 import '../models/product.dart';
 import '../repositories/products_repository.dart';
 import '../theme/app_theme.dart';
+import '../screens/scanner_screen.dart';
 
 class EditProductDialog extends ConsumerStatefulWidget {
   final Product product;
@@ -256,6 +257,23 @@ class _EditProductDialogState extends ConsumerState<EditProductDialog>
                           ),
                           const SizedBox(width: 12),
                           _ActionButton(
+                            icon: Icons.qr_code_scanner_rounded,
+                            onPressed: () async {
+                              final result = await Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const ScannerScreen(returnCodeMode: true),
+                                ),
+                              );
+                              if (result != null && result is String) {
+                                setState(() {
+                                  _barcodeController.text = result;
+                                });
+                              }
+                            },
+                          ),
+                          const SizedBox(width: 8),
+                          _ActionButton(
                             icon: Icons.auto_fix_high_rounded,
                             onPressed: () => setState(() => _barcodeController.text = DateTime.now().millisecondsSinceEpoch.toString()),
                           ),
@@ -408,6 +426,23 @@ class _EditProductDialogState extends ConsumerState<EditProductDialog>
                         controller: _barcodeController,
                         decoration: appInputDecoration(context, label: 'Código', icon: Icons.qr_code_rounded),
                       ),
+                    ),
+                    const SizedBox(width: 8),
+                    _ActionButton(
+                      icon: Icons.qr_code_scanner_rounded,
+                      onPressed: () async {
+                        final result = await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const ScannerScreen(returnCodeMode: true),
+                          ),
+                        );
+                        if (result != null && result is String) {
+                          setState(() {
+                            _barcodeController.text = result;
+                          });
+                        }
+                      },
                     ),
                     const SizedBox(width: 8),
                     _ActionButton(

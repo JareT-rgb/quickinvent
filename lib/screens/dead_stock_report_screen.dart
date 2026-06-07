@@ -40,7 +40,9 @@ class DeadStockReport extends ConsumerWidget {
                   children: [
                     Icon(Icons.warning_amber_rounded, color: AppTheme.warning),
                     SizedBox(width: 8),
-                    Text('Productos muertos (sin venta en +30 días)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    Expanded(
+                      child: Text('Productos muertos (sin venta en +30 días)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 16),

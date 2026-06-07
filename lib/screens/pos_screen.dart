@@ -14,7 +14,8 @@ import '../dialogs/held_carts_dialog.dart';
 import '../dialogs/checkout_dialog.dart';
 import '../providers/scanner_status_provider.dart';
 import '../widgets/product_image.dart';
-import '../dialogs/scanner_selection_dialog.dart';
+import '../dialogs/mobile_link_dialog.dart';
+import 'mini_pos_scanner_screen.dart';
 import '../utils/safe_haptic.dart';
 
 
@@ -260,7 +261,15 @@ class _PosScreenState extends ConsumerState<PosScreen> {
                 children: [
                   IconButton(
                     icon: const Icon(Icons.qr_code_scanner_rounded, color: AppTheme.primary),
-                    onPressed: () => showDialog(context: context, builder: (_) => const ScannerSelectionDialog()),
+                    onPressed: () {
+                      final isMobile = Theme.of(context).platform == TargetPlatform.android || 
+                                       Theme.of(context).platform == TargetPlatform.iOS;
+                      if (isMobile) {
+                        Navigator.of(context).push(MaterialPageRoute(builder: (_) => const MiniPosScannerScreen()));
+                      } else {
+                        showDialog(context: context, builder: (_) => const MobileLinkDialog());
+                      }
+                    },
                   ),
                   if (_searchQuery.isNotEmpty) 
                     IconButton(icon: const Icon(Icons.close), onPressed: () {

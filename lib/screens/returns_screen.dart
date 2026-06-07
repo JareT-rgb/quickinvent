@@ -428,9 +428,11 @@ class _ReturnsScreenState extends ConsumerState<ReturnsScreen> {
 
     if (_selectedSale == null) return const SizedBox.shrink();
 
-    return Padding(
-      padding: const EdgeInsets.all(20),
-      child: Column(
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (isSheet) ...[
@@ -589,6 +591,7 @@ class _ReturnsScreenState extends ConsumerState<ReturnsScreen> {
           ),
         ],
       ),
+    ),
     );
   }
 

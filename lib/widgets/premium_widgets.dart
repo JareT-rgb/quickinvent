@@ -212,7 +212,7 @@ class _ExpandableFabState extends State<ExpandableFab> with SingleTickerProvider
       children.add(
         _ExpandingActionButton(
           directionDegrees: 90,
-          maxDistance: (count - i) * 60.0,
+          maxDistance: (count - i) * 68.0,
           progress: _expandAnimation,
           child: widget.items[i],
         ),
@@ -236,21 +236,27 @@ class ExpandableFabItem extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           decoration: BoxDecoration(
             color: theme.cardColor,
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(12),
             boxShadow: AppTheme.softShadow,
           ),
-          child: Text(label, style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12, color: theme.textTheme.bodyLarge?.color)),
+          child: Text(label, style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: theme.textTheme.bodyLarge?.color)),
         ),
         const SizedBox(width: 12),
-        FloatingActionButton.small(
-          onPressed: onTap,
-          elevation: 4,
-          backgroundColor: theme.cardColor,
-          foregroundColor: AppTheme.primary,
-          child: Icon(icon),
+        SizedBox(
+          width: 48,
+          height: 48,
+          child: FloatingActionButton(
+            heroTag: null,
+            onPressed: onTap,
+            elevation: 4,
+            backgroundColor: theme.cardColor,
+            foregroundColor: AppTheme.primary,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            child: Icon(icon, size: 24),
+          ),
         ),
       ],
     );

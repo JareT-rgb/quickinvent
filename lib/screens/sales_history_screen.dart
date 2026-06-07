@@ -111,8 +111,8 @@ class _SalesHistoryScreenState extends ConsumerState<SalesHistoryScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Historial de Ventas', style: TextStyle(fontSize: 32, fontWeight: FontWeight.w900, letterSpacing: -1.5)),
-            const Text('Auditoría y control de transacciones realizadas', style: TextStyle(color: AppTheme.textSecondary, fontSize: 14)),
+            const FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text('Historial de Ventas', style: TextStyle(fontSize: 32, fontWeight: FontWeight.w900, letterSpacing: -1.5))),
+            const FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text('Auditoría y control de transacciones realizadas', style: TextStyle(color: AppTheme.textSecondary, fontSize: 14))),
             const SizedBox(height: 24),
             statsAsync.maybeWhen(
               data: (stats) => Row(
@@ -246,17 +246,18 @@ class _SaleListItem extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text('Venta #${sale.id}', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
-                    Row(
+                    Wrap(
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 8,
+                      runSpacing: 4,
                       children: [
                         Text(DateFormat('dd MMMM, HH:mm').format(sale.createdAt), style: const TextStyle(color: AppTheme.textMuted, fontSize: 12, fontWeight: FontWeight.w600)),
-                        if (sale.hasReturns) ...[
-                          const SizedBox(width: 8),
+                        if (sale.hasReturns)
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(color: AppTheme.error.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(4)),
                             child: const Text('DEVOLUCIÓN', style: TextStyle(color: AppTheme.error, fontSize: 8, fontWeight: FontWeight.w900)),
                           ),
-                        ],
                       ],
                     ),
                   ],

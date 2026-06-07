@@ -28,18 +28,21 @@ class _AppShellState extends ConsumerState<AppShell> {
   String _currentRoute = 'pos';
   bool _isSidebarVisible = true;
 
-  final Map<String, Widget> _screens = {
-    'pos': const PosScreen(),
-    'inventory': const InventoryScreen(),
-    'history': const SalesHistoryScreen(),
-    'reports': const ReportsScreen(),
-    'returns': const ReturnsScreen(),
-    'scanner': const ScannerScreen(),
-    'cash_cut': const CashRegisterScreen(),
-    'settings': const SettingsScreen(),
-    'profile': const ProfileScreen(),
-    'customers': const CustomersScreen(),
-  };
+  Widget _getScreen(String route) {
+    switch (route) {
+      case 'pos': return const PosScreen();
+      case 'inventory': return const InventoryScreen();
+      case 'history': return const SalesHistoryScreen();
+      case 'reports': return const ReportsScreen();
+      case 'returns': return const ReturnsScreen();
+      case 'scanner': return ScannerScreen(onClose: () => _onNavigate('pos'));
+      case 'cash_cut': return const CashRegisterScreen();
+      case 'settings': return const SettingsScreen();
+      case 'profile': return const ProfileScreen();
+      case 'customers': return const CustomersScreen();
+      default: return const PosScreen();
+    }
+  }
 
   // Primary items shown in the bottom nav bar (max 5 for mobile)
   final List<_BottomNavItem> _primaryNavItems = [
@@ -322,7 +325,7 @@ class _AppShellState extends ConsumerState<AppShell> {
                     duration: const Duration(milliseconds: 300),
                     child: KeyedSubtree(
                       key: ValueKey(_currentRoute),
-                      child: _screens[_currentRoute] ?? const PosScreen(),
+                      child: _getScreen(_currentRoute),
                     ),
                   ),
                   floatingActionButtonLocation: FloatingActionButtonLocation.startFloat,
