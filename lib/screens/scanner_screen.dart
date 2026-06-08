@@ -310,7 +310,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> with SingleTicker
     return AnimatedPositioned(
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeOutCubic,
-      bottom: _lastProduct != null ? 550 : 160, // Move extremely high up to avoid modal
+      bottom: _lastProduct != null ? 340 : 160, // Move above the product card instead of extremely high
       left: 0, right: 0,
       child: Center(
         child: Column(
